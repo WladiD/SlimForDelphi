@@ -50,7 +50,7 @@ type
     destructor Destroy; override;
     function Add(AEntry: TSlimEntry): Integer;
     property Count: Integer read GetCount;
-    property Entries[AIndex: Integer]: TSlimEntry read GetEntry;
+    property Entries[AIndex: Integer]: TSlimEntry read GetEntry; default;
   end;
 
   TSlimListUnserializer = class
@@ -191,13 +191,15 @@ begin
 end;
 
 function TSlimListUnserializer.ReadLength: Integer;
+const
+  LengthLength = 6;
 var
   Value: String;
 begin
-  Value := Copy(FContent, FPos, 6);
-  if not((Length(Value) = 6) and TryStrToInt(Value, Result)) then
+  Value := Copy(FContent, FPos, LengthLength);
+  if not((Length(Value) = LengthLength) and TryStrToInt(Value, Result)) then
     raise Exception.CreateFmt('Invalid length "%s" at pos %d', [Value, FPos]);
-  Inc(FPos, 6);
+  Inc(FPos, LengthLength);
   ReadColon;
 end;
 
