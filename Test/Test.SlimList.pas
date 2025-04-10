@@ -15,34 +15,61 @@ uses
 type
 
   [TestFixture]
+  TestSlimListSerializer = class
+  public
+    [Test]
+    procedure TwoMinuteExampleTest;
+  end;
+
+  [TestFixture]
   TestSlimListUnserializer = class
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
+    class procedure TwoMinuteExample(const AContent: String);
     [Test]
-    procedure TwoMinuteExample;
+    procedure TwoMinuteExampleTest;
   end;
 
 implementation
 
-procedure TestSlimListUnserializer.Setup;
-begin
-end;
 
-procedure TestSlimListUnserializer.TearDown;
-begin
-end;
+{ TestSlimListSerializer }
 
-procedure TestSlimListUnserializer.TwoMinuteExample;
+procedure TestSlimListSerializer.TwoMinuteExampleTest;
 var
   SlimList: TSlimList;
   Unserializer: TSlimListUnserializer;
+  Serializer: TSlimListSerializer;
   Content: String;
 begin
+  SlimList := nil;
+  Serializer:=nil;
   Content := TFile.ReadAllText('Data\TwoMinuteExample.txt');
   Unserializer := TSlimListUnserializer.Create(Content);
+  try
+    SlimList := Unserializer.Unserialize;
+    Serializer := TSlimListSerializer.Create(SlimList);
+    Content := Serializer.Serialize;
+    TestSlimListUnserializer.TwoMinuteExample(Content); // Eat our own dog food
+  finally
+    SlimList.Free;
+    Serializer.Free;
+    Unserializer.Free;
+  end;
+end;
+
+{ TestSlimListUnserializer }
+
+procedure TestSlimListUnserializer.TwoMinuteExampleTest;
+begin
+  TwoMinuteExample(TFile.ReadAllText('Data\TwoMinuteExample.txt'));
+end;
+
+class procedure TestSlimListUnserializer.TwoMinuteExample(const AContent: String);
+var
+  SlimList: TSlimList;
+  Unserializer: TSlimListUnserializer;
+begin
+  Unserializer := TSlimListUnserializer.Create(AContent);
   try
     SlimList := Unserializer.Unserialize;
     Assert.IsNotNull(SlimList);
@@ -75,12 +102,14 @@ begin
     Assert.AreEqual('decisionTable_0', (EntryLast.List[2] as TSlimStringEntry).ToString);
     Assert.AreEqual('endTable', (EntryLast.List[3] as TSlimStringEntry).ToString);
   finally
+    SlimList.Free;
     Unserializer.Free;
   end;
 end;
 
 initialization
 
+TDUnitX.RegisterTestFixture(TestSlimListSerializer);
 TDUnitX.RegisterTestFixture(TestSlimListUnserializer);
 
 end.
