@@ -53,6 +53,22 @@ type
     property Entries[AIndex: Integer]: TSlimEntry read GetEntry; default;
   end;
 
+  TSlimListSerializer = class
+  private
+    FSlimList: TSlimList;
+    FBuilder: TStringBuilder;
+    procedure WriteColon;
+    procedure WriteLength(ALength: Integer);
+    procedure WriteList(AList: TSlimList);
+    procedure WriteListEntry(AEntry: TSlimListEntry);
+    procedure WriteString(const AValue: String);
+    procedure WriteStringEntry(AEntry: TSlimStringEntry);
+  public
+    constructor Create(ASlimList: TSlimList);
+    destructor Destroy; override;
+    function Serialize: String;
+  end;
+
   TSlimListUnserializer = class
   private
     FContent: String;
@@ -126,6 +142,87 @@ end;
 function TSlimList.GetEntry(AIndex: Integer): TSlimEntry;
 begin
   Result := TSlimEntry(FList[AIndex]);
+end;
+
+{ TSlimListSerializer }
+
+constructor TSlimListSerializer.Create(ASlimList: TSlimList);
+begin
+  FSlimList:=ASlimList;
+  FBuilder:=TStringBuilder.Create;
+end;
+
+destructor TSlimListSerializer.Destroy;
+begin
+  FBuilder.Free;
+  inherited;
+end;
+
+function TSlimListSerializer.Serialize: String;
+begin
+  WriteList(FSlimList);
+  Result:=FBuilder.ToString;
+end;
+
+procedure TSlimListSerializer.WriteColon;
+begin
+  FBuilder.Append(':');
+end;
+
+procedure TSlimListSerializer.WriteLength(ALength: Integer);
+var
+  LenStr: String;
+begin
+  LenStr := Format('%.6d',[ALength]);
+  FBuilder.Append(LenStr);
+  WriteColon;
+end;
+
+procedure TSlimListSerializer.WriteList(AList: TSlimList);
+var
+  PrevBuilder: TStringBuilder;
+  Entry: TSlimEntry;
+  SubContent: String;
+begin
+  FBuilder.Append('[');
+  WriteLength(AList.Count);
+  for var Loop := 0 to AList.Count-1 do
+  begin
+    Entry := AList[Loop];
+    if Entry is TSlimListEntry then
+    begin
+      PrevBuilder := FBuilder;
+      try
+        FBuilder := TStringBuilder.Create;
+        WriteListEntry(TSlimListEntry(Entry));
+        SubContent := FBuilder.ToString;
+      finally
+        FBuilder.Free;
+        FBuilder := PrevBuilder;
+      end;
+      WriteString(SubContent);
+    end
+    else if Entry is TSlimStringEntry then
+      WriteStringEntry(TSlimStringEntry(Entry));
+  end;
+  FBuilder.Append(']');
+end;
+
+procedure TSlimListSerializer.WriteListEntry(AEntry: TSlimListEntry);
+begin
+  WriteList(AEntry.List);
+end;
+
+procedure TSlimListSerializer.WriteString(const AValue: String);
+begin
+  WriteLength(Length(AValue));
+  FBuilder.Append(AValue);
+  WriteColon;
+end;
+
+procedure TSlimListSerializer.WriteStringEntry(AEntry: TSlimStringEntry);
+begin
+  WriteString(AEntry.ToString);
 end;
 
 { TSlimListUnserializer }
@@ -238,6 +335,7 @@ begin
     ReadLengthAndEntry(ATarget);
     Dec(ItemsCount);
   end;
+  ReadExpectedChar(']');
 end;
 
 function TSlimListUnserializer.ReadString(ALength: Integer): String;
