@@ -56,7 +56,7 @@ type
   TSlimListSerializer = class
   private
     FSlimList: TSlimList;
-    FBuilder: TStringBuilder;
+    FBuilder : TStringBuilder;
     procedure WriteColon;
     procedure WriteLength(ALength: Integer);
     procedure WriteList(AList: TSlimList);
@@ -72,7 +72,7 @@ type
   TSlimListUnserializer = class
   private
     FContent: String;
-    FPos:     Integer;
+    FPos    : Integer;
     function LookChar: Char;
     function ReadChar: Char;
     procedure ReadColon;
@@ -148,8 +148,8 @@ end;
 
 constructor TSlimListSerializer.Create(ASlimList: TSlimList);
 begin
-  FSlimList:=ASlimList;
-  FBuilder:=TStringBuilder.Create;
+  FSlimList := ASlimList;
+  FBuilder := TStringBuilder.Create;
 end;
 
 destructor TSlimListSerializer.Destroy;
@@ -161,7 +161,7 @@ end;
 function TSlimListSerializer.Serialize: String;
 begin
   WriteList(FSlimList);
-  Result:=FBuilder.ToString;
+  Result := FBuilder.ToString;
 end;
 
 procedure TSlimListSerializer.WriteColon;
@@ -173,7 +173,7 @@ procedure TSlimListSerializer.WriteLength(ALength: Integer);
 var
   LenStr: String;
 begin
-  LenStr := Format('%.6d',[ALength]);
+  LenStr := Format('%.6d', [ALength]);
   FBuilder.Append(LenStr);
   WriteColon;
 end;
@@ -181,12 +181,12 @@ end;
 procedure TSlimListSerializer.WriteList(AList: TSlimList);
 var
   PrevBuilder: TStringBuilder;
-  Entry: TSlimEntry;
-  SubContent: String;
+  Entry      : TSlimEntry;
+  SubContent : String;
 begin
   FBuilder.Append('[');
   WriteLength(AList.Count);
-  for var Loop := 0 to AList.Count-1 do
+  for var Loop := 0 to AList.Count - 1 do
   begin
     Entry := AList[Loop];
     if Entry is TSlimListEntry then
@@ -258,23 +258,23 @@ end;
 
 procedure TSlimListUnserializer.ReadContent(const AContent: String; ATarget: TSlimList);
 var
-  CurChar: Char;
+  CurChar    : Char;
   PrevContent: String;
-  PrevPos: Integer;
+  PrevPos    : Integer;
 begin
-  PrevContent:=FContent;
-  PrevPos:=FPos;
+  PrevContent := FContent;
+  PrevPos := FPos;
   try
-    FContent:=AContent;
-    FPos:=1;
+    FContent := AContent;
+    FPos := 1;
     CurChar := LookChar;
     if CurChar = '[' then
       ReadList(ATarget)
     else if TCharacter.IsNumber(CurChar) then
       ReadLengthAndEntry(ATarget);
   finally
-    FContent:=PrevContent;
-    FPos:=PrevPos;
+    FContent := PrevContent;
+    FPos := PrevPos;
   end;
 end;
 
@@ -302,10 +302,10 @@ end;
 
 procedure TSlimListUnserializer.ReadLengthAndEntry(ATarget: TSlimList);
 var
-  CurChar: Char;
-  EntryLength: Integer;
-  EntryString: String;
-  SubEntryList: TSlimListEntry;
+  CurChar       : Char;
+  EntryLength   : Integer;
+  EntryString   : String;
+  SubEntryList  : TSlimListEntry;
   SubEntryString: TSlimStringEntry;
 begin
   EntryLength := ReadLength;
@@ -349,7 +349,7 @@ begin
   Result := TSlimList.Create;
   try
     FPos := 1;
-    ReadContent(FContent,Result);
+    ReadContent(FContent, Result);
   except
     FreeAndNil(Result);
     raise;

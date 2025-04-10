@@ -31,18 +31,17 @@ type
 
 implementation
 
-
 { TestSlimListSerializer }
 
 procedure TestSlimListSerializer.TwoMinuteExampleTest;
 var
-  SlimList: TSlimList;
+  SlimList    : TSlimList;
   Unserializer: TSlimListUnserializer;
-  Serializer: TSlimListSerializer;
-  Content: String;
+  Serializer  : TSlimListSerializer;
+  Content     : String;
 begin
   SlimList := nil;
-  Serializer:=nil;
+  Serializer := nil;
   Content := TFile.ReadAllText('Data\TwoMinuteExample.txt');
   Unserializer := TSlimListUnserializer.Create(Content);
   try
@@ -66,14 +65,14 @@ end;
 
 class procedure TestSlimListUnserializer.TwoMinuteExample(const AContent: String);
 var
-  SlimList: TSlimList;
+  SlimList    : TSlimList;
   Unserializer: TSlimListUnserializer;
 begin
   Unserializer := TSlimListUnserializer.Create(AContent);
   try
     SlimList := Unserializer.Unserialize;
     Assert.IsNotNull(SlimList);
-    Assert.AreEqual(34,SlimList.Count);
+    Assert.AreEqual(34, SlimList.Count);
     Assert.IsTrue(SlimList.Entries[0] is TSlimListEntry);
 
     var Entry1: TSlimListEntry := SlimList[0] as TSlimListEntry;
@@ -88,12 +87,12 @@ begin
     Assert.AreEqual('table', (Entry2.List[3] as TSlimStringEntry).ToString);
     var SubEntry2: TSlimListEntry:=Entry2.List[4] as TSlimListEntry;
     Assert.AreEqual(7, SubEntry2.List.Count);
-    Assert.AreEqual('numerator',(SubEntry2.List[0] as TSlimListEntry).List[0].ToString); // First Sub-List
-    Assert.AreEqual('denominator',(SubEntry2.List[0] as TSlimListEntry).List[1].ToString);
-    Assert.AreEqual('quotient?',(SubEntry2.List[0] as TSlimListEntry).List[2].ToString);
-    Assert.AreEqual('100',(SubEntry2.List[6] as TSlimListEntry).List[0].ToString); // Last Sub-List
-    Assert.AreEqual('4',(SubEntry2.List[6] as TSlimListEntry).List[1].ToString);
-    Assert.AreEqual('25.0',(SubEntry2.List[6] as TSlimListEntry).List[2].ToString);
+    Assert.AreEqual('numerator', (SubEntry2.List[0] as TSlimListEntry).List[0].ToString); // First Sub-List
+    Assert.AreEqual('denominator', (SubEntry2.List[0] as TSlimListEntry).List[1].ToString);
+    Assert.AreEqual('quotient?', (SubEntry2.List[0] as TSlimListEntry).List[2].ToString);
+    Assert.AreEqual('100', (SubEntry2.List[6] as TSlimListEntry).List[0].ToString); // Last Sub-List
+    Assert.AreEqual('4', (SubEntry2.List[6] as TSlimListEntry).List[1].ToString);
+    Assert.AreEqual('25.0', (SubEntry2.List[6] as TSlimListEntry).List[2].ToString);
 
     var EntryLast: TSlimListEntry := SlimList[SlimList.Count-1] as TSlimListEntry;
     Assert.AreEqual(4, EntryLast.List.Count);
