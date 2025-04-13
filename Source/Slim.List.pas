@@ -22,7 +22,7 @@ type
     property EntryType: TSlimEntryType read FEntryType;
   end;
 
-  TSlimStringEntry = class(TSlimEntry)
+  TSlimString = class(TSlimEntry)
   private
     FValue: String;
   public
@@ -30,16 +30,7 @@ type
     function ToString: String; override;
   end;
 
-  TSlimListEntry = class(TSlimEntry)
-  private
-    FList: TSlimList;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    property List: TSlimList read FList;
-  end;
-
-  TSlimList = class
+  TSlimList = class(TSlimEntry)
   private
     FList: TObjectList;
   protected
@@ -60,9 +51,7 @@ type
     procedure WriteColon;
     procedure WriteLength(ALength: Integer);
     procedure WriteList(AList: TSlimList);
-    procedure WriteListEntry(AEntry: TSlimListEntry);
     procedure WriteString(const AValue: String);
-    procedure WriteStringEntry(AEntry: TSlimStringEntry);
   public
     constructor Create(ASlimList: TSlimList);
     destructor Destroy; override;
@@ -91,29 +80,15 @@ implementation
 
 { TSlimStringEntry }
 
-constructor TSlimStringEntry.Create(const AValue: String);
+constructor TSlimString.Create(const AValue: String);
 begin
   FValue := AValue;
   FEntryType := setString;
 end;
 
-function TSlimStringEntry.ToString: String;
+function TSlimString.ToString: String;
 begin
   Result := FValue;
-end;
-
-{ TSlimListEntry }
-
-constructor TSlimListEntry.Create;
-begin
-  FList := TSlimList.Create;
-  FEntryType := setList;
-end;
-
-destructor TSlimListEntry.Destroy;
-begin
-  FList.Free;
-  inherited;
 end;
 
 { TSlimList }
@@ -189,12 +164,12 @@ begin
   for var Loop := 0 to AList.Count - 1 do
   begin
     Entry := AList[Loop];
-    if Entry is TSlimListEntry then
+    if Entry is TSlimList then
     begin
       PrevBuilder := FBuilder;
       try
         FBuilder := TStringBuilder.Create;
-        WriteListEntry(TSlimListEntry(Entry));
+        WriteList(TSlimList(Entry));
         SubContent := FBuilder.ToString;
       finally
         FBuilder.Free;
@@ -202,15 +177,10 @@ begin
       end;
       WriteString(SubContent);
     end
-    else if Entry is TSlimStringEntry then
-      WriteStringEntry(TSlimStringEntry(Entry));
+    else if Entry is TSlimString then
+      WriteString(TSlimString(Entry).ToString);
   end;
   FBuilder.Append(']');
-end;
-
-procedure TSlimListSerializer.WriteListEntry(AEntry: TSlimListEntry);
-begin
-  WriteList(AEntry.List);
 end;
 
 procedure TSlimListSerializer.WriteString(const AValue: String);
@@ -218,11 +188,6 @@ begin
   WriteLength(Length(AValue));
   FBuilder.Append(AValue);
   WriteColon;
-end;
-
-procedure TSlimListSerializer.WriteStringEntry(AEntry: TSlimStringEntry);
-begin
-  WriteString(AEntry.ToString);
 end;
 
 { TSlimListUnserializer }
@@ -305,8 +270,8 @@ var
   CurChar       : Char;
   EntryLength   : Integer;
   EntryString   : String;
-  SubEntryList  : TSlimListEntry;
-  SubEntryString: TSlimStringEntry;
+  SubEntryList  : TSlimList;
+  SubEntryString: TSlimString;
 begin
   EntryLength := ReadLength;
   CurChar := LookChar;
@@ -314,13 +279,13 @@ begin
   ReadColon;
   if CurChar = '[' then
   begin
-    SubEntryList := TSlimListEntry.Create;
+    SubEntryList := TSlimList.Create;
     ATarget.Add(SubEntryList);
-    ReadContent(EntryString, SubEntryList.List);
+    ReadContent(EntryString, SubEntryList);
   end
   else
   begin
-    ATarget.Add(TSlimStringEntry.Create(EntryString))
+    ATarget.Add(TSlimString.Create(EntryString))
   end;
 end;
 

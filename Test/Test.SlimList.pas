@@ -73,33 +73,33 @@ begin
     SlimList := Unserializer.Unserialize;
     Assert.IsNotNull(SlimList);
     Assert.AreEqual(34, SlimList.Count);
-    Assert.IsTrue(SlimList.Entries[0] is TSlimListEntry);
+    Assert.IsTrue(SlimList.Entries[0] is TSlimList);
 
-    var Entry1: TSlimListEntry := SlimList[0] as TSlimListEntry;
-    Assert.AreEqual(4, Entry1.List.Count);
-    Assert.AreEqual('decisionTable_0_0', (Entry1.List[0] as TSlimStringEntry).ToString);
-    Assert.AreEqual('make', (Entry1.List[1] as TSlimStringEntry).ToString);
-    Assert.AreEqual('decisionTable_0', (Entry1.List[2] as TSlimStringEntry).ToString);
-    Assert.AreEqual('eg.Division', (Entry1.List[3] as TSlimStringEntry).ToString);
+    var Entry1: TSlimList := SlimList[0] as TSlimList;
+    Assert.AreEqual(4, Entry1.Count);
+    Assert.AreEqual('decisionTable_0_0', (Entry1[0] as TSlimString).ToString);
+    Assert.AreEqual('make', (Entry1[1] as TSlimString).ToString);
+    Assert.AreEqual('decisionTable_0', (Entry1[2] as TSlimString).ToString);
+    Assert.AreEqual('eg.Division', (Entry1[3] as TSlimString).ToString);
 
-    var Entry2: TSlimListEntry := SlimList[1] as TSlimListEntry;
-    Assert.AreEqual(5, Entry2.List.Count);
-    Assert.AreEqual('table', (Entry2.List[3] as TSlimStringEntry).ToString);
-    var SubEntry2: TSlimListEntry:=Entry2.List[4] as TSlimListEntry;
-    Assert.AreEqual(7, SubEntry2.List.Count);
-    Assert.AreEqual('numerator', (SubEntry2.List[0] as TSlimListEntry).List[0].ToString); // First Sub-List
-    Assert.AreEqual('denominator', (SubEntry2.List[0] as TSlimListEntry).List[1].ToString);
-    Assert.AreEqual('quotient?', (SubEntry2.List[0] as TSlimListEntry).List[2].ToString);
-    Assert.AreEqual('100', (SubEntry2.List[6] as TSlimListEntry).List[0].ToString); // Last Sub-List
-    Assert.AreEqual('4', (SubEntry2.List[6] as TSlimListEntry).List[1].ToString);
-    Assert.AreEqual('25.0', (SubEntry2.List[6] as TSlimListEntry).List[2].ToString);
+    var Entry2: TSlimList := SlimList[1] as TSlimList;
+    Assert.AreEqual(5, Entry2.Count);
+    Assert.AreEqual('table', (Entry2[3] as TSlimString).ToString);
+    var SubEntry2: TSlimList:=Entry2[4] as TSlimList;
+    Assert.AreEqual(7, SubEntry2.Count);
+    Assert.AreEqual('numerator', (SubEntry2[0] as TSlimList)[0].ToString); // First Sub-List
+    Assert.AreEqual('denominator', (SubEntry2[0] as TSlimList)[1].ToString);
+    Assert.AreEqual('quotient?', (SubEntry2[0] as TSlimList)[2].ToString);
+    Assert.AreEqual('100', (SubEntry2[6] as TSlimList)[0].ToString); // Last Sub-List
+    Assert.AreEqual('4', (SubEntry2[6] as TSlimList)[1].ToString);
+    Assert.AreEqual('25.0', (SubEntry2[6] as TSlimList)[2].ToString);
 
-    var EntryLast: TSlimListEntry := SlimList[SlimList.Count-1] as TSlimListEntry;
-    Assert.AreEqual(4, EntryLast.List.Count);
-    Assert.AreEqual('decisionTable_0_33', (EntryLast.List[0] as TSlimStringEntry).ToString);
-    Assert.AreEqual('call', (EntryLast.List[1] as TSlimStringEntry).ToString);
-    Assert.AreEqual('decisionTable_0', (EntryLast.List[2] as TSlimStringEntry).ToString);
-    Assert.AreEqual('endTable', (EntryLast.List[3] as TSlimStringEntry).ToString);
+    var EntryLast: TSlimList := SlimList[SlimList.Count-1] as TSlimList;
+    Assert.AreEqual(4, EntryLast.Count);
+    Assert.AreEqual('decisionTable_0_33', (EntryLast[0] as TSlimString).ToString);
+    Assert.AreEqual('call', (EntryLast[1] as TSlimString).ToString);
+    Assert.AreEqual('decisionTable_0', (EntryLast[2] as TSlimString).ToString);
+    Assert.AreEqual('endTable', (EntryLast[3] as TSlimString).ToString);
   finally
     SlimList.Free;
     Unserializer.Free;
