@@ -76,7 +76,22 @@ type
     function Unserialize: TSlimList;
   end;
 
+function SlimString(const AValue: String): TSlimString;
+function SlimList(const AValues: Array of TSlimEntry): TSlimList;
+
 implementation
+
+function SlimString(const AValue: String): TSlimString;
+begin
+  Result := TSlimString.Create(AValue);
+end;
+
+function SlimList(const AValues: Array of TSlimEntry): TSlimList;
+begin
+  Result := TSlimList.Create;
+  for var Entry: TSlimEntry in AValues do
+    Result.Add(Entry);
+end;
 
 { TSlimStringEntry }
 

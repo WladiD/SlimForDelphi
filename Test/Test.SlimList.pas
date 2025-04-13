@@ -29,6 +29,15 @@ type
     procedure TwoMinuteExampleTest;
   end;
 
+  [TestFixture]
+  TestSlimFunctions = class
+  public
+    [Test]
+    procedure SlimStringFuncTest;
+    [Test]
+    procedure SlimListFuncTest;
+  end;
+
 implementation
 
 { TestSlimListSerializer }
@@ -106,9 +115,48 @@ begin
   end;
 end;
 
+{ TestSlimFunctions }
+
+procedure TestSlimFunctions.SlimListFuncTest;
+var
+  LSlimList: TSlimList;
+begin
+  LSlimList := SlimList([
+    SlimString('First item'),
+    SlimString('Second item'),
+    SlimList([
+      SlimString('First sub item'),
+      SlimString('Second sub item')])
+    ]);
+  try
+    Assert.AreEqual(3, LSlimList.Count);
+    Assert.AreEqual('First item', LSlimList[0].ToString);
+    Assert.AreEqual('Second item', LSlimList[1].ToString);
+    Assert.AreEqual(TSlimList, LSlimList[2].ClassType);
+    Assert.AreEqual(2, (LSlimList[2] as TSlimList).Count);
+    Assert.AreEqual('First sub item', (LSlimList[2] as TSlimList)[0].ToString);
+    Assert.AreEqual('Second sub item', (LSlimList[2] as TSlimList)[1].ToString);
+  finally
+    LSlimList.Free;
+  end;
+end;
+
+procedure TestSlimFunctions.SlimStringFuncTest;
+var
+  LSlimString: TSlimString;
+begin
+  LSlimString := SlimString('Hello world!');
+  try
+    Assert.AreEqual('Hello world!', LSlimString.ToString);
+  finally
+    LSlimString.Free;
+  end;
+end;
+
 initialization
 
 TDUnitX.RegisterTestFixture(TestSlimListSerializer);
 TDUnitX.RegisterTestFixture(TestSlimListUnserializer);
+TDUnitX.RegisterTestFixture(TestSlimFunctions);
 
 end.
