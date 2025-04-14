@@ -83,13 +83,21 @@ type
   end;
 
 function SlimString(const AValue: String): TSlimString;
-function SlimList(const AValues: Array of TSlimEntry): TSlimList;
+function SlimList(const AValues: Array of String): TSlimList; overload;
+function SlimList(const AValues: Array of TSlimEntry): TSlimList; overload;
 
 implementation
 
 function SlimString(const AValue: String): TSlimString;
 begin
   Result := TSlimString.Create(AValue);
+end;
+
+function SlimList(const AValues: Array of String): TSlimList;
+begin
+  Result := TSlimList.Create;
+  for var Entry: String in AValues do
+    Result.Add(TSlimString.Create(Entry));
 end;
 
 function SlimList(const AValues: Array of TSlimEntry): TSlimList;
