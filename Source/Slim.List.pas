@@ -1,7 +1,7 @@
 ﻿// ======================================================================
-//  Copyright (c) 2025 Waldemar Derr. All rights reserved.
+// Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
-//  Licensed under the MIT license. See included LICENSE file for details.
+// Licensed under the MIT license. See included LICENSE file for details.
 // ======================================================================
 
 unit Slim.List;
@@ -18,8 +18,6 @@ uses
 type
 
   TSlimEntryType = (setUndefined, setString, setList);
-
-  TSlimList = class;
 
   TSlimEntry = class
   protected
@@ -52,8 +50,8 @@ type
 
   TSlimListSerializer = class
   private
-    FSlimList: TSlimList;
     FBuilder : TStringBuilder;
+    FSlimList: TSlimList;
     procedure WriteColon;
     procedure WriteLength(ALength: Integer);
     procedure WriteList(AList: TSlimList);
