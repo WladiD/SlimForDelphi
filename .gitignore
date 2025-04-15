@@ -1,2 +1,9 @@
 __recovery
 __history
+Win32
+/Test/*.local
+/Test/*.identcache
+/Test/*.dsk
+/Test/*.~dsk
+/Test/Test.Slim.exe
+/Test/dunitx-results.xml
