@@ -262,7 +262,7 @@ begin
     CurChar := LookChar;
     if CurChar = '[' then
       ReadList(ATarget)
-    else if TCharacter.IsNumber(CurChar) then
+    else if CurChar.IsNumber then
       ReadLengthAndEntry(ATarget);
   finally
     FContent := PrevContent;

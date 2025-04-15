@@ -42,6 +42,8 @@ type
     procedure SlimStringFuncTest;
     [Test]
     procedure SlimListFuncTest;
+    [Test]
+    procedure SlimList2FuncTest;
   end;
 
 implementation
@@ -83,6 +85,7 @@ var
   SlimList    : TSlimList;
   Unserializer: TSlimListUnserializer;
 begin
+  SlimList := nil;
   Unserializer := TSlimListUnserializer.Create(AContent);
   try
     SlimList := Unserializer.Unserialize;
@@ -147,6 +150,21 @@ begin
   end;
 end;
 
+procedure TestSlimFunctions.SlimList2FuncTest;
+var
+  LSlimList: TSlimList;
+begin
+  LSlimList := SlimList(['First item', 'Second item', 'Third item']);
+  try
+    Assert.AreEqual(3, LSlimList.Count);
+    Assert.AreEqual('First item', LSlimList[0].ToString);
+    Assert.AreEqual('Second item', LSlimList[1].ToString);
+    Assert.AreEqual('Third item', LSlimList[2].ToString);
+  finally
+    LSlimList.Free;
+  end;
+end;
+
 procedure TestSlimFunctions.SlimStringFuncTest;
 var
   LSlimString: TSlimString;
@@ -158,11 +176,5 @@ begin
     LSlimString.Free;
   end;
 end;
-
-initialization
-
-TDUnitX.RegisterTestFixture(TestSlimListSerializer);
-TDUnitX.RegisterTestFixture(TestSlimListUnserializer);
-TDUnitX.RegisterTestFixture(TestSlimFunctions);
 
 end.
