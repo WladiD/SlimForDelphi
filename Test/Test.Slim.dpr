@@ -13,7 +13,8 @@ uses
   DUnitX.Loggers.Xml.NUnit,
   {$ENDIF }
   DUnitX.TestFramework,
-  Test.SlimList in 'Test.SlimList.pas';
+  Test.SlimList in 'Test.SlimList.pas',
+  Test.SlimFixture in 'Test.SlimFixture.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

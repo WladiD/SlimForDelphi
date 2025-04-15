@@ -76,6 +76,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="Test.SlimList.pas"/>
+        <DCCReference Include="Test.SlimFixture.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
