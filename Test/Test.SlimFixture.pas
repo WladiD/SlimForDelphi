@@ -20,10 +20,10 @@ uses
 type
 
   [SlimFixture('Division')]
-  TSlimDivisionFixture = class
-
+  TSlimDivisionFixture = class(TSlimFixture)
   end;
 
+  [TestFixture]
   TestSlimFixtureResolver = class
   public
     [Test]
