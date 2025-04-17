@@ -39,9 +39,11 @@ type
   protected
     FContext: TSlimStatementContext;
     FRawStmt: TSlimList;
+    function GetRawStmtString(AIndex: Integer): String;
   public
     constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); virtual;
     function Execute: TSlimList; virtual;
+    property IdParam: String index 0 read GetRawStmtString;
   end;
 
   TSlimStatementClass = class of TSlimStatement;
@@ -49,26 +51,36 @@ type
   TSlimStmtImport = class(TSlimStatement)
   public
     function Execute: TSlimList; override;
+    property PathParam: String index 2 read GetRawStmtString;
   end;
 
   TSlimStmtMake = class(TSlimStatement)
   public
     function Execute: TSlimList; override;
+    property InstanceParam: String index 2 read GetRawStmtString;
+    property ClassParam: String index 3 read GetRawStmtString;
   end;
 
   TSlimStmtCall = class(TSlimStatement)
   public
     function Execute: TSlimList; override;
+    property InstanceParam: String index 2 read GetRawStmtString;
+    property FunctionParam: String index 3 read GetRawStmtString;
   end;
 
   TSlimStmtCallAndAssign = class(TSlimStatement)
   public
     function Execute: TSlimList; override;
+    property SymbolParam: String index 2 read GetRawStmtString;
+    property InstanceParam: String index 3 read GetRawStmtString;
+    property FunctionParam: String index 4 read GetRawStmtString;
   end;
 
   TSlimStmtAssign = class(TSlimStatement)
   public
     function Execute: TSlimList; override;
+    property SymbolParam: String index 2 read GetRawStmtString;
+    property ValueParam: String index 3 read GetRawStmtString;
   end;
 
   TSlimExecutor = class
@@ -121,6 +133,14 @@ constructor TSlimStatement.Create(ARawStmt: TSlimList; const AContext: TSlimStat
 begin
   FRawStmt := ARawStmt;
   FContext := AContext;
+end;
+
+function TSlimStatement.GetRawStmtString(AIndex: Integer): String;
+begin
+  if (AIndex < FRawStmt.Count) and (FRawStmt[AIndex] is TSlimString) then
+    Result := FRawStmt[AIndex].ToString
+  else
+    Result := '';
 end;
 
 function TSlimStatement.Execute: TSlimList;
