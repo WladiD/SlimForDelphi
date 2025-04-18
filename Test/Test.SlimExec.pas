@@ -58,13 +58,16 @@ procedure TestSlimExecutor.TwoMinuteExample;
 var
   Executor: TSlimExecutor;
   Stmts   : TSlimList;
+  Response: TSlimList;
 begin
+  Response := nil;
   Stmts := nil;
   Executor := TSlimExecutor.Create;
   try
     Stmts := CreateStmtsFromFile('Data\TwoMinuteExample.txt');
-    Executor.Execute(Stmts);
+    Response := Executor.Execute(Stmts);
   finally
+    Response.Free;
     Stmts.Free;
     Executor.Free;
   end;
