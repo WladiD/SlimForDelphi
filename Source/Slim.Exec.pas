@@ -50,6 +50,7 @@ type
     function ResponseException(const AMessage: String; const ADefaultMeaning: String = ''): TSlimList;
     function ResponseOk: TSlimList;
     function ResponseString(const AValue: String): TSlimList;
+    function ResponseValue(const AValue: TValue): TSlimList;
   public
     constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); virtual;
     function Execute: TSlimList; virtual;
@@ -184,6 +185,19 @@ begin
   Result := SlimList([IdParam, AValue]);
 end;
 
+function TSlimStatement.ResponseValue(const AValue: TValue): TSlimList;
+var
+  ValueStr: String;
+begin
+  case AValue.Kind of
+    tkFloat:
+      ValueStr := FloatToStr(AValue.AsExtended, TFormatSettings.Invariant);
+  else
+    ValueStr := AValue.ToString;
+  end;
+  Result := SlimList([IdParam, ValueStr]);
+end;
+
 function TSlimStatement.Execute: TSlimList;
 begin
   Result := nil;
@@ -267,7 +281,7 @@ begin
   if SlimMethod.MethodKind = mkProcedure then
     Result := ResponseOk
   else
-    Result := ResponseString(MethodResult.ToString);
+    Result := ResponseValue(MethodResult);
 end;
 
 function TSlimStmtCall.HasRawArguments(out AStartIndex: Integer): Boolean;
