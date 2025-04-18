@@ -86,6 +86,7 @@ type
   TSlimExecutor = class
   private
     FInstances: TSlimFixtureDictionary;
+    function ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create;
     destructor Destroy; override;
@@ -197,14 +198,28 @@ begin
   inherited;
 end;
 
-function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
+function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
 var
-  Context  : TSlimStatementContext;
-  Instr    : TSlimInstruction;
-  InstrStr : String;
-  Resolver : TSlimFixtureResolver;
   Stmt     : TSlimStatement;
   StmtClass: TSlimStatementClass;
+  Instr    : TSlimInstruction;
+  InstrStr : String;
+begin
+  InstrStr := ARawStmt[1].ToString;
+  Instr := StringToSlimInstruction(InstrStr);
+  StmtClass := SlimInstructionToStatementClass(Instr);
+  Stmt := StmtClass.Create(ARawStmt, AContext);
+  try
+    Result := Stmt.Execute;
+  finally
+    Stmt.Free;
+  end;
+end;
+
+function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
+var
+  Context : TSlimStatementContext;
+  Resolver: TSlimFixtureResolver;
 begin
   Resolver := nil;
   Result := TSlimList.Create;
@@ -221,18 +236,9 @@ begin
         var LRawStmt: TSlimEntry := ARawStmts[Loop];
         if LRawStmt is TSlimList then
         begin
-          var LRawStmtList: TSlimList := TSlimList(LRawStmt);
-          InstrStr := LRawStmtList[1].ToString;
-          Instr := StringToSlimInstruction(InstrStr);
-          StmtClass := SlimInstructionToStatementClass(Instr);
-          Stmt := StmtClass.Create(LRawStmtList, Context);
-          try
-            var LStmtResult: TSlimList := Stmt.Execute;
-            if Assigned(LStmtResult) then
-              Result.Add(LStmtResult);
-          finally
-            Stmt.Free;
-          end;
+          var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), Context);
+          if Assigned(LStmtResult) then
+            Result.Add(LStmtResult);
         end;
       end;
     finally
