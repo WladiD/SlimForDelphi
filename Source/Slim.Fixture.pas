@@ -91,6 +91,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
+    function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   end;
 
 implementation
@@ -204,6 +205,54 @@ begin
   end;
   Result := false;
   AClassType := nil;
+end;
+
+/// <param name="AName">If empty, looks for a constructor</param>
+function TSlimFixtureResolver.TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+var
+  ArgsCount        : Integer;
+  CheckMethod      : TRttiMethod;
+  CheckMethodParams: TArray<TRttiParameter>;
+  HasArgs          : Boolean;
+  NameIsEmpty      : Boolean;
+
+  function CheckMethodMatchName: Boolean;
+  begin
+    Result :=
+      (NameIsEmpty and CheckMethod.IsConstructor) or
+      (not NameIsEmpty and SameText(AName, CheckMethod.Name));
+  end;
+
+  function CheckMethodParamsMatch: Boolean;
+  begin
+    CheckMethodParams := CheckMethod.GetParameters;
+    var ParametersCount: Integer := Length(CheckMethodParams);
+    Result :=
+      (HasArgs and (ArgsCount = ParametersCount)) or
+      (not HasArgs and (ParametersCount = 0));
+  end;
+
+begin
+  NameIsEmpty := AName = '';
+  HasArgs := AArgStartIndex > 0;
+  if HasArgs then
+    ArgsCount := ARawStmt.Count - AArgStartIndex;
+
+  for CheckMethod in AFixtureClass.GetMethods do
+  begin
+    if not (CheckMethodMatchName and CheckMethodParamsMatch) then
+      Continue;
+    if HasArgs then
+    begin
+      // TODO: Hier die Parameter in InvokeArgs packen
+    end
+    else
+      AInvokeArgs := nil;
+    ASlimMethod := CheckMethod;
+    Exit(true);
+  end;
+
+  Result := false;
 end;
 
 end.

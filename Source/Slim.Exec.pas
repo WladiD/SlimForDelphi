@@ -191,67 +191,31 @@ end;
 
 function TSlimStmtMake.Execute: TSlimList;
 var
-  ArgsCount        : Integer;
-  ArgStartIndex    : Integer;
-  CheckMethod      : TRttiMethod;
-  CheckMethodParams: TArray<TRttiParameter>;
-  FixtureClass     : TRttiInstanceType;
-  HasArgs          : Boolean;
-  Instance         : TSlimFixture;
-  InstanceValue    : TValue;
-  InvokeArgs       : TArray<TValue>;
-
-  function CheckMethodParamsMatch: Boolean;
-  var
-    ParametersCount: Integer;
-  begin
-    CheckMethodParams := CheckMethod.GetParameters;
-    ParametersCount := Length(CheckMethodParams);
-    Result :=
-      (HasArgs and (ArgsCount = ParametersCount)) or
-      (not HasArgs and (ParametersCount = 0));
-  end;
-
+  ArgStartIndex: Integer;
+  FixtureClass : TRttiInstanceType;
+  Instance     : TSlimFixture;
+  InstanceValue: TValue;
+  InvokeArgs   : TArray<TValue>;
+  SlimMethod   : TRttiMethod;
 begin
-  Result := nil;
   if not Context.Resolver.TryGetSlimFixture(ClassParam, FixtureClass) then
-    raise Exception.CreateFmt('Fixture class "%s" not found', [ClassParam]);
+    Exit(ResponseException(ClassParam, 'NO_CLASS'));
 
-  Instance := nil;
-  HasArgs := HasRawArguments(ArgStartIndex);
-  if HasArgs then
-    ArgsCount := RawStmt.Count - ArgStartIndex;
+  if not HasRawArguments(ArgStartIndex) then
+    ArgStartIndex := -1;
 
-  for CheckMethod in FixtureClass.GetMethods do
-  begin
-    if CheckMethod.IsConstructor and CheckMethodParamsMatch then
-    begin
-      if HasArgs then
-      begin
-        // TODO: Hier die Parameter in InvokeArgs packen
-//        for var LCheckParam: TRttiParameter in CheckMethodParams do
-//        begin
-//          var LFlags: TParamFlags := LCheckParam.Flags;
-//          var LParamType: TRttiType := LCheckParam.ParamType;
-//          var LParamKind: TTypeKind := LParamType.TypeKind;
-//          var LParamIsInstance: Boolean := LParamType.IsInstance;
-//        end;
-      end
-      else
-        InvokeArgs := nil;
+  if not Context.Resolver.TryGetSlimMethod(FixtureClass, '', RawStmt, ArgStartIndex, SlimMethod, InvokeArgs) then
+    Exit(ResponseException(ClassParam, 'NO_CONSTRUCTOR'));
 
-      try
-        InstanceValue := CheckMethod.Invoke(FixtureClass.MetaclassType,InvokeArgs);
-      except
-        Result := ResponseException(ClassParam, 'COULD_NOT_INVOKE_CONSTRUCTOR');
-        Exit;
-      end;
-      Instance := TSlimFixture(InstanceValue.AsObject);
-      Context.Instances.AddOrSetValue(InstanceParam, Instance);
-      Exit(ResponseOk);
-    end;
+  try
+    InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType,InvokeArgs);
+  except
+    Exit(ResponseException(ClassParam, 'COULD_NOT_INVOKE_CONSTRUCTOR'));
   end;
-  Result := ResponseException(ClassParam, 'NO_CLASS');
+
+  Instance := TSlimFixture(InstanceValue.AsObject);
+  Context.Instances.AddOrSetValue(InstanceParam, Instance);
+  Result := ResponseOk;
 end;
 
 function TSlimStmtMake.HasRawArguments(out AStartIndex: Integer): Boolean;
