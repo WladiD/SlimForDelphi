@@ -138,7 +138,6 @@ begin
 
 end;
 
-
 { TSlimFixtureResolver }
 
 constructor TSlimFixtureResolver.Create;
@@ -225,7 +224,7 @@ var
   HasArgs          : Boolean;
   NameIsEmpty      : Boolean;
 
-  function CheckMethodMatchName: Boolean;
+  function CheckMethodNameMatch: Boolean;
   begin
     Result :=
       (NameIsEmpty and CheckMethod.IsConstructor) or
@@ -249,12 +248,44 @@ begin
 
   for CheckMethod in AFixtureClass.GetMethods do
   begin
-    if not (CheckMethodMatchName and CheckMethodParamsMatch) then
+    if not (CheckMethodNameMatch and CheckMethodParamsMatch) then
       Continue;
     if HasArgs then
     begin
-      // TODO: Hier die Parameter in InvokeArgs packen
-    end
+      SetLength(AInvokeArgs, ArgsCount);
+      for var ArgLoop := 0 to ArgsCount - 1 do
+      begin
+        var ArgRawIndex: Integer := AArgStartIndex + ArgLoop;
+        var ParamTypeKind := CheckMethodParams[ArgLoop].ParamType.TypeKind;
+        var CurValue: TValue := nil;
+
+        case ParamTypeKind of
+          tkInteger: ;
+          tkFloat:
+            CurValue := StrToFloat(ARawStmt[ArgRawIndex].ToString, TFormatSettings.Invariant);
+          tkString: ;
+          tkSet: ;
+          tkClass: ;
+          tkMethod: ;
+          tkWChar: ;
+          tkLString: ;
+          tkWString: ;
+          tkVariant: ;
+          tkArray: ;
+          tkRecord: ;
+          tkInterface: ;
+          tkInt64: ;
+          tkDynArray: ;
+          tkUString:
+            CurValue := ARawStmt[ArgRawIndex].ToString;
+          tkClassRef: ;
+          tkPointer: ;
+          tkProcedure: ;
+          tkMRecord: ;
+        end;
+        AInvokeArgs[ArgLoop] := CurValue;
+      end;
+   end
     else
       AInvokeArgs := nil;
     ASlimMethod := CheckMethod;
