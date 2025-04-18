@@ -23,11 +23,13 @@ type
   /// </summary>
   SlimFixtureAttribute = class(TCustomAttribute)
   private
-    FName: String;
+    FName     : String;
+    FNamespace: String;
   public
     constructor Create; overload;
-    constructor Create(const AName: String); overload;
+    constructor Create(const AName: String; const ANamespace: String = ''); overload;
     property Name: String read FName;
+    property Namespace: String read FNamespace;
   end;
 
   SlimMethodAttribute = class(TCustomAttribute);
@@ -102,10 +104,11 @@ begin
   inherited Create;
 end;
 
-constructor SlimFixtureAttribute.Create(const AName: String);
+constructor SlimFixtureAttribute.Create(const AName: String; const ANamespace: String);
 begin
   inherited Create;
   FName := AName;
+  FNamespace := ANamespace;
 end;
 
 { TSlimFixture }
@@ -153,6 +156,18 @@ function TSlimFixtureResolver.TryGetSlimFixture(const AFixtureName: String; out 
 var
   Attribute: TCustomAttribute;
   LType    : TRttiType;
+
+  function SlimFixtureNameMatch: Boolean;
+  begin
+    var FixtureAttr: SlimFixtureAttribute := SlimFixtureAttribute(Attribute);
+    Result :=
+      SameText(FixtureAttr.Name, AFixtureName) or
+      (
+        (FixtureAttr.Namespace <> '') and
+        SameText(FixtureAttr.Namespace + '.' + FixtureAttr.Name, AFixtureName)
+      );
+  end;
+
 begin
   for LType in FContext.GetTypes do
   begin
@@ -165,7 +180,7 @@ begin
           (Attribute.ClassType = SlimFixtureAttribute) and
           AClassType.MetaclassType.InheritsFrom(TSlimFixture) and
           (
-            SameText(SlimFixtureAttribute(Attribute).Name, AFixtureName) or
+            SlimFixtureNameMatch or
             AClassType.MetaclassType.ClassNameIs(AFixtureName)
           ) then
           Exit(true);

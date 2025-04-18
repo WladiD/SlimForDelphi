@@ -21,7 +21,7 @@ uses
 
 type
 
-  [SlimFixture('Division')]
+  [SlimFixture('Division', 'eg')]
   TSlimDivisionFixture = class(TSlimFixture)
   end;
 
@@ -50,6 +50,8 @@ begin
     Assert.IsTrue(Resolver.TryGetSlimFixture('Division', LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
     Assert.AreEqual('Test.SlimFixture', LClassType.DeclaringUnitName);
+
+    Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', LClassType));
   finally
     Resolver.Free;
   end;
