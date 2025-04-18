@@ -23,6 +23,16 @@ type
 
   [SlimFixture('Division', 'eg')]
   TSlimDivisionFixture = class(TSlimFixture)
+  private
+    FNumerator: Double;
+    FDenominator: Double;
+  public
+    [SlimMethod]
+    procedure SetNumerator(ANumerator: Double);
+    [SlimMethod]
+    procedure SetDenominator(ADenominator: Double);
+    [SlimMethod]
+    function Quotient: Double;
   end;
 
   [TestFixture]
@@ -55,6 +65,23 @@ begin
   finally
     Resolver.Free;
   end;
+end;
+
+{ TSlimDivisionFixture }
+
+function TSlimDivisionFixture.Quotient: Double;
+begin
+  Result := FNumerator / FDenominator;
+end;
+
+procedure TSlimDivisionFixture.SetDenominator(ADenominator: Double);
+begin
+  FDenominator := ADenominator;
+end;
+
+procedure TSlimDivisionFixture.SetNumerator(ANumerator: Double);
+begin
+  FNumerator := ANumerator;
 end;
 
 end.

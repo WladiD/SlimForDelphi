@@ -14,6 +14,7 @@ uses
   System.Generics.Collections,
   System.Rtti,
   System.SysUtils,
+  System.TypInfo,
 
   Slim.Fixture,
   Slim.List;
@@ -46,7 +47,7 @@ type
     property Context: TSlimStatementContext read FContext;
     property RawStmt: TSlimList read FRawStmt;
   protected
-    function ResponseException(const AMessage: String; const ASlimExceptionType: String = '__EXCEPTION__'): TSlimList;
+    function ResponseException(const AMessage: String; const ADefaultMeaning: String = ''): TSlimList;
     function ResponseOk: TSlimList;
     function ResponseString(const AValue: String): TSlimList;
   public
@@ -73,6 +74,8 @@ type
   end;
 
   TSlimStmtCall = class(TSlimStatement)
+  protected
+    function HasRawArguments(out AStartIndex: Integer): Boolean; override;
   public
     function Execute: TSlimList; override;
     property InstanceParam: String index 2 read GetRawStmtString;
@@ -160,9 +163,15 @@ begin
   Result := false;
 end;
 
-function TSlimStatement.ResponseException(const AMessage, ASlimExceptionType: String): TSlimList;
+function TSlimStatement.ResponseException(const AMessage, ADefaultMeaning: String): TSlimList;
+var
+  LMessage: String;
 begin
-  Result := SlimList([IdParam, Format('%s:%s', [AMessage, ASlimExceptionType])]);
+  if ADefaultMeaning <> '' then
+    LMessage := ADefaultMeaning + ' ' + AMessage
+  else
+    LMessage := AMessage;
+  Result := SlimList([IdParam, '__EXCEPTION__:' + LMessage]);
 end;
 
 function TSlimStatement.ResponseOk: TSlimList;
@@ -204,7 +213,8 @@ begin
   if not HasRawArguments(ArgStartIndex) then
     ArgStartIndex := -1;
 
-  if not Context.Resolver.TryGetSlimMethod(FixtureClass, '', RawStmt, ArgStartIndex, SlimMethod, InvokeArgs) then
+  if not Context.Resolver.TryGetSlimMethod(FixtureClass, '', RawStmt, ArgStartIndex,
+    SlimMethod, InvokeArgs) then
     Exit(ResponseException(ClassParam, 'NO_CONSTRUCTOR'));
 
   try
@@ -230,8 +240,43 @@ end;
 { TSlimStmtCall }
 
 function TSlimStmtCall.Execute: TSlimList;
+var
+  ArgStartIndex: Integer;
+  FixtureClass : TRttiInstanceType;
+  Instance     : TSlimFixture;
+  InvokeArgs   : TArray<TValue>;
+  SlimMethod   : TRttiMethod;
+  MethodResult : TValue;
 begin
-  Result := nil;
+  if not Context.Instances.TryGetValue(InstanceParam, Instance) then
+    Exit(ResponseException(InstanceParam, 'NO_INSTANCE'));
+
+  FixtureClass := Context.Resolver.GetRttiInstanceTypeFromInstance(Instance);
+  if not Assigned(FixtureClass) then
+    Exit(ResponseException(Format('RTTI-Error for Instance "%s"', [InstanceParam])));
+
+  if not HasRawArguments(ArgStartIndex) then
+    ArgStartIndex := -1;
+
+  if not Context.Resolver.TryGetSlimMethod(FixtureClass, FunctionParam, RawStmt, ArgStartIndex,
+    SlimMethod, InvokeArgs) then
+    Exit;
+
+  MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
+
+  if SlimMethod.MethodKind = mkProcedure then
+    Result := ResponseOk
+  else
+    Result := ResponseString(MethodResult.ToString);
+end;
+
+function TSlimStmtCall.HasRawArguments(out AStartIndex: Integer): Boolean;
+const
+  ArgStartIndex = 4;
+begin
+  Result := RawStmt.Count > ArgStartIndex;
+  if Result then
+    AStartIndex := ArgStartIndex;
 end;
 
 { TSlimStmtCallAndAssign }

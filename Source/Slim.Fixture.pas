@@ -90,6 +90,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   end;
@@ -149,6 +150,14 @@ destructor TSlimFixtureResolver.Destroy;
 begin
   FContext.Free;
   inherited;
+end;
+
+function TSlimFixtureResolver.GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
+var
+  RttiType: TRttiType;
+begin
+  RttiType := FContext.GetType(Instance.ClassInfo);
+  Result := RttiType as TRttiInstanceType;
 end;
 
 /// <summary>
