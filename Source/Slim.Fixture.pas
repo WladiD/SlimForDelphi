@@ -35,23 +35,21 @@ type
   SlimMethodAttribute = class(TCustomAttribute);
 
   /// <summary>
-  ///   Bestimmt, wie die Methodenaufrufe synchronisiert werden sollen
+  ///   Determines how method calls should be synchronized
   /// </summary>
   TFixtureSyncMode = (
     smUndefined,
     /// <summary>
-    ///   Die Methodenaufrufe werden nicht synchronisiert, d.h. werden direkt aus dem Thread, in dem
-    ///   der Executor aktiv ist, ausgeführt.
+    ///   Method calls are not synchronized, i.e., they are executed directly from the thread
+    ///   where the executor is active.
     /// </summary>
     smUnsynchronized,
     /// <summary>
-    ///   Jeder einzelne Methodenaufruf der Fixture wird in einem separaten Synchronize-Aufruf
-    ///   ausgeführt
+    ///   Each individual method call of the fixture is executed in a separate Synchronize call.
     /// </summary>
     smSynchronized,
     /// <summary>
-    ///   Die komplette Ausführung einer Fixture wird in einem einzelnen
-    ///   Synchronize-Aufruf ausgeführt.
+    ///   The complete execution of a fixture is executed in a single Synchronize call.
     /// </summary>
     smBulkSynchronized);
 
