@@ -247,9 +247,8 @@ begin
         Exit;
       end;
       Instance := TSlimFixture(InstanceValue.AsObject);
-      Context.Instances.Add(InstanceParam, Instance);
-      Result := ResponseOk;
-      Exit;
+      Context.Instances.AddOrSetValue(InstanceParam, Instance);
+      Exit(ResponseOk);
     end;
   end;
   Result := ResponseException(ClassParam, 'NO_CLASS');

@@ -66,6 +66,7 @@ begin
   try
     Stmts := CreateStmtsFromFile('Data\TwoMinuteExample.txt');
     Response := Executor.Execute(Stmts);
+    Assert.AreEqual(Stmts.Count, Response.Count);
   finally
     Response.Free;
     Stmts.Free;

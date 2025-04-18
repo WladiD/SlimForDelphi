@@ -123,6 +123,7 @@ end;
 constructor TSlimList.Create;
 begin
   FList := TObjectList.Create(true);
+  FEntryType := setList;
 end;
 
 destructor TSlimList.Destroy;
