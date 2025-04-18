@@ -19,7 +19,7 @@ uses
 type
 
   /// <summary>
-  /// Classes with this attribute are automatically considered by the TSlimExecutor
+  ///   Classes with this attribute are automatically considered by the TSlimFixtureResolver
   /// </summary>
   SlimFixtureAttribute = class(TCustomAttribute)
   private
@@ -152,6 +152,23 @@ begin
   inherited;
 end;
 
+/// <summary>
+///   Try to find a fixture class by name
+/// </summary>
+/// <remarks>
+///   Example:
+///   <code>
+///     [SlimFixture('Division', 'eg')]
+///     TSlimDivisionFixture = class(TSlimFixture)...
+///   </code>
+///   A fixture can be found by the following namings:
+///   - By the name of the SlimFixtureAttribute
+///     For the upper example: "Division"
+///   - By the combined namespace with the name of the SlimFixtureAttribute separated by "."
+///     For the upper example: "eg.Division"
+///   - By the class name of the fixture class
+///     For the upper example: "TSlimDivisionFixture"
+/// </remarks>
 function TSlimFixtureResolver.TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
 var
   Attribute: TCustomAttribute;
