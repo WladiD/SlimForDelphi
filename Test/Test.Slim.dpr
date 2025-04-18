@@ -14,7 +14,8 @@ uses
   {$ENDIF }
   DUnitX.TestFramework,
   Test.SlimList in 'Test.SlimList.pas',
-  Test.SlimFixture in 'Test.SlimFixture.pas';
+  Test.SlimFixture in 'Test.SlimFixture.pas',
+  Test.SlimExec in 'Test.SlimExec.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

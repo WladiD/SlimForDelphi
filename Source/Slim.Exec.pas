@@ -101,16 +101,16 @@ implementation
 
 function StringToSlimInstruction(const AValue: String): TSlimInstruction;
 begin
-  if SameText(AValue, 'import') then
-    Result := siImport
+  if SameText(AValue, 'call') then
+    Result := siCall
   else if SameText(AValue, 'make') then
     Result := siMake
-  else if SameText(AValue, 'call') then
-    Result := siCall
   else if SameText(AValue, 'callAndAssign') then
     Result := siCallAndAssign
   else if SameText(AValue, 'assign') then
     Result := siAssign
+  else if SameText(AValue, 'import') then
+    Result := siImport
   else
     Result := siUndefined;
 end;
@@ -183,7 +183,6 @@ function TSlimStmtAssign.Execute: TSlimList;
 begin
   Result := nil;
 end;
-
 
 { TSlimExecutor }
 
