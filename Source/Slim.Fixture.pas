@@ -250,32 +250,23 @@ begin
       for var ArgLoop := 0 to ArgsCount - 1 do
       begin
         var ArgRawIndex: Integer := AArgStartIndex + ArgLoop;
-        var ParamTypeKind := CheckMethodParams[ArgLoop].ParamType.TypeKind;
+        var ParamTypeKind: TTypeKind := CheckMethodParams[ArgLoop].ParamType.TypeKind;
+        var CurArgRaw: TSlimEntry := ARawStmt[ArgRawIndex];
         var CurValue: TValue := nil;
 
         case ParamTypeKind of
           tkInteger: ;
           tkFloat:
-            CurValue := StrToFloat(ARawStmt[ArgRawIndex].ToString, TFormatSettings.Invariant);
-          tkString: ;
-          tkSet: ;
-          tkClass: ;
-          tkMethod: ;
-          tkWChar: ;
-          tkLString: ;
-          tkWString: ;
-          tkVariant: ;
-          tkArray: ;
-          tkRecord: ;
-          tkInterface: ;
-          tkInt64: ;
-          tkDynArray: ;
+            CurValue := StrToFloat(CurArgRaw.ToString, TFormatSettings.Invariant);
+          tkClass:
+          begin
+            var ParamClass: TClass := CheckMethodParams[ArgLoop].ParamType.AsInstance.MetaclassType;
+            if (CurArgRaw is TSlimList) and (ParamClass.InheritsFrom(TSlimList)) then
+              CurValue := CurArgRaw;
+          end;
+          tkString,
           tkUString:
-            CurValue := ARawStmt[ArgRawIndex].ToString;
-          tkClassRef: ;
-          tkPointer: ;
-          tkProcedure: ;
-          tkMRecord: ;
+            CurValue := CurArgRaw.ToString;
         end;
         AInvokeArgs[ArgLoop] := CurValue;
       end;
