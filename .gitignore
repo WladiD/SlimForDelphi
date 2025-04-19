@@ -7,3 +7,6 @@ Win32
 /Test/*.~dsk
 /Test/Test.Slim.exe
 /Test/dunitx-results.xml
+/Example/*/*.identcache
+/Example/*/*.dsk
+/Example/*/*.local
