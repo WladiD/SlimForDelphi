@@ -1,7 +1,5 @@
 # SlimForDelphi
 
-## Description
-
 SlimForDelphi is a [Slim](https://fitnesse.org/FitNesse/UserGuide/WritingAcceptanceTests/SliM.html) Protocol implementation for Delphi. It enables the creation of test fixtures in Delphi, which can then be driven by FitNesse. This allows for writing and executing automated acceptance tests in FitNesse using Delphi code.
 
 ## Features
