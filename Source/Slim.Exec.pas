@@ -245,7 +245,6 @@ var
   FixtureClass : TRttiInstanceType;
   Instance     : TSlimFixture;
   InstanceValue: TValue;
-  Instances    : TSlimFixtureDictionary;
   InvokeArgs   : TArray<TValue>;
   SlimMethod   : TRttiMethod;
 begin
