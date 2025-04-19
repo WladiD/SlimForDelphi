@@ -57,13 +57,13 @@ type
   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
   TSlimFixture = class
   /// <summary>
-  /// The following public SlimMethods are called in this order:
+  /// The following public methods are called in this order:
   /// 1. Table
-  /// 2. Next the beginTable method is called.
+  /// 2. Next the BeginTable method is called.
   ///    Use this for initializations if you want to.
   /// Then for each row in the table:
-  ///   2.1. First the Reset method is called, just in case you want to prepare or clean up.
-  ///   2.2. Then all the inputs are loaded by calling the appropriate Set-Methods
+  ///   2.1. The Reset method is called, just in case you want to prepare or clean up.
+  ///   2.2. Then all the inputs are loaded by calling the appropriate Set* methods
   ///        (must be implemented in the derived class).
   ///   2.3. Then the Execute method of the fixture is called.
   ///   2.4  Finally all the output functions are called
