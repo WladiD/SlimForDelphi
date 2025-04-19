@@ -267,7 +267,10 @@ begin
         var CurValue: TValue := nil;
 
         case ParamTypeKind of
-          tkInteger: ;
+          tkInteger:
+            CurValue := StrToInt(CurArgRaw.ToString);
+          tkInt64:
+            CurValue := StrToInt64(CurArgRaw.ToString);
           tkFloat:
             CurValue := StrToFloat(CurArgRaw.ToString, TFormatSettings.Invariant);
           tkClass:
@@ -282,7 +285,7 @@ begin
         end;
         AInvokeArgs[ArgLoop] := CurValue;
       end;
-   end
+    end
     else
       AInvokeArgs := nil;
     ASlimMethod := CheckMethod;
