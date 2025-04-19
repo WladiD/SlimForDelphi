@@ -283,7 +283,7 @@ begin
 
   if not Context.Resolver.TryGetSlimMethod(FixtureClass, FunctionParam, RawStmt, ArgStartIndex,
     SlimMethod, InvokeArgs) then
-    Exit;
+    Exit(nil);
 
   MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
 

@@ -85,6 +85,7 @@ function SlimList(const AValues: Array of String): TSlimList; overload;
 function SlimList(const AValues: Array of TSlimEntry): TSlimList; overload;
 
 function SlimListSerialize(ASlimList: TSlimList): String;
+function SlimListUnserialize(const AContent: String): TSlimList;
 
 implementation
 
@@ -114,6 +115,16 @@ begin
     Result := Serializer.Serialize;
   finally
     Serializer.Free;
+  end;
+end;
+
+function SlimListUnserialize(const AContent: String): TSlimList;
+begin
+  var Unserializer: TSlimListUnserializer := TSlimListUnserializer.Create(AContent);
+  try
+    Result := Unserializer.Unserialize;
+  finally
+    Unserializer.Free;
   end;
 end;
 
@@ -311,7 +322,6 @@ var
   EntryLength   : Integer;
   EntryString   : String;
   SubEntryList  : TSlimList;
-  SubEntryString: TSlimString;
 begin
   EntryLength := ReadLength;
   CurChar := LookChar;

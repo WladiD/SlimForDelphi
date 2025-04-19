@@ -78,6 +78,8 @@ type
     procedure EndTable; virtual;
   end;
 
+  TSlimFixtureClass = class of TSlimFixture;
+
   TSlimFixtureResolver = class
   private
     FContext: TRttiContext;
@@ -89,7 +91,17 @@ type
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   end;
 
+procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
+
 implementation
+
+/// <summary>
+///   Call this procedure with your fixture class to avoid the code elimination for it by the compiler
+/// </summary>
+procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
+begin
+  // Nothing to do
+end;
 
 { SlimFixtureAttribute }
 

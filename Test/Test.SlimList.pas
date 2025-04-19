@@ -53,19 +53,16 @@ implementation
 procedure TestSlimListSerializer.TwoMinuteExampleTest;
 var
   SlimList    : TSlimList;
-  Unserializer: TSlimListUnserializer;
   Content     : String;
 begin
   SlimList := nil;
   Content := TFile.ReadAllText('Data\TwoMinuteExample.txt');
-  Unserializer := TSlimListUnserializer.Create(Content);
   try
-    SlimList := Unserializer.Unserialize;
+    SlimList := SlimListUnserialize(Content);
     Content := SlimListSerialize(SlimList);
     TestSlimListUnserializer.TwoMinuteExample(Content); // Eat our own dog food
   finally
     SlimList.Free;
-    Unserializer.Free;
   end;
 end;
 
@@ -79,12 +76,9 @@ end;
 class procedure TestSlimListUnserializer.TwoMinuteExample(const AContent: String);
 var
   SlimList    : TSlimList;
-  Unserializer: TSlimListUnserializer;
 begin
-  SlimList := nil;
-  Unserializer := TSlimListUnserializer.Create(AContent);
+  SlimList := SlimListUnserialize(AContent);
   try
-    SlimList := Unserializer.Unserialize;
     Assert.IsNotNull(SlimList);
     Assert.AreEqual(34, SlimList.Count);
     Assert.IsTrue(SlimList.Entries[0] is TSlimList);
@@ -116,7 +110,6 @@ begin
     Assert.AreEqual('endTable', (EntryLast[3] as TSlimString).ToString);
   finally
     SlimList.Free;
-    Unserializer.Free;
   end;
 end;
 

@@ -13,6 +13,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.Rtti,
+  System.SysUtils,
 
   DUnitX.TestFramework,
 
@@ -37,16 +38,8 @@ implementation
 { TestSlimExecutor }
 
 function TestSlimExecutor.CreateStmts(const AContent: String): TSlimList;
-var
-  Unserializer: TSlimListUnserializer;
 begin
-  Result := nil;
-  Unserializer := TSlimListUnserializer.Create(AContent);
-  try
-    Result := Unserializer.Unserialize;
-  finally
-    Unserializer.Free;
-  end;
+  Result := SlimListUnserialize(AContent);
 end;
 
 function TestSlimExecutor.CreateStmtsFromFile(const AFileName: String): TSlimList;
