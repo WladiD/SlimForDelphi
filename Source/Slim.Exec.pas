@@ -193,7 +193,11 @@ var
 begin
   case AValue.Kind of
     tkFloat:
+    begin
       ValueStr := FloatToStr(AValue.AsExtended, TFormatSettings.Invariant);
+      if not ValueStr.Contains('.') then
+        ValueStr := ValueStr + '.0'; // Java needs this for truncated floats
+    end;
   else
     ValueStr := AValue.ToString;
   end;
