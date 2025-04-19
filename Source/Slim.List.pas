@@ -84,6 +84,8 @@ function SlimString(const AValue: String): TSlimString;
 function SlimList(const AValues: Array of String): TSlimList; overload;
 function SlimList(const AValues: Array of TSlimEntry): TSlimList; overload;
 
+function SlimListSerialize(ASlimList: TSlimList): String;
+
 implementation
 
 function SlimString(const AValue: String): TSlimString;
@@ -103,6 +105,16 @@ begin
   Result := TSlimList.Create;
   for var Entry: TSlimEntry in AValues do
     Result.Add(Entry);
+end;
+
+function SlimListSerialize(ASlimList: TSlimList): String;
+begin
+  var Serializer: TSlimListSerializer := TSlimListSerializer.Create(ASlimList);
+  try
+    Result := Serializer.Serialize;
+  finally
+    Serializer.Free;
+  end;
 end;
 
 { TSlimStringEntry }

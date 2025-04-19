@@ -56,9 +56,10 @@ end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
 var
-  Executor: TSlimExecutor;
-  Stmts   : TSlimList;
-  Response: TSlimList;
+  Executor   : TSlimExecutor;
+  Stmts      : TSlimList;
+  Response   : TSlimList;
+  ResponseStr: String;
 begin
   Response := nil;
   Stmts := nil;
@@ -67,6 +68,9 @@ begin
     Stmts := CreateStmtsFromFile('Data\TwoMinuteExample.txt');
     Response := Executor.Execute(Stmts);
     Assert.AreEqual(Stmts.Count, Response.Count);
+
+    ResponseStr := SlimListSerialize(Response);
+    Assert.IsNotEmpty(ResponseStr)
   finally
     Response.Free;
     Stmts.Free;

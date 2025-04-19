@@ -54,21 +54,17 @@ procedure TestSlimListSerializer.TwoMinuteExampleTest;
 var
   SlimList    : TSlimList;
   Unserializer: TSlimListUnserializer;
-  Serializer  : TSlimListSerializer;
   Content     : String;
 begin
   SlimList := nil;
-  Serializer := nil;
   Content := TFile.ReadAllText('Data\TwoMinuteExample.txt');
   Unserializer := TSlimListUnserializer.Create(Content);
   try
     SlimList := Unserializer.Unserialize;
-    Serializer := TSlimListSerializer.Create(SlimList);
-    Content := Serializer.Serialize;
+    Content := SlimListSerialize(SlimList);
     TestSlimListUnserializer.TwoMinuteExample(Content); // Eat our own dog food
   finally
     SlimList.Free;
-    Serializer.Free;
     Unserializer.Free;
   end;
 end;
