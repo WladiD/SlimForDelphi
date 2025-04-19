@@ -42,8 +42,9 @@ type
     FContext: TSlimStatementContext;
     FRawStmt: TSlimList;
   protected
+    FArgStartIndex: Integer;
     function GetRawStmtString(AIndex: Integer): String;
-    function HasRawArguments(out AStartIndex: Integer): Boolean; virtual;
+    function HasRawArguments(out AStartIndex: Integer): Boolean;
     property Context: TSlimStatementContext read FContext;
     property RawStmt: TSlimList read FRawStmt;
   protected
@@ -66,18 +67,16 @@ type
   end;
 
   TSlimStmtMake = class(TSlimStatement)
-  protected
-    function HasRawArguments(out AStartIndex: Integer): Boolean; override;
   public
+    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property InstanceParam: String index 2 read GetRawStmtString;
     property ClassParam: String index 3 read GetRawStmtString;
   end;
 
   TSlimStmtCall = class(TSlimStatement)
-  protected
-    function HasRawArguments(out AStartIndex: Integer): Boolean; override;
   public
+    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property InstanceParam: String index 2 read GetRawStmtString;
     property FunctionParam: String index 3 read GetRawStmtString;
@@ -105,7 +104,6 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-
     function Execute(ARawStmts: TSlimList): TSlimList;
   end;
 
@@ -149,6 +147,7 @@ constructor TSlimStatement.Create(ARawStmt: TSlimList; const AContext: TSlimStat
 begin
   FRawStmt := ARawStmt;
   FContext := AContext;
+  FArgStartIndex := -1;
 end;
 
 function TSlimStatement.GetRawStmtString(AIndex: Integer): String;
@@ -161,7 +160,9 @@ end;
 
 function TSlimStatement.HasRawArguments(out AStartIndex: Integer): Boolean;
 begin
-  Result := false;
+  Result := RawStmt.Count > FArgStartIndex;
+  if Result then
+    AStartIndex := FArgStartIndex;
 end;
 
 function TSlimStatement.ResponseException(const AMessage, ADefaultMeaning: String): TSlimList;
@@ -212,6 +213,12 @@ end;
 
 { TSlimStmtMake }
 
+constructor TSlimStmtMake.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+begin
+  inherited;
+  FArgStartIndex := 4;
+end;
+
 function TSlimStmtMake.Execute: TSlimList;
 var
   ArgStartIndex: Integer;
@@ -242,16 +249,13 @@ begin
   Result := ResponseOk;
 end;
 
-function TSlimStmtMake.HasRawArguments(out AStartIndex: Integer): Boolean;
-const
-  ArgStartIndex = 4;
-begin
-  Result := RawStmt.Count > ArgStartIndex;
-  if Result then
-    AStartIndex := ArgStartIndex;
-end;
-
 { TSlimStmtCall }
+
+constructor TSlimStmtCall.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+begin
+  inherited;
+  FArgStartIndex := 4;
+end;
 
 function TSlimStmtCall.Execute: TSlimList;
 var
@@ -282,15 +286,6 @@ begin
     Result := ResponseOk
   else
     Result := ResponseValue(MethodResult);
-end;
-
-function TSlimStmtCall.HasRawArguments(out AStartIndex: Integer): Boolean;
-const
-  ArgStartIndex = 4;
-begin
-  Result := RawStmt.Count > ArgStartIndex;
-  if Result then
-    AStartIndex := ArgStartIndex;
 end;
 
 { TSlimStmtCallAndAssign }
