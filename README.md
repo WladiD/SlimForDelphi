@@ -12,13 +12,6 @@ SlimForDelphi is a [Slim](https://fitnesse.org/FitNesse/UserGuide/WritingAccepta
 * Includes helper classes for serializing and deserializing Slim lists.
 * Comprehensive testing with DUnitX.
 
-## Installation
-
-1.  Ensure that Delphi is installed.
-2.  Clone this repository to your machine.
-3.  Open the project in Delphi and compile it.
-4.  For the examples, you will need [FitNesse](https://fitnesse.org/). Download the `fitnesse-standalone.jar`.
-
 ## Usage
 
 ### Setting up the Slim Server
