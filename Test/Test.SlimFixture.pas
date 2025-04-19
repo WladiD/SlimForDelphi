@@ -37,6 +37,8 @@ type
   public
     [Test]
     procedure TryGetSlimFixtureTest;
+    [Test]
+    procedure TryGetSlimMethodTest;
   end;
 
 implementation
@@ -60,6 +62,40 @@ begin
 
     Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', LClassType));
   finally
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TryGetSlimMethodTest;
+var
+  Resolver  : TSlimFixtureResolver;
+  LClassType: TRttiInstanceType;
+  Stmts     : TSlimList;
+  SlimMethod: TRttiMethod;
+  InvokeArgs: TArray<TValue>;
+begin
+  Stmts := nil;
+  Resolver := TSlimFixtureResolver.Create;
+  try
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', LClassType));
+    Stmts := SlimList(['CallId', '4.5']);
+
+    Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setNumerator', Stmts, 1, SlimMethod, InvokeArgs));
+    Assert.IsNotNull(SlimMethod);
+    Assert.AreEqual('SetNumerator', SlimMethod.Name);
+    Assert.AreEqual(1, Length(InvokeArgs));
+
+    Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setDenominator', Stmts, 1, SlimMethod, InvokeArgs));
+    Assert.IsNotNull(SlimMethod);
+    Assert.AreEqual('SetDenominator', SlimMethod.Name);
+    Assert.AreEqual(1, Length(InvokeArgs));
+
+    Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'quotient', Stmts, 0, SlimMethod, InvokeArgs));
+    Assert.IsNotNull(SlimMethod);
+    Assert.AreEqual('Quotient', SlimMethod.Name);
+    Assert.AreEqual(0, Length(InvokeArgs));
+  finally
+    Stmts.Free;
     Resolver.Free;
   end;
 end;
