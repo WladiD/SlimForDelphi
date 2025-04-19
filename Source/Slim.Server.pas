@@ -41,7 +41,7 @@ type
     procedure WriteLength(AIo: TIdIOHandler; ALength: Integer);
     procedure WriteString(AIo: TIdIOHandler; const AValue: String);
   public
-    constructor Create(AOwner: TComponent); override;
+    procedure AfterConstruction; override;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
     property OnWriteResponse: TStringEvent read FOnWriteResponse write FOnWriteResponse;
   end;
@@ -50,9 +50,9 @@ implementation
 
 { TSlimServer }
 
-constructor TSlimServer.Create(AOwner: TComponent);
+procedure TSlimServer.AfterConstruction;
 begin
-  inherited;
+  inherited AfterConstruction;
   OnExecute := SlimServerExecute;
 end;
 
@@ -74,17 +74,18 @@ end;
 
 function TSlimServer.ReadLength(AIo: TIdIOHandler): Integer;
 var
-  IntStr: String;
   ColonChar: Char;
+  IntStr   : String;
 begin
-  IntStr:=AIo.ReadString(6);
-  if Length(IntStr)=6 then
+  IntStr := AIo.ReadString(6);
+  if Length(IntStr) = 6 then
   begin
-    ColonChar:=AIo.ReadChar;
-    if not (TryStrToInt(IntStr, Result) and (ColonChar=':'))
-      then raise Exception.Create('Invalid length');
+    ColonChar := AIo.ReadChar;
+    if not (TryStrToInt(IntStr, Result) and (ColonChar = ':')) then
+      raise Exception.Create('Invalid length');
   end
-  else Result:=-1;
+  else
+    Result := -1;
 end;
 
 procedure TSlimServer.SlimServerExecute(AContext: TIdContext);
@@ -94,31 +95,23 @@ begin
   Io := AContext.Connection.IOHandler;
   Io.WriteLn('Slim -- V0.5');
 
-  var Stream: TStringStream:=TStringStream.Create;
+  var Stream: TStringStream := TStringStream.Create;
   try
-    try
-      var LLength: Integer:=ReadLength(Io);
-      while LLength>0 do
-      begin
-        var LMessage: String:=Io.ReadString(LLength);
-        if Assigned(FOnReadRequest) then
-          FOnReadRequest(LMessage);
-        if LMessage = 'bye' then
-          Break;
-        var Response: TSlimList := Execute(LMessage);
-        try
-          WriteString(Io, SlimListSerialize(Response));
-        finally
-          Response.Free;
-        end;
-        LLength:=ReadLength(Io);
+    var LLength: Integer := ReadLength(Io);
+    while LLength > 0 do
+    begin
+      var LMessage: String := Io.ReadString(LLength);
+      if Assigned(FOnReadRequest) then
+        FOnReadRequest(LMessage);
+      if LMessage = 'bye' then
+        Break;
+      var Response: TSlimList := Execute(LMessage);
+      try
+        WriteString(Io, SlimListSerialize(Response));
+      finally
+        Response.Free;
       end;
-    except
-      on E: Exception do
-      begin
-        var ExceptMsg: String := E.Message;
-        var TempMsg:=ExceptMsg;
-      end;
+      LLength := ReadLength(Io);
     end;
   finally
     Stream.Free;
