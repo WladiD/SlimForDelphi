@@ -30,11 +30,13 @@ type
     siAssign);       // [<id>, assign, <symbol>, <value>]
 
   TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
+  TSlimFixtureStack = TObjectStack<TSlimFixture>;
 
   TSlimStatementContext = record
   public
-    Resolver : TSlimFixtureResolver;
-    Instances: TSlimFixtureDictionary;
+    Resolver    : TSlimFixtureResolver;
+    Instances   : TSlimFixtureDictionary;
+    LibInstances: TSlimFixtureStack;
   end;
 
   TSlimStatement = class
@@ -100,7 +102,7 @@ type
 
   TSlimExecutor = class
   private
-    FInstances: TSlimFixtureDictionary;
+    FLibInstances: TSlimFixtureStack;
     function ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create;
@@ -230,6 +232,7 @@ var
   FixtureClass : TRttiInstanceType;
   Instance     : TSlimFixture;
   InstanceValue: TValue;
+  Instances    : TSlimFixtureDictionary;
   InvokeArgs   : TArray<TValue>;
   SlimMethod   : TRttiMethod;
 begin
@@ -250,7 +253,10 @@ begin
   end;
 
   Instance := TSlimFixture(InstanceValue.AsObject);
-  Context.Instances.AddOrSetValue(InstanceParam, Instance);
+  if InstanceParam.StartsWith('library', True) then
+    Context.LibInstances.Push(Instance)
+  else
+    Context.Instances.AddOrSetValue(InstanceParam, Instance);
   Result := ResponseOk;
 end;
 
@@ -317,12 +323,12 @@ end;
 
 constructor TSlimExecutor.Create;
 begin
-  FInstances := TSlimFixtureDictionary.Create([doOwnsValues]);
+  FLibInstances := TSlimFixtureStack.Create(True);
 end;
 
 destructor TSlimExecutor.Destroy;
 begin
-  FInstances.Free;
+  FLibInstances.Free;
   inherited;
 end;
 
@@ -351,18 +357,22 @@ end;
 
 function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 var
-  Context : TSlimStatementContext;
-  Resolver: TSlimFixtureResolver;
+  Context  : TSlimStatementContext;
+  Instances: TSlimFixtureDictionary;
+  Resolver : TSlimFixtureResolver;
 begin
   Resolver := nil;
+  Instances := nil;
   Result := TSlimList.Create;
   try
     try
       Resolver := TSlimFixtureResolver.Create;
+      Instances := TSlimFixtureDictionary.Create([doOwnsValues]);
 
       Context := Default(TSlimStatementContext);
       Context.Resolver := Resolver;
-      Context.Instances := FInstances;
+      Context.Instances := Instances;
+      Context.LibInstances := FLibInstances;
 
       for var Loop := 0 to ARawStmts.Count - 1 do
       begin
@@ -376,6 +386,7 @@ begin
       end;
     finally
       Resolver.Free;
+      Instances.Free;
     end;
   except
     Result.Free;

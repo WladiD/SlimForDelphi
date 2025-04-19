@@ -10,3 +10,4 @@ Win32
 /Example/*/*.identcache
 /Example/*/*.dsk
 /Example/*/*.local
+/Example/*/*.~dsk
