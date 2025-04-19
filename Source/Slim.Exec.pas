@@ -84,6 +84,7 @@ type
 
   TSlimStmtCallAndAssign = class(TSlimStatement)
   public
+    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property SymbolParam: String index 2 read GetRawStmtString;
     property InstanceParam: String index 3 read GetRawStmtString;
@@ -289,6 +290,12 @@ begin
 end;
 
 { TSlimStmtCallAndAssign }
+
+constructor TSlimStmtCallAndAssign.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+begin
+  inherited;
+  FArgStartIndex := 5;
+end;
 
 function TSlimStmtCallAndAssign.Execute: TSlimList;
 begin
