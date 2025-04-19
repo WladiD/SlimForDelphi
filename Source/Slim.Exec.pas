@@ -288,7 +288,7 @@ begin
   MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
 
   if SlimMethod.MethodKind = mkProcedure then
-    Result := ResponseOk
+    Result := ResponseString('/__VOID__/')
   else
     Result := ResponseValue(MethodResult);
 end;
