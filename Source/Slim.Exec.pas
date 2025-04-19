@@ -30,13 +30,13 @@ type
     siAssign);       // [<id>, assign, <symbol>, <value>]
 
   TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
-  TSlimFixtureStack = TObjectStack<TSlimFixture>;
+  TSlimFixtureList = TObjectList<TSlimFixture>;
 
   TSlimStatementContext = record
   public
     Resolver    : TSlimFixtureResolver;
     Instances   : TSlimFixtureDictionary;
-    LibInstances: TSlimFixtureStack;
+    LibInstances: TSlimFixtureList;
   end;
 
   TSlimStatement = class
@@ -76,21 +76,34 @@ type
     property ClassParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimStmtCall = class(TSlimStatement)
+  TSlimStmtCallBase = class(TSlimStatement)
+  protected
+    function GetFunctionParam: String; virtual; abstract;
+    function GetInstanceParam: String; virtual; abstract;
+    function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+  public
+    property InstanceParam: String read GetInstanceParam;
+    property FunctionParam: String read GetFunctionParam;    
+  end;
+
+  TSlimStmtCall = class(TSlimStmtCallBase)
+  protected
+    function GetFunctionParam: String; override;
+    function GetInstanceParam: String; override;
   public
     constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
-    property InstanceParam: String index 2 read GetRawStmtString;
-    property FunctionParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimStmtCallAndAssign = class(TSlimStatement)
+  TSlimStmtCallAndAssign = class(TSlimStmtCallBase)
+  protected
+    function GetFunctionParam: String; override;
+    function GetInstanceParam: String; override;
   public
     constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property SymbolParam: String index 2 read GetRawStmtString;
-    property InstanceParam: String index 3 read GetRawStmtString;
-    property FunctionParam: String index 4 read GetRawStmtString;
   end;
 
   TSlimStmtAssign = class(TSlimStatement)
@@ -102,7 +115,7 @@ type
 
   TSlimExecutor = class
   private
-    FLibInstances: TSlimFixtureStack;
+    FLibInstances: TSlimFixtureList;
     function ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create;
@@ -254,10 +267,50 @@ begin
 
   Instance := TSlimFixture(InstanceValue.AsObject);
   if InstanceParam.StartsWith('library', True) then
-    Context.LibInstances.Push(Instance)
+    Context.LibInstances.Add(Instance)
   else
     Context.Instances.AddOrSetValue(InstanceParam, Instance);
   Result := ResponseOk;
+end;
+
+{ TSlimStmtCallBase }
+
+function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+
+  function TryGetFromInstances: Boolean;
+  begin
+    Result := 
+      Context.Instances.TryGetValue(InstanceParam, AInstance) and
+      TryGetMethod(AInstance, ASlimMethod, AInvokeArgs);  
+  end;
+
+  function TryGetFromLibInstances: Boolean;
+  begin
+    for var Loop: Integer := Context.LibInstances.Count - 1 downto 0 do
+    begin
+      AInstance := Context.LibInstances[Loop];
+      if TryGetMethod(AInstance, ASlimMethod, AInvokeArgs) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+begin
+  Result :=
+    TryGetFromInstances or
+    TryGetFromLibInstances;  
+end;
+
+function TSlimStmtCallBase.TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+var
+  ArgStartIndex: Integer;
+  RttiClass    : TRttiInstanceType;
+begin
+  if not HasRawArguments(ArgStartIndex) then
+    ArgStartIndex := -1;
+  RttiClass := Context.Resolver.GetRttiInstanceTypeFromInstance(AInstance);
+  Result := Context.Resolver.TryGetSlimMethod(RttiClass, FunctionParam, RawStmt, ArgStartIndex,
+    ASlimMethod, AInvokeArgs)
 end;
 
 { TSlimStmtCall }
@@ -270,26 +323,13 @@ end;
 
 function TSlimStmtCall.Execute: TSlimList;
 var
-  ArgStartIndex: Integer;
-  FixtureClass : TRttiInstanceType;
   Instance     : TSlimFixture;
   InvokeArgs   : TArray<TValue>;
   SlimMethod   : TRttiMethod;
   MethodResult : TValue;
 begin
-  if not Context.Instances.TryGetValue(InstanceParam, Instance) then
+  if not TryGetInstanceAndMethod(Instance, SlimMethod, InvokeArgs) then
     Exit(ResponseException(InstanceParam, 'NO_INSTANCE'));
-
-  FixtureClass := Context.Resolver.GetRttiInstanceTypeFromInstance(Instance);
-  if not Assigned(FixtureClass) then
-    Exit(ResponseException(Format('RTTI-Error for Instance "%s"', [InstanceParam])));
-
-  if not HasRawArguments(ArgStartIndex) then
-    ArgStartIndex := -1;
-
-  if not Context.Resolver.TryGetSlimMethod(FixtureClass, FunctionParam, RawStmt, ArgStartIndex,
-    SlimMethod, InvokeArgs) then
-    Exit(nil);
 
   MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
 
@@ -297,6 +337,16 @@ begin
     Result := ResponseString('/__VOID__/')
   else
     Result := ResponseValue(MethodResult);
+end;
+
+function TSlimStmtCall.GetFunctionParam: String;
+begin
+  Result := GetRawStmtString(3);
+end;
+
+function TSlimStmtCall.GetInstanceParam: String;
+begin
+  Result := GetRawStmtString(2);
 end;
 
 { TSlimStmtCallAndAssign }
@@ -312,6 +362,16 @@ begin
   Result := nil;
 end;
 
+function TSlimStmtCallAndAssign.GetFunctionParam: String;
+begin
+  Result := GetRawStmtString(4);
+end;
+
+function TSlimStmtCallAndAssign.GetInstanceParam: String;
+begin
+  Result := GetRawStmtString(3);
+end;
+
 { TSlimStmtAssign }
 
 function TSlimStmtAssign.Execute: TSlimList;
@@ -323,7 +383,7 @@ end;
 
 constructor TSlimExecutor.Create;
 begin
-  FLibInstances := TSlimFixtureStack.Create(True);
+  FLibInstances := TSlimFixtureList.Create(True);
 end;
 
 destructor TSlimExecutor.Destroy;
