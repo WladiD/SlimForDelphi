@@ -32,8 +32,6 @@ type
     property Namespace: String read FNamespace;
   end;
 
-  SlimMethodAttribute = class(TCustomAttribute);
-
   /// <summary>
   ///   Determines how method calls should be synchronized
   /// </summary>
@@ -56,9 +54,10 @@ type
   /// <summary>
   /// Base class for all fixtures
   /// </summary>
+  {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
   TSlimFixture = class
   /// <summary>
-  /// The following public [SlimMethod]s are called in this order:
+  /// The following public SlimMethods are called in this order:
   /// 1. Table
   /// 2. Next the beginTable method is called.
   ///    Use this for initializations if you want to.
@@ -72,15 +71,10 @@ type
   ///    Use this for closedown and cleanup if you want to.
   /// </summary>
   public
-    [SlimMethod]
     procedure Table(AList: TSlimList); virtual;
-    [SlimMethod]
     procedure BeginTable; virtual;
-    [SlimMethod]
     procedure Reset; virtual;
-    [SlimMethod]
     procedure Execute; virtual;
-    [SlimMethod]
     procedure EndTable; virtual;
   end;
 

@@ -27,11 +27,8 @@ type
     FNumerator: Double;
     FDenominator: Double;
   public
-    [SlimMethod]
     procedure SetNumerator(ANumerator: Double);
-    [SlimMethod]
     procedure SetDenominator(ADenominator: Double);
-    [SlimMethod]
     function Quotient: Double;
   end;
 
