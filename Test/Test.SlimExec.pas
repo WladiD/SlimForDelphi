@@ -27,7 +27,6 @@ type
   [TestFixture]
   TestSlimExecutor = class
   protected
-    function CreateStmts(const AContent: String): TSlimList;
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
     [Test]
@@ -35,7 +34,7 @@ type
   end;
 
   [TestFixture]
-  TestSlimStmtCall = class
+  TestSlimStatement = class
   private
     FContext: TSlimStatementContext;
   public
@@ -51,14 +50,9 @@ implementation
 
 { TestSlimExecutor }
 
-function TestSlimExecutor.CreateStmts(const AContent: String): TSlimList;
-begin
-  Result := SlimListUnserialize(AContent);
-end;
-
 function TestSlimExecutor.CreateStmtsFromFile(const AFileName: String): TSlimList;
 begin
-  Result := CreateStmts(TFile.ReadAllText(AFileName));
+  Result := SlimListUnserialize(TFile.ReadAllText(AFileName));
 end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
@@ -85,9 +79,9 @@ begin
   end;
 end;
 
-{ TestSlimStmtCall }
+{ TestSlimStatement }
 
-procedure TestSlimStmtCall.LibInstanceTest;
+procedure TestSlimStatement.LibInstanceTest;
 begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
     SlimList(['id', 'make', 'library_instance', 'Division']), FContext);
@@ -136,7 +130,7 @@ begin
   end;
 end;
 
-procedure TestSlimStmtCall.Setup;
+procedure TestSlimStatement.Setup;
 begin
   FContext := Default(TSlimStatementContext);
   FContext.Resolver := TSlimFixtureResolver.Create;
@@ -144,7 +138,7 @@ begin
   FContext.LibInstances := TSlimFixtureList.Create(True);
 end;
 
-procedure TestSlimStmtCall.TearDown;
+procedure TestSlimStatement.TearDown;
 begin
   FreeAndNil(FContext.Resolver);
   FreeAndNil(FContext.Instances);
