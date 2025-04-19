@@ -338,7 +338,12 @@ begin
   StmtClass := SlimInstructionToStatementClass(Instr);
   Stmt := StmtClass.Create(ARawStmt, AContext);
   try
-    Result := Stmt.Execute;
+    try
+      Result := Stmt.Execute;
+    except
+      on E: Exception do
+        Exit(Stmt.ResponseException(Format('%s: %s', [E.ClassName, E.Message])));
+    end;
   finally
     Stmt.Free;
   end;
