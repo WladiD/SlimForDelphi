@@ -416,7 +416,7 @@ var
   MethodResult: TValue;
 begin
   if not TryGetInstanceAndMethod(Instance, SlimMethod, InvokeArgs) then
-    Exit(ResponseException(InstanceParam, 'NO_INSTANCE'));
+    Exit(ResponseException(InstanceParam + '.' + FunctionParam, 'NO_INSTANCE'));
 
   Executed := false;
 

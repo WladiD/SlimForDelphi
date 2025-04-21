@@ -10,6 +10,7 @@ interface
 
 uses
 
+  System.DateUtils,
   System.Generics.Collections,
   System.SysUtils;
 
@@ -25,6 +26,7 @@ type
     FId       : Integer;
     FName     : String;
   public
+    function WorkingYears: Double;
     property EntryDate: TDateTime read FEntryDate write FEntryDate;
     property Id: Integer read FId write FId;
     property Name: String read FName write FName;
@@ -40,6 +42,11 @@ class function TEntry.GetNextId: Integer;
 begin
   Inc(FGlobalId);
   Result := FGlobalId;
+end;
+
+function TEntry.WorkingYears: Double;
+begin
+  Result := YearSpan(FEntryDate, Date);
 end;
 
 end.

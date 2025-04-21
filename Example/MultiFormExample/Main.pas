@@ -55,11 +55,12 @@ type
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
     function  Add: Boolean;
-    function  Id: Integer;
     function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; override;
+    function  Id: Integer;
     procedure Reset; override;
     procedure SetEntryDate(const AValue: String);
     procedure SetName(const AValue: String);
+    function  WorkingYearsForTAIFUN: Double;
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
   end;
 
@@ -197,6 +198,11 @@ begin
   Result := Assigned(Screen.FocusedForm) and (Screen.FocusedForm is TEntryForm);
   if Result then
     AForm := Screen.FocusedForm as TEntryForm;
+end;
+
+function TSlimAddTableFixture.WorkingYearsForTAIFUN: Double;
+begin
+  Result := MainForm.FEntries.Last.WorkingYears;
 end;
 
 end.
