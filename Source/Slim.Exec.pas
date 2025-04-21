@@ -13,6 +13,7 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.Rtti,
+  System.SyncObjs,
   System.SysUtils,
   System.TypInfo,
 
@@ -89,6 +90,7 @@ type
 
   TSlimStmtCall = class(TSlimStmtCallBase)
   protected
+    function ExecuteSynchronized(ASyncMode: TFixtureSyncMode; AInstance: TSlimFixture; ASlimMethod: TRttiMethod; AInvokeArgs: TArray<TValue>; out AExecuted: Boolean): TValue;
     function GetFunctionParam: String; override;
     function GetInstanceParam: String; override;
   public
@@ -215,6 +217,8 @@ begin
     end;
   else
     ValueStr := AValue.ToString;
+    if AValue.TypeInfo = System.TypeInfo(Boolean) then
+      ValueStr := LowerCase(ValueStr);
   end;
   Result := SlimList([IdParam, ValueStr]);
 end;
@@ -322,20 +326,63 @@ end;
 
 function TSlimStmtCall.Execute: TSlimList;
 var
-  Instance     : TSlimFixture;
-  InvokeArgs   : TArray<TValue>;
-  SlimMethod   : TRttiMethod;
-  MethodResult : TValue;
+  Executed    : Boolean;
+  Instance    : TSlimFixture;
+  InvokeArgs  : TArray<TValue>;
+  SlimMethod  : TRttiMethod;
+  MethodResult: TValue;
 begin
   if not TryGetInstanceAndMethod(Instance, SlimMethod, InvokeArgs) then
     Exit(ResponseException(InstanceParam, 'NO_INSTANCE'));
 
-  MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
+  Executed := false;
+
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+  begin
+    var SyncMode: TFixtureSyncMode := Instance.SyncMode(SlimMethod);
+    if SyncMode in [smSynchronized, smSynchronizedAndDelayed] then
+      MethodResult := ExecuteSynchronized(SyncMode, Instance, SlimMethod, InvokeArgs, Executed);
+  end;
+
+  if not Executed then
+    MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
 
   if SlimMethod.MethodKind = mkProcedure then
     Result := ResponseString('/__VOID__/')
   else
     Result := ResponseValue(MethodResult);
+end;
+
+function TSlimStmtCall.ExecuteSynchronized(ASyncMode: TFixtureSyncMode; AInstance: TSlimFixture; ASlimMethod: TRttiMethod; AInvokeArgs: TArray<TValue>; out AExecuted: Boolean): TValue;
+var
+  ExceptClassName: String;
+  ExceptMessage  : String;
+  SyncResult     : TValue;
+begin
+  TThread.Synchronize(TThread.Current,
+    procedure
+    begin
+      try
+        SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+      except
+        on E: Exception do
+        begin
+          ExceptClassName := E.ClassName;
+          ExceptMessage := E.Message;
+        end;
+      end;
+    end);
+
+  if ExceptClassName <> '' then
+    Exit(ResponseException(Format('%s: %s', [ExceptClassName, ExceptMessage])));
+
+  AExecuted := true;
+
+  var DelayedEvent: TEvent := nil;
+  if AInstance.HasDelayedEvent(DelayedEvent) then
+    DelayedEvent.WaitFor(INFINITE);
+
+  Result := SyncResult;
 end;
 
 function TSlimStmtCall.GetFunctionParam: String;

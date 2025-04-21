@@ -13,6 +13,7 @@ uses
   System.Classes,
   System.Rtti,
   System.SysUtils,
+  System.SyncObjs,
 
   Slim.List;
 
@@ -46,16 +47,18 @@ type
     ///   Each individual method call of the fixture is executed in a separate Synchronize call.
     /// </summary>
     smSynchronized,
-    /// <summary>
-    ///   The complete execution of a fixture is executed in a single Synchronize call.
-    /// </summary>
-    smBulkSynchronized);
+    smSynchronizedAndDelayed);
 
   /// <summary>
   /// Base class for all fixtures
   /// </summary>
   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
   TSlimFixture = class
+  private
+    FDelayedEvent: TEvent;
+  protected
+    procedure InitDelayedEvent;
+    property DelayedEvent: TEvent read FDelayedEvent;
   /// <summary>
   /// The following public methods are called in this order:
   /// 1. Table
@@ -76,6 +79,10 @@ type
     procedure Reset; virtual;
     procedure Execute; virtual;
     procedure EndTable; virtual;
+  public
+    destructor Destroy; override;
+    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
+    function  HasDelayedEvent(out AEvent: TEvent): Boolean;
   end;
 
   TSlimFixtureClass = class of TSlimFixture;
@@ -119,6 +126,12 @@ end;
 
 { TSlimFixture }
 
+destructor TSlimFixture.Destroy;
+begin
+  FDelayedEvent.Free;
+  inherited;
+end;
+
 procedure TSlimFixture.BeginTable;
 begin
 
@@ -134,9 +147,31 @@ begin
 
 end;
 
+function TSlimFixture.HasDelayedEvent(out AEvent: TEvent): Boolean;
+begin
+  Result := Assigned(FDelayedEvent);
+  if Result then
+  begin
+    AEvent := FDelayedEvent;
+  end;
+end;
+
+procedure TSlimFixture.InitDelayedEvent;
+begin
+  if not Assigned(FDelayedEvent) then
+    FDelayedEvent := TEvent.Create(nil, True, False, '')
+  else
+    FDelayedEvent.ResetEvent;
+end;
+
 procedure TSlimFixture.Reset;
 begin
 
+end;
+
+function TSlimFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
+begin
+  Result := smUnsynchronized;
 end;
 
 procedure TSlimFixture.Table(AList: TSlimList);
