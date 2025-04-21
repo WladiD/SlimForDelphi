@@ -139,16 +139,25 @@ begin
   inherited;
 end;
 
+/// <summary>
+///   BeginTable is called once before a table is getting processed
+/// </summary>
 procedure TSlimFixture.BeginTable;
 begin
 
 end;
 
+/// <summary>
+///   EndTable is called after a table is being processed
+/// </summary>
 procedure TSlimFixture.EndTable;
 begin
 
 end;
 
+/// <summary>
+///   Execute is executed for each row after all Set* methods are executed
+/// </summary>
 procedure TSlimFixture.Execute;
 begin
 
@@ -165,6 +174,9 @@ begin
     FDelayedEvent := TEvent.Create(nil, True, False, '');
 end;
 
+/// <summary>
+///   This method is called before each row
+/// </summary>
 procedure TSlimFixture.Reset;
 begin
 

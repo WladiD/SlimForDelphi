@@ -81,6 +81,7 @@ type
 
   TSlimStmtCallBase = class(TSlimStatement)
   protected
+    function ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
     function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
@@ -92,7 +93,6 @@ type
 
   TSlimStmtCall = class(TSlimStmtCallBase)
   protected
-    function ExecuteSynchronized(ASyncMode: TFixtureSyncMode; AInstance: TSlimFixture; ASlimMethod: TRttiMethod; AInvokeArgs: TArray<TValue>; out AExecuted: Boolean): TValue;
     function GetFunctionParam: String; override;
     function GetInstanceParam: String; override;
   public
@@ -210,6 +210,8 @@ function TSlimStatement.ResponseValue(const AValue: TValue): TSlimList;
 var
   ValueStr: String;
 begin
+  if AValue.IsInstanceOf(TSlimList) then
+    Exit(AValue.AsObject as TSlimList);
   case AValue.Kind of
     tkFloat:
     begin
@@ -280,6 +282,85 @@ end;
 
 { TSlimStmtCallBase }
 
+function TSlimStmtCallBase.ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
+var
+  ExceptClassName: String;
+  ExceptMessage  : String;
+  SyncResult     : TValue;
+
+  function ResponseException: TSlimList;
+  begin
+    Result := Self.ResponseException(Format('%s: %s', [ExceptClassName, ExceptMessage]));
+  end;
+
+begin
+  var SyncMode: TFixtureSyncMode := AInstance.SyncMode(ASlimMethod);
+
+  if SyncMode = smSynchronized then
+  begin
+    TThread.Synchronize(TThread.Current,
+      procedure
+      begin
+        try
+          SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+        except
+          on E: Exception do
+          begin
+            ExceptClassName := E.ClassName;
+            ExceptMessage := E.Message;
+          end;
+        end;
+      end);
+
+    AExecuted := true;
+
+    if ExceptClassName <> '' then
+      Result := ResponseException
+    else
+      Result := SyncResult;
+  end
+  else if SyncMode = smSynchronizedAndDelayed then
+  begin
+    TThread.Synchronize(TThread.Current,
+      procedure
+      var
+        Info: TDelayedInfo;
+      begin
+        try
+          if AInstance.HasDelayedInfo(ASlimMethod, Info) then
+            AInstance.InitDelayedEvent
+          else
+            raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not defined', [AInstance.ClassName, ASlimMethod.Name]);
+
+          TDelayedMethod.Execute(
+            procedure
+            begin
+              TDelayedMethod.Execute(
+                procedure
+                begin
+                  AInstance.TriggerDelayedEvent;
+                end, Info.Owner, 0, 123);
+              SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+            end, Info.Owner, 0, 1234);
+        except
+          on E: Exception do
+          begin
+            ExceptClassName := E.ClassName;
+            ExceptMessage := E.Message;
+          end;
+        end;
+      end);
+
+    AExecuted := true;
+
+    if ExceptClassName <> '' then
+      Exit(ResponseException);
+
+    AInstance.WaitForDelayedEvent;
+    Result := SyncResult;
+  end;
+end;
+
 function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
 
   function TryGetFromInstances: Boolean;
@@ -340,94 +421,17 @@ begin
   Executed := false;
 
   if TThread.CurrentThread.ThreadID <> MainThreadID then
-  begin
-    var SyncMode: TFixtureSyncMode := Instance.SyncMode(SlimMethod);
-    if SyncMode in [smSynchronized, smSynchronizedAndDelayed] then
-      MethodResult := ExecuteSynchronized(SyncMode, Instance, SlimMethod, InvokeArgs, Executed);
-  end;
+    MethodResult := ExecuteSynchronized(Instance, SlimMethod, InvokeArgs, Executed);
 
   if not Executed then
     MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
 
-  if SlimMethod.MethodKind = mkProcedure then
+  if MethodResult.IsInstanceOf(TSlimList) then
+    Result := MethodResult.AsObject as TSlimList
+  else if SlimMethod.MethodKind = mkProcedure then
     Result := ResponseString('/__VOID__/')
   else
     Result := ResponseValue(MethodResult);
-end;
-
-function TSlimStmtCall.ExecuteSynchronized(ASyncMode: TFixtureSyncMode; AInstance: TSlimFixture; ASlimMethod: TRttiMethod; AInvokeArgs: TArray<TValue>; out AExecuted: Boolean): TValue;
-var
-  ExceptClassName: String;
-  ExceptMessage  : String;
-  SyncResult     : TValue;
-
-  function ResponseException: TSlimList;
-  begin
-    Result := Self.ResponseException(Format('%s: %s', [ExceptClassName, ExceptMessage]));
-  end;
-
-begin
-  if ASyncMode = smSynchronized then
-  begin
-    TThread.Synchronize(TThread.Current,
-      procedure
-      begin
-        try
-          SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
-        except
-          on E: Exception do
-          begin
-            ExceptClassName := E.ClassName;
-            ExceptMessage := E.Message;
-          end;
-        end;
-      end);
-
-    if ExceptClassName <> '' then
-      Exit(ResponseException);
-
-    AExecuted := true;
-    Result := SyncResult;
-  end
-  else if ASyncMode = smSynchronizedAndDelayed then
-  begin
-    TThread.Synchronize(TThread.Current,
-      procedure
-      var
-        Info: TDelayedInfo;
-      begin
-        try
-          if AInstance.HasDelayedInfo(ASlimMethod, Info) then
-            AInstance.InitDelayedEvent
-          else
-            raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not define', [AInstance.ClassName, ASlimMethod.Name]);
-
-          TDelayedMethod.Execute(
-            procedure
-            begin
-              TDelayedMethod.Execute(
-                procedure
-                begin
-                  AInstance.TriggerDelayedEvent;
-                end, Info.Owner, 0, 123);
-              SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
-            end, Info.Owner, 0, 1234);
-        except
-          on E: Exception do
-          begin
-            ExceptClassName := E.ClassName;
-            ExceptMessage := E.Message;
-          end;
-        end;
-      end);
-
-    if ExceptClassName <> '' then
-      Exit(ResponseException);
-
-    AExecuted := true;
-    AInstance.WaitForDelayedEvent;
-    Result := SyncResult;
-  end;
 end;
 
 function TSlimStmtCall.GetFunctionParam: String;
