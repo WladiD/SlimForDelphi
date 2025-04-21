@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 0
   Top = 0
-  Caption = 'MainForm'
+  Caption = 'Multi form example'
   ClientHeight = 398
   ClientWidth = 703
   Color = clBtnFace

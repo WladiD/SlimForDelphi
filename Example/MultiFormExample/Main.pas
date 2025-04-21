@@ -8,8 +8,9 @@ uses
   Winapi.Messages,
 
   System.Classes,
-  System.SysUtils,
+  System.DateUtils,
   System.Rtti,
+  System.SysUtils,
   System.Variants,
 
   Vcl.Controls,
@@ -44,14 +45,17 @@ type
 
   [SlimFixture('AddEntries', 'mfe')]
   TSlimAddTableFixture = class(TSlimFixture)
+  private
+    function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
     function  Add: Boolean;
+    function  Id: Integer;
     function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; override;
     procedure Reset; override;
+    procedure SetEntryDate(const AValue: String);
     procedure SetName(const AValue: String);
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
   end;
-
 
 var
   MainForm: TMainForm;
@@ -138,6 +142,11 @@ begin
   EntryForm.OkButton.Click;
 end;
 
+function TSlimAddTableFixture.Id: Integer;
+begin
+  Result := MainForm.FEntries.Last.Id;
+end;
+
 function TSlimAddTableFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
 begin
   Result := true;
@@ -152,10 +161,21 @@ begin
   MainForm.AddButton.Click;
 end;
 
-procedure TSlimAddTableFixture.SetName(const AValue: String);
+procedure TSlimAddTableFixture.SetEntryDate(const AValue: String);
+var
+  EntryForm: TEntryForm;
+  EntryDate: TDateTime;
 begin
-  var EntryForm: TEntryForm := Screen.FocusedForm as TEntryForm;
-  EntryForm.NameEdit.Text := AValue;
+  if TryGetEntryForm(EntryForm) and TryISO8601ToDate(AValue, EntryDate) then
+    EntryForm.EntryDatePicker.Date := EntryDate;
+end;
+
+procedure TSlimAddTableFixture.SetName(const AValue: String);
+var
+  EntryForm: TEntryForm;
+begin
+  if TryGetEntryForm(EntryForm) then
+    EntryForm.NameEdit.Text := AValue;
 end;
 
 function TSlimAddTableFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
@@ -164,6 +184,13 @@ begin
     Result := smSynchronizedAndDelayed
   else
     Result := smSynchronized;
+end;
+
+function TSlimAddTableFixture.TryGetEntryForm(out AForm: TEntryForm): Boolean;
+begin
+  Result := Assigned(Screen.FocusedForm) and (Screen.FocusedForm is TEntryForm);
+  if Result then
+    AForm := Screen.FocusedForm as TEntryForm;
 end;
 
 end.

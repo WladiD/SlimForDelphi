@@ -339,9 +339,9 @@ begin
                 procedure
                 begin
                   AInstance.TriggerDelayedEvent;
-                end, Info.Owner, 0, 123);
+                end, Info.Owner);
               SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
-            end, Info.Owner, 0, 1234);
+            end, Info.Owner);
         except
           on E: Exception do
           begin
