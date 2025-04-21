@@ -17,6 +17,7 @@ object MainForm: TMainForm
     Width = 703
     Height = 363
     Align = alClient
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect, goFixedRowDefAlign]
     TabOrder = 0
   end
   object BottomPanel: TPanel
