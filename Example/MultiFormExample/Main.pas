@@ -20,8 +20,6 @@ uses
   Vcl.Grids,
   Vcl.StdCtrls,
 
-  WDDT.DelayedMethod,
-
   Slim.Fixture,
   Slim.Server,
 
@@ -47,10 +45,11 @@ type
   [SlimFixture('AddEntries', 'mfe')]
   TSlimAddTableFixture = class(TSlimFixture)
   public
-    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
+    function  Add: Boolean;
+    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; override;
     procedure Reset; override;
     procedure SetName(const AValue: String);
-    function  Add: Boolean;
+    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
   end;
 
 
@@ -139,19 +138,18 @@ begin
   EntryForm.OkButton.Click;
 end;
 
+function TSlimAddTableFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
+begin
+  Result := true;
+  if SameText(AMethod.Name, 'Reset') then
+    AInfo.Owner := MainForm
+  else
+    Result := false;
+end;
+
 procedure TSlimAddTableFixture.Reset;
 begin
-  InitDelayedEvent;
-  TDelayedMethod.Execute(
-    procedure
-    begin
-      TDelayedMethod.Execute(
-        procedure
-        begin
-          DelayedEvent.SetEvent;
-        end, MainForm);
-      MainForm.AddButton.Click;
-    end, MainForm);
+  MainForm.AddButton.Click;
 end;
 
 procedure TSlimAddTableFixture.SetName(const AValue: String);
@@ -162,7 +160,10 @@ end;
 
 function TSlimAddTableFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
 begin
-  Result := smSynchronized;
+  if SameText(AMethod.Name, 'Reset') then
+    Result := smSynchronizedAndDelayed
+  else
+    Result := smSynchronized;
 end;
 
 end.

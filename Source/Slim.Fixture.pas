@@ -47,7 +47,14 @@ type
     ///   Each individual method call of the fixture is executed in a separate Synchronize call.
     /// </summary>
     smSynchronized,
+    /// <summary>
+    ///   The method call is synchronized from a inner delayed method.
+    /// </summary>
     smSynchronizedAndDelayed);
+
+  TDelayedInfo = record
+    Owner: TComponent;
+  end;
 
   /// <summary>
   /// Base class for all fixtures
@@ -56,9 +63,6 @@ type
   TSlimFixture = class
   private
     FDelayedEvent: TEvent;
-  protected
-    procedure InitDelayedEvent;
-    property DelayedEvent: TEvent read FDelayedEvent;
   /// <summary>
   /// The following public methods are called in this order:
   /// 1. Table
@@ -81,8 +85,11 @@ type
     procedure EndTable; virtual;
   public
     destructor Destroy; override;
+    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; virtual;
+    procedure InitDelayedEvent;
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
-    function  HasDelayedEvent(out AEvent: TEvent): Boolean;
+    procedure TriggerDelayedEvent;
+    procedure WaitForDelayedEvent;
   end;
 
   TSlimFixtureClass = class of TSlimFixture;
@@ -147,21 +154,15 @@ begin
 
 end;
 
-function TSlimFixture.HasDelayedEvent(out AEvent: TEvent): Boolean;
+function TSlimFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
 begin
-  Result := Assigned(FDelayedEvent);
-  if Result then
-  begin
-    AEvent := FDelayedEvent;
-  end;
+  Result := False;
 end;
 
 procedure TSlimFixture.InitDelayedEvent;
 begin
   if not Assigned(FDelayedEvent) then
-    FDelayedEvent := TEvent.Create(nil, True, False, '')
-  else
-    FDelayedEvent.ResetEvent;
+    FDelayedEvent := TEvent.Create(nil, True, False, '');
 end;
 
 procedure TSlimFixture.Reset;
@@ -177,6 +178,21 @@ end;
 procedure TSlimFixture.Table(AList: TSlimList);
 begin
 
+end;
+
+procedure TSlimFixture.TriggerDelayedEvent;
+begin
+  if Assigned(FDelayedEvent) then
+    FDelayedEvent.SetEvent;
+end;
+
+procedure TSlimFixture.WaitForDelayedEvent;
+begin
+  if Assigned(FDelayedEvent) then
+  begin
+    FDelayedEvent.WaitFor(INFINITE);
+    FreeAndNil(FDelayedEvent);
+  end;
 end;
 
 { TSlimFixtureResolver }
