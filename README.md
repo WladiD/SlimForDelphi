@@ -39,8 +39,3 @@ public
   function Quotient: Double;
 end;
 ```
-
-## Requires
-
-* Some units of the **WDDelphiTools** are required, so check out the repo and add it to the search path  
-  https://github.com/WladiD/WDDelphiTools
