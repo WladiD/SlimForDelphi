@@ -45,7 +45,7 @@ type
     procedure ApplyFromEntryToForm;
     procedure ApplyFromFormToEntry;
   public
-    constructor Create(AOwner: TComponent; AEntry: TEntry);
+    constructor Create(AOwner: TComponent; AEntry: TEntry); reintroduce;
   end;
 
 implementation

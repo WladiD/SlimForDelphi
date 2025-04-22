@@ -1,0 +1,3 @@
+[submodule "Lib/WDDelphiTools"]
+	path = Lib/WDDelphiTools
+	url = https://github.com/WladiD/WDDelphiTools
