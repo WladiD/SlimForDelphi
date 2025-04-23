@@ -24,7 +24,8 @@ uses
   IdTCPServer,
 
   Slim.Exec,
-  Slim.List;
+  Slim.List,
+  Slim.Symbol;
 
 type
 
@@ -32,8 +33,10 @@ type
 
   TSlimServer = class(TIdTCPServer)
   private
+    FLibInstances: TSlimFixtureList;
     FOnReadRequest: TStringEvent;
     FOnWriteResponse: TStringEvent;
+    FSymbols: TSlimSymbolDictionary;
   protected
     function  Execute(const ARequest: String): TSlimList;
     function  ReadLength(AIo: TIdIOHandler): Integer;
@@ -42,6 +45,7 @@ type
     procedure WriteString(AIo: TIdIOHandler; const AValue: String);
   public
     procedure AfterConstruction; override;
+    destructor Destroy; override;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
     property OnWriteResponse: TStringEvent read FOnWriteResponse write FOnWriteResponse;
   end;
@@ -54,6 +58,14 @@ procedure TSlimServer.AfterConstruction;
 begin
   inherited AfterConstruction;
   OnExecute := SlimServerExecute;
+  FSymbols := TSlimSymbolDictionary.Create;
+  FLibInstances := TSlimFixtureList.Create(True);
+end;
+
+destructor TSlimServer.Destroy;
+begin
+  FSymbols.Free;
+  inherited;
 end;
 
 function TSlimServer.Execute(const ARequest: String): TSlimList;
@@ -62,7 +74,7 @@ var
   Stmts   : TSlimList;
 begin
   Stmts := nil;
-  Executor := TSlimExecutor.Create;
+  Executor := TSlimExecutor.Create(FSymbols, FLibInstances);
   try
     Stmts := SlimListUnserialize(ARequest);
     Result := Executor.Execute(Stmts);

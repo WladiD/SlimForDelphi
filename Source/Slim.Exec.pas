@@ -20,7 +20,8 @@ uses
   WDDT.DelayedMethod,
 
   Slim.Fixture,
-  Slim.List;
+  Slim.List,
+  Slim.Symbol;
 
 type
 
@@ -37,9 +38,10 @@ type
 
   TSlimStatementContext = record
   public
-    Resolver    : TSlimFixtureResolver;
     Instances   : TSlimFixtureDictionary;
     LibInstances: TSlimFixtureList;
+    Resolver    : TSlimFixtureResolver;
+    Symbols     : TSlimSymbolDictionary;
   end;
 
   TSlimStatement = class
@@ -81,9 +83,11 @@ type
 
   TSlimStmtCallBase = class(TSlimStatement)
   protected
+    function ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
     function ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
+    function ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
     function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
     function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   public
@@ -120,10 +124,10 @@ type
   TSlimExecutor = class
   private
     FLibInstances: TSlimFixtureList;
+    FSymbols     : TSlimSymbolDictionary;
     function ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
   public
-    constructor Create;
-    destructor Destroy; override;
+    constructor Create(ASymbols: TSlimSymbolDictionary; ALibInstances: TSlimFixtureList);
     function Execute(ARawStmts: TSlimList): TSlimList;
   end;
 
@@ -282,6 +286,22 @@ end;
 
 { TSlimStmtCallBase }
 
+function TSlimStmtCallBase.ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
+var
+  Executed: Boolean;
+begin
+  if not TryGetInstanceAndMethod(AInstance, ASlimMethod, AInvokeArgs) then
+    Exit(ResponseException(InstanceParam + '.' + FunctionParam, 'NO_INSTANCE'));
+
+  Executed := false;
+
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+    Result := ExecuteSynchronized(AInstance, ASlimMethod, AInvokeArgs, Executed);
+
+  if not Executed then
+    Result := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+end;
+
 function TSlimStmtCallBase.ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
 var
   ExceptClassName: String;
@@ -361,6 +381,16 @@ begin
   end;
 end;
 
+function TSlimStmtCallBase.ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
+begin
+  if AMethodResult.IsInstanceOf(TSlimList) then
+    Result := AMethodResult.AsObject as TSlimList
+  else if ASlimMethod.MethodKind = mkProcedure then
+    Result := ResponseString('/__VOID__/')
+  else
+    Result := ResponseValue(AMethodResult);
+end;
+
 function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
 
   function TryGetFromInstances: Boolean;
@@ -409,29 +439,13 @@ end;
 
 function TSlimStmtCall.Execute: TSlimList;
 var
-  Executed    : Boolean;
   Instance    : TSlimFixture;
   InvokeArgs  : TArray<TValue>;
-  SlimMethod  : TRttiMethod;
   MethodResult: TValue;
+  SlimMethod  : TRttiMethod;
 begin
-  if not TryGetInstanceAndMethod(Instance, SlimMethod, InvokeArgs) then
-    Exit(ResponseException(InstanceParam + '.' + FunctionParam, 'NO_INSTANCE'));
-
-  Executed := false;
-
-  if TThread.CurrentThread.ThreadID <> MainThreadID then
-    MethodResult := ExecuteSynchronized(Instance, SlimMethod, InvokeArgs, Executed);
-
-  if not Executed then
-    MethodResult := SlimMethod.Invoke(Instance, InvokeArgs);
-
-  if MethodResult.IsInstanceOf(TSlimList) then
-    Result := MethodResult.AsObject as TSlimList
-  else if SlimMethod.MethodKind = mkProcedure then
-    Result := ResponseString('/__VOID__/')
-  else
-    Result := ResponseValue(MethodResult);
+  MethodResult := ExecuteInternal(Instance, SlimMethod, InvokeArgs);
+  Result := ResponseExecute(SlimMethod, MethodResult);
 end;
 
 function TSlimStmtCall.GetFunctionParam: String;
@@ -453,8 +467,15 @@ begin
 end;
 
 function TSlimStmtCallAndAssign.Execute: TSlimList;
+var
+  Instance    : TSlimFixture;
+  InvokeArgs  : TArray<TValue>;
+  MethodResult: TValue;
+  SlimMethod  : TRttiMethod;
 begin
-  Result := nil;
+  MethodResult := ExecuteInternal(Instance, SlimMethod, InvokeArgs);
+  Context.Symbols.AddOrSetValue(SymbolParam, MethodResult);
+  Result := ResponseExecute(SlimMethod, MethodResult);
 end;
 
 function TSlimStmtCallAndAssign.GetFunctionParam: String;
@@ -476,15 +497,10 @@ end;
 
 { TSlimExecutor }
 
-constructor TSlimExecutor.Create;
+constructor TSlimExecutor.Create(ASymbols: TSlimSymbolDictionary; ALibInstances: TSlimFixtureList);
 begin
-  FLibInstances := TSlimFixtureList.Create(True);
-end;
-
-destructor TSlimExecutor.Destroy;
-begin
-  FLibInstances.Free;
-  inherited;
+  FSymbols := ASymbols;
+  FLibInstances := ALibInstances;
 end;
 
 function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
@@ -528,6 +544,7 @@ begin
       Context.Resolver := Resolver;
       Context.Instances := Instances;
       Context.LibInstances := FLibInstances;
+      Context.Symbols := FSymbols;
 
       for var Loop := 0 to ARawStmts.Count - 1 do
       begin

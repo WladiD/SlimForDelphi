@@ -20,7 +20,8 @@ uses
 
   Slim.Exec,
   Slim.Fixture,
-  Slim.List;
+  Slim.List,
+  Slim.Symbol;
 
 type
 
@@ -57,22 +58,25 @@ end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
 var
-  Executor   : TSlimExecutor;
-  Stmts      : TSlimList;
-  Response   : TSlimList;
   ResponseStr: String;
 begin
-  Response := nil;
-  Stmts := nil;
-  Executor := TSlimExecutor.Create;
+  var Response: TSlimList := nil;
+  var Stmts: TSlimList := nil;
+  var Symbols: TSlimSymbolDictionary := nil;
+  var LibInstances: TSlimFixtureList := nil;
+  var Executor: TSlimExecutor := nil;
   try
+    Symbols := TSlimSymbolDictionary.Create;
+    LibInstances := TSlimFixtureList.Create(true);
+    Executor := TSlimExecutor.Create(Symbols, LibInstances);
     Stmts := CreateStmtsFromFile('Data\TwoMinuteExample.txt');
     Response := Executor.Execute(Stmts);
     Assert.AreEqual(Stmts.Count, Response.Count);
-
     ResponseStr := SlimListSerialize(Response);
     Assert.IsNotEmpty(ResponseStr)
   finally
+    Symbols.Free;
+    LibInstances.Free;
     Response.Free;
     Stmts.Free;
     Executor.Free;

@@ -8,6 +8,17 @@ unit Slim.Symbol;
 
 interface
 
+uses
+
+  System.Classes,
+  System.Generics.Collections,
+  System.Rtti,
+  System.SysUtils;
+
+type
+
+  TSlimSymbolDictionary = TDictionary<String, TValue>;
+
 implementation
 
 end.
