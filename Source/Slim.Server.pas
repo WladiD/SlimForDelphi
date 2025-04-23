@@ -27,6 +27,10 @@ uses
   Slim.List,
   Slim.Symbol;
 
+{$IFNDEF DEBUG}
+  {$MESSAGE WARN 'Do not run the SLIM server on a production application!'}
+{$ENDIF}
+
 type
 
   TStringEvent = procedure(const AValue: String) of object;
