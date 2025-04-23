@@ -51,8 +51,8 @@ type
     procedure SelectEntryById(const AId: Integer);
   end;
 
-  [SlimFixture('AddEntries', 'mfe')]
-  TSlimAddTableFixture = class(TSlimFixture)
+  [SlimFixture('AddEntry', 'mfe')]
+  TSlimAddEntryFixture = class(TSlimFixture)
   private
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
@@ -84,7 +84,7 @@ implementation
 
 class constructor TMainForm.Create;
 begin
-  RegisterSlimFixture(TSlimAddTableFixture);
+  RegisterSlimFixture(TSlimAddEntryFixture);
   RegisterSlimFixture(TSlimSelectEntryFixture);
 end;
 
@@ -171,21 +171,21 @@ begin
   end;
 end;
 
-{ TSlimAddTableFixture }
+{ TSlimAddEntryFixture }
 
-function TSlimAddTableFixture.Add: Boolean;
+function TSlimAddEntryFixture.Add: Boolean;
 begin
   var EntryForm: TEntryForm := Screen.FocusedForm as TEntryForm;
   Result := EntryForm.OkButton.Enabled;
   EntryForm.OkButton.Click;
 end;
 
-function TSlimAddTableFixture.Id: Integer;
+function TSlimAddEntryFixture.Id: Integer;
 begin
   Result := MainForm.FEntries.Last.Id;
 end;
 
-function TSlimAddTableFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
+function TSlimAddEntryFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
 begin
   Result := true;
   if SameText(AMethod.Name, 'Reset') then
@@ -194,12 +194,12 @@ begin
     Result := false;
 end;
 
-procedure TSlimAddTableFixture.Reset;
+procedure TSlimAddEntryFixture.Reset;
 begin
   MainForm.AddButton.Click;
 end;
 
-procedure TSlimAddTableFixture.SetEntryDate(const AValue: String);
+procedure TSlimAddEntryFixture.SetEntryDate(const AValue: String);
 var
   EntryForm: TEntryForm;
   EntryDate: TDateTime;
@@ -208,7 +208,7 @@ begin
     EntryForm.EntryDatePicker.Date := EntryDate;
 end;
 
-procedure TSlimAddTableFixture.SetName(const AValue: String);
+procedure TSlimAddEntryFixture.SetName(const AValue: String);
 var
   EntryForm: TEntryForm;
 begin
@@ -216,7 +216,7 @@ begin
     EntryForm.NameEdit.Text := AValue;
 end;
 
-function TSlimAddTableFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
+function TSlimAddEntryFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
 begin
   if SameText(AMethod.Name, 'Reset') then
     Result := smSynchronizedAndDelayed
@@ -224,14 +224,14 @@ begin
     Result := smSynchronized;
 end;
 
-function TSlimAddTableFixture.TryGetEntryForm(out AForm: TEntryForm): Boolean;
+function TSlimAddEntryFixture.TryGetEntryForm(out AForm: TEntryForm): Boolean;
 begin
   Result := Assigned(Screen.FocusedForm) and (Screen.FocusedForm is TEntryForm);
   if Result then
     AForm := Screen.FocusedForm as TEntryForm;
 end;
 
-function TSlimAddTableFixture.WorkingYearsForTAIFUN: Double;
+function TSlimAddEntryFixture.WorkingYearsForTAIFUN: Double;
 begin
   Result := MainForm.FEntries.Last.WorkingYears;
 end;
