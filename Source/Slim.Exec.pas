@@ -221,6 +221,8 @@ begin
     FSymbols := TSlimSymbolDictionary.Create;
     Include(FOwnedMembers, cmSymbols);
   end;
+  if Assigned(FResolver) and Assigned(FSymbols) and not Assigned(FResolver.SymbolResolveFunc) then
+    FResolver.SymbolResolveFunc := FSymbols.EvalSymbols;
 end;
 
 procedure TSlimStatementContext.SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);

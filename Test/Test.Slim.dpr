@@ -15,7 +15,8 @@ uses
   DUnitX.TestFramework,
   Test.SlimList in 'Test.SlimList.pas',
   Test.SlimFixture in 'Test.SlimFixture.pas',
-  Test.SlimExec in 'Test.SlimExec.pas';
+  Test.SlimExec in 'Test.SlimExec.pas',
+  Test.SlimSymbol in 'Test.SlimSymbol.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

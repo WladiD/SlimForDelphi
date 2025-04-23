@@ -47,6 +47,8 @@ type
   public
     destructor Destroy; override;
     procedure AfterConstruction; override;
+    function GetSelEntry: TEntry;
+    procedure SelectEntryById(const AId: Integer);
   end;
 
   [SlimFixture('AddEntries', 'mfe')]
@@ -64,6 +66,13 @@ type
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
   end;
 
+  [SlimFixture('SelectEntry', 'mfe')]
+  TSlimSelectEntryFixture = class(TSlimFixture)
+  public
+    function  CurName: String;
+    procedure SetSelId(AId: Integer);
+  end;
+
 var
   MainForm: TMainForm;
 
@@ -76,6 +85,7 @@ implementation
 class constructor TMainForm.Create;
 begin
   RegisterSlimFixture(TSlimAddTableFixture);
+  RegisterSlimFixture(TSlimSelectEntryFixture);
 end;
 
 procedure TMainForm.AfterConstruction;
@@ -97,6 +107,27 @@ destructor TMainForm.Destroy;
 begin
   FEntries.Free;
   inherited;
+end;
+
+function TMainForm.GetSelEntry: TEntry;
+begin
+  var Index: Integer := MainGrid.Row - 1;
+  if Index < FEntries.Count then
+    Result := FEntries[Index]
+  else
+    Result := nil;
+end;
+
+procedure TMainForm.SelectEntryById(const AId: Integer);
+begin
+  for var Loop: Integer := 0 to FEntries.Count - 1 do
+  begin
+    if FEntries[Loop].Id = AId then
+    begin
+      MainGrid.Row := Loop + 1;
+      Exit;
+    end;
+  end;
 end;
 
 procedure TMainForm.UpdateMainGrid;
@@ -203,6 +234,22 @@ end;
 function TSlimAddTableFixture.WorkingYearsForTAIFUN: Double;
 begin
   Result := MainForm.FEntries.Last.WorkingYears;
+end;
+
+{ TSlimSelectEntryFixture }
+
+function TSlimSelectEntryFixture.CurName: String;
+begin
+  var SelEntry := MainForm.GetSelEntry;
+  if Assigned(SelEntry) then
+    Result := SelEntry.Name
+  else
+    Result := '';
+end;
+
+procedure TSlimSelectEntryFixture.SetSelId(AId: Integer);
+begin
+  MainForm.SelectEntryById(AId);
 end;
 
 end.

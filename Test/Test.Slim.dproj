@@ -78,6 +78,7 @@
         <DCCReference Include="Test.SlimList.pas"/>
         <DCCReference Include="Test.SlimFixture.pas"/>
         <DCCReference Include="Test.SlimExec.pas"/>
+        <DCCReference Include="Test.SlimSymbol.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

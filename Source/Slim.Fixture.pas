@@ -93,16 +93,19 @@ type
   end;
 
   TSlimFixtureClass = class of TSlimFixture;
+  TSymbolResolveFunc = function(const AValue: String): String of object;
 
   TSlimFixtureResolver = class
   private
     FContext: TRttiContext;
+    FSymbolResolveFunc: TSymbolResolveFunc;
   public
     constructor Create;
     destructor Destroy; override;
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    property SymbolResolveFunc: TSymbolResolveFunc read FSymbolResolveFunc write FSymbolResolveFunc;
   end;
 
 procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
@@ -290,6 +293,7 @@ var
   ArgsCount        : Integer;
   CheckMethod      : TRttiMethod;
   CheckMethodParams: TArray<TRttiParameter>;
+  CurArgRaw        : TSlimEntry;
   HasArgs          : Boolean;
   NameIsEmpty      : Boolean;
 
@@ -309,6 +313,13 @@ var
       (not HasArgs and (ParametersCount = 0));
   end;
 
+  function CurArgRawToString: String;
+  begin
+    Result := CurArgRaw.ToString;
+    if Assigned(FSymbolResolveFunc) then
+      Result := FSymbolResolveFunc(Result);
+  end;
+
 begin
   NameIsEmpty := AName = '';
   HasArgs := AArgStartIndex > 0;
@@ -326,16 +337,16 @@ begin
       begin
         var ArgRawIndex: Integer := AArgStartIndex + ArgLoop;
         var ParamTypeKind: TTypeKind := CheckMethodParams[ArgLoop].ParamType.TypeKind;
-        var CurArgRaw: TSlimEntry := ARawStmt[ArgRawIndex];
+        CurArgRaw := ARawStmt[ArgRawIndex];
         var CurValue: TValue := nil;
 
         case ParamTypeKind of
           tkInteger:
-            CurValue := StrToInt(CurArgRaw.ToString);
+            CurValue := StrToInt(CurArgRawToString);
           tkInt64:
-            CurValue := StrToInt64(CurArgRaw.ToString);
+            CurValue := StrToInt64(CurArgRawToString);
           tkFloat:
-            CurValue := StrToFloat(CurArgRaw.ToString, TFormatSettings.Invariant);
+            CurValue := StrToFloat(CurArgRawToString, TFormatSettings.Invariant);
           tkClass:
           begin
             var ParamClass: TClass := CheckMethodParams[ArgLoop].ParamType.AsInstance.MetaclassType;
@@ -344,7 +355,7 @@ begin
           end;
           tkString,
           tkUString:
-            CurValue := CurArgRaw.ToString;
+            CurValue := CurArgRawToString;
         end;
         AInvokeArgs[ArgLoop] := CurValue;
       end;
