@@ -33,10 +33,9 @@ type
 
   TSlimServer = class(TIdTCPServer)
   private
-    FLibInstances: TSlimFixtureList;
-    FOnReadRequest: TStringEvent;
+    FContext        : TSlimStatementContext;
+    FOnReadRequest  : TStringEvent;
     FOnWriteResponse: TStringEvent;
-    FSymbols: TSlimSymbolDictionary;
   protected
     function  Execute(const ARequest: String): TSlimList;
     function  ReadLength(AIo: TIdIOHandler): Integer;
@@ -58,13 +57,16 @@ procedure TSlimServer.AfterConstruction;
 begin
   inherited AfterConstruction;
   OnExecute := SlimServerExecute;
-  FSymbols := TSlimSymbolDictionary.Create;
-  FLibInstances := TSlimFixtureList.Create(True);
+  FContext := TSlimStatementContext.Create;
+  FContext.InitMembers([
+    TSlimStatementContext.TContextMember.cmLibInstances,
+    TSlimStatementContext.TContextMember.cmResolver,
+    TSlimStatementContext.TContextMember.cmSymbols]);
 end;
 
 destructor TSlimServer.Destroy;
 begin
-  FSymbols.Free;
+  FContext.Free;
   inherited;
 end;
 
@@ -74,7 +76,7 @@ var
   Stmts   : TSlimList;
 begin
   Stmts := nil;
-  Executor := TSlimExecutor.Create(FSymbols, FLibInstances);
+  Executor := TSlimExecutor.Create(FContext);
   try
     Stmts := SlimListUnserialize(ARequest);
     Result := Executor.Execute(Stmts);

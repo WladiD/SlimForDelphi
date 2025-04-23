@@ -36,12 +36,26 @@ type
   TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
   TSlimFixtureList = TObjectList<TSlimFixture>;
 
-  TSlimStatementContext = record
+  TSlimStatementContext = class
+  public type
+    TContextMember = (cmInstances, cmLibInstances, cmResolver, cmSymbols);
+    TContextMembers = set of TContextMember;
+  private
+    FOwnedMembers: TContextMembers;
+    FInstances   : TSlimFixtureDictionary;
+    FLibInstances: TSlimFixtureList;
+    FResolver    : TSlimFixtureResolver;
+    FSymbols     : TSlimSymbolDictionary;
   public
-    Instances   : TSlimFixtureDictionary;
-    LibInstances: TSlimFixtureList;
-    Resolver    : TSlimFixtureResolver;
-    Symbols     : TSlimSymbolDictionary;
+    destructor Destroy; override;
+    procedure InitAllMembers;
+    procedure InitMembers(AContextMembers: TContextMembers);
+    procedure SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);
+  public
+    property LibInstances: TSlimFixtureList read FLibInstances;
+    property Resolver: TSlimFixtureResolver read FResolver;
+    property Symbols: TSlimSymbolDictionary read FSymbols;
+    property Instances: TSlimFixtureDictionary read FInstances;
   end;
 
   TSlimStatement = class
@@ -60,7 +74,7 @@ type
     function ResponseString(const AValue: String): TSlimList;
     function ResponseValue(const AValue: TValue): TSlimList;
   public
-    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); virtual;
+    constructor Create(ARawStmt: TSlimList; AContext: TSlimStatementContext); virtual;
     function Execute: TSlimList; virtual;
     property IdParam: String index 0 read GetRawStmtString;
   end;
@@ -75,7 +89,7 @@ type
 
   TSlimStmtMake = class(TSlimStatement)
   public
-    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
+    constructor Create(ARawStmt: TSlimList; AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property InstanceParam: String index 2 read GetRawStmtString;
     property ClassParam: String index 3 read GetRawStmtString;
@@ -92,7 +106,7 @@ type
     function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   public
     property InstanceParam: String read GetInstanceParam;
-    property FunctionParam: String read GetFunctionParam;    
+    property FunctionParam: String read GetFunctionParam;
   end;
 
   TSlimStmtCall = class(TSlimStmtCallBase)
@@ -100,7 +114,7 @@ type
     function GetFunctionParam: String; override;
     function GetInstanceParam: String; override;
   public
-    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
+    constructor Create(ARawStmt: TSlimList; AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
   end;
 
@@ -109,7 +123,7 @@ type
     function GetFunctionParam: String; override;
     function GetInstanceParam: String; override;
   public
-    constructor Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext); override;
+    constructor Create(ARawStmt: TSlimList; AContext: TSlimStatementContext); override;
     function Execute: TSlimList; override;
     property SymbolParam: String index 2 read GetRawStmtString;
   end;
@@ -123,11 +137,10 @@ type
 
   TSlimExecutor = class
   private
-    FLibInstances: TSlimFixtureList;
-    FSymbols     : TSlimSymbolDictionary;
-    function ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
+    FContext: TSlimStatementContext;
+    function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
-    constructor Create(ASymbols: TSlimSymbolDictionary; ALibInstances: TSlimFixtureList);
+    constructor Create(AContext: TSlimStatementContext);
     function Execute(ARawStmts: TSlimList): TSlimList;
   end;
 
@@ -165,9 +178,65 @@ begin
   Result := InstructionClassMap[AInstruction];
 end;
 
+{ TSlimStatementContext }
+
+destructor TSlimStatementContext.Destroy;
+begin
+  if cmInstances in FOwnedMembers then
+    FreeAndNil(FInstances);
+  if cmLibInstances in FOwnedMembers then
+    FreeAndNil(LibInstances);
+  if cmResolver in FOwnedMembers then
+    FreeAndNil(Resolver);
+  if cmSymbols in FOwnedMembers then
+    FreeAndNil(Symbols);
+  FOwnedMembers := [];
+  inherited;
+end;
+
+procedure TSlimStatementContext.InitAllMembers;
+begin
+  InitMembers([cmInstances..cmSymbols]);
+end;
+
+procedure TSlimStatementContext.InitMembers(AContextMembers: TContextMembers);
+begin
+  if not Assigned(FInstances) and (cmInstances in AContextMembers) then
+  begin
+    FInstances := TSlimFixtureDictionary.Create([doOwnsValues]);
+    Include(FOwnedMembers, cmInstances);
+  end;
+  if not Assigned(FLibInstances) and (cmLibInstances in AContextMembers) then
+  begin
+    FLibInstances := TSlimFixtureList.Create(True);
+    Include(FOwnedMembers, cmLibInstances);
+  end;
+  if not Assigned(FResolver) and (cmResolver in AContextMembers) then
+  begin
+    FResolver := TSlimFixtureResolver.Create;
+    Include(FOwnedMembers, cmResolver);
+  end;
+  if not Assigned(FSymbols) and (cmSymbols in AContextMembers) then
+  begin
+    FSymbols := TSlimSymbolDictionary.Create;
+    Include(FOwnedMembers, cmSymbols);
+  end;
+end;
+
+procedure TSlimStatementContext.SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);
+begin
+  if cmInstances in FOwnedMembers then
+    FInstances.Free;
+  FInstances := AInstances;
+  if AOwnIt then
+    Include(FOwnedMembers, cmInstances)
+  else
+    Exclude(FOwnedMembers, cmInstances);
+end;
+
 { TSlimStatement }
 
-constructor TSlimStatement.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+constructor TSlimStatement.Create(ARawStmt: TSlimList; AContext: TSlimStatementContext);
 begin
   FRawStmt := ARawStmt;
   FContext := AContext;
@@ -245,7 +314,7 @@ end;
 
 { TSlimStmtMake }
 
-constructor TSlimStmtMake.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+constructor TSlimStmtMake.Create(ARawStmt: TSlimList; AContext: TSlimStatementContext);
 begin
   inherited;
   FArgStartIndex := 4;
@@ -431,7 +500,7 @@ end;
 
 { TSlimStmtCall }
 
-constructor TSlimStmtCall.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+constructor TSlimStmtCall.Create(ARawStmt: TSlimList; AContext: TSlimStatementContext);
 begin
   inherited;
   FArgStartIndex := 4;
@@ -460,7 +529,7 @@ end;
 
 { TSlimStmtCallAndAssign }
 
-constructor TSlimStmtCallAndAssign.Create(ARawStmt: TSlimList; const AContext: TSlimStatementContext);
+constructor TSlimStmtCallAndAssign.Create(ARawStmt: TSlimList; AContext: TSlimStatementContext);
 begin
   inherited;
   FArgStartIndex := 5;
@@ -497,13 +566,12 @@ end;
 
 { TSlimExecutor }
 
-constructor TSlimExecutor.Create(ASymbols: TSlimSymbolDictionary; ALibInstances: TSlimFixtureList);
+constructor TSlimExecutor.Create(AContext: TSlimStatementContext);
 begin
-  FSymbols := ASymbols;
-  FLibInstances := ALibInstances;
+  FContext := AContext;
 end;
 
-function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; const AContext: TSlimStatementContext): TSlimList;
+function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
 var
   Stmt     : TSlimStatement;
   StmtClass: TSlimStatementClass;
@@ -527,38 +595,19 @@ begin
 end;
 
 function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
-var
-  Context  : TSlimStatementContext;
-  Instances: TSlimFixtureDictionary;
-  Resolver : TSlimFixtureResolver;
 begin
-  Resolver := nil;
-  Instances := nil;
   Result := TSlimList.Create;
   try
-    try
-      Resolver := TSlimFixtureResolver.Create;
-      Instances := TSlimFixtureDictionary.Create([doOwnsValues]);
-
-      Context := Default(TSlimStatementContext);
-      Context.Resolver := Resolver;
-      Context.Instances := Instances;
-      Context.LibInstances := FLibInstances;
-      Context.Symbols := FSymbols;
-
-      for var Loop := 0 to ARawStmts.Count - 1 do
+    FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+    for var Loop := 0 to ARawStmts.Count - 1 do
+    begin
+      var LRawStmt: TSlimEntry := ARawStmts[Loop];
+      if LRawStmt is TSlimList then
       begin
-        var LRawStmt: TSlimEntry := ARawStmts[Loop];
-        if LRawStmt is TSlimList then
-        begin
-          var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), Context);
-          if Assigned(LStmtResult) then
-            Result.Add(LStmtResult);
-        end;
+        var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), FContext);
+        if Assigned(LStmtResult) then
+          Result.Add(LStmtResult);
       end;
-    finally
-      Resolver.Free;
-      Instances.Free;
     end;
   except
     Result.Free;

@@ -11,6 +11,7 @@ interface
 uses
 
   System.Classes,
+  System.Contnrs,
   System.Generics.Collections,
   System.IOUtils,
   System.Rtti,
@@ -38,6 +39,8 @@ type
   TestSlimStatement = class
   private
     FContext: TSlimStatementContext;
+    FGarbage: TObjectList;
+    function GarbageCollect(AList: TSlimList): TSlimList;
   public
     [Setup]
     procedure Setup;
@@ -58,25 +61,23 @@ end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
 var
+  Executor   : TSlimExecutor;
   ResponseStr: String;
 begin
+  Executor := nil;
   var Response: TSlimList := nil;
   var Stmts: TSlimList := nil;
-  var Symbols: TSlimSymbolDictionary := nil;
-  var LibInstances: TSlimFixtureList := nil;
-  var Executor: TSlimExecutor := nil;
+  var SlimContext: TSlimStatementContext := TSlimStatementContext.Create;
+  SlimContext.InitAllMembers;
   try
-    Symbols := TSlimSymbolDictionary.Create;
-    LibInstances := TSlimFixtureList.Create(true);
-    Executor := TSlimExecutor.Create(Symbols, LibInstances);
+    Executor := TSlimExecutor.Create(SlimContext);
     Stmts := CreateStmtsFromFile('Data\TwoMinuteExample.txt');
     Response := Executor.Execute(Stmts);
     Assert.AreEqual(Stmts.Count, Response.Count);
     ResponseStr := SlimListSerialize(Response);
     Assert.IsNotEmpty(ResponseStr)
   finally
-    Symbols.Free;
-    LibInstances.Free;
+    SlimContext.Free;
     Response.Free;
     Stmts.Free;
     Executor.Free;
@@ -85,10 +86,16 @@ end;
 
 { TestSlimStatement }
 
+function TestSlimStatement.GarbageCollect(AList: TSlimList): TSlimList;
+begin
+  Result := AList;
+  FGarbage.Add(AList);
+end;
+
 procedure TestSlimStatement.LibInstanceTest;
 begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
-    SlimList(['id', 'make', 'library_instance', 'Division']), FContext);
+    GarbageCollect(SlimList(['id', 'make', 'library_instance', 'Division'])), FContext);
   try
     MakeStmt.Execute.Free;
     Assert.AreEqual(0, FContext.Instances.Count);
@@ -99,7 +106,7 @@ begin
 
   var CallResp1: TSlimList := nil;
   var CallStmt1: TSlimStmtCall := TSlimStmtCall.Create(
-    SlimList(['call_id_1', 'call', 'invalid_instance', 'setNumerator', '30']), FContext);
+    GarbageCollect(SlimList(['call_id_1', 'call', 'invalid_instance', 'setNumerator', '30'])), FContext);
   try
     CallResp1 := CallStmt1.Execute;
     Assert.AreEqual('call_id_1', CallResp1[0].ToString);
@@ -111,7 +118,7 @@ begin
 
   var CallResp2: TSlimList := nil;
   var CallStmt2: TSlimStmtCall := TSlimStmtCall.Create(
-    SlimList(['call_id_2', 'call', 'invalid_instance', 'setDenominator', '10']), FContext);
+    GarbageCollect(SlimList(['call_id_2', 'call', 'invalid_instance', 'setDenominator', '10'])), FContext);
   try
     CallResp2 := CallStmt2.Execute;
     Assert.AreEqual('call_id_2', CallResp2[0].ToString);
@@ -123,7 +130,7 @@ begin
 
   var CallResp3: TSlimList := nil;
   var CallStmt3: TSlimStmtCall := TSlimStmtCall.Create(
-    SlimList(['call_id_3', 'call', 'invalid_instance', 'quotient']), FContext);
+    GarbageCollect(SlimList(['call_id_3', 'call', 'invalid_instance', 'quotient'])), FContext);
   try
     CallResp3 := CallStmt3.Execute;
     Assert.AreEqual('call_id_3', CallResp3[0].ToString);
@@ -136,17 +143,15 @@ end;
 
 procedure TestSlimStatement.Setup;
 begin
-  FContext := Default(TSlimStatementContext);
-  FContext.Resolver := TSlimFixtureResolver.Create;
-  FContext.Instances := TSlimFixtureDictionary.Create([doOwnsValues]);
-  FContext.LibInstances := TSlimFixtureList.Create(True);
+  FContext := TSlimStatementContext.Create;
+  FContext.InitAllMembers;
+  FGarbage := TObjectList.Create(True);
 end;
 
 procedure TestSlimStatement.TearDown;
 begin
-  FreeAndNil(FContext.Resolver);
-  FreeAndNil(FContext.Instances);
-  FreeAndNil(FContext.LibInstances);
+  FContext.Free;
+  FGarbage.Free;
 end;
 
 end.
