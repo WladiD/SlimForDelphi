@@ -94,10 +94,12 @@ type
 
   TSlimFixtureClass = class of TSlimFixture;
   TSymbolResolveFunc = function(const AValue: String): String of object;
+  TSymbolObjectFunc = function(const AValue: String): TObject of object;
 
   TSlimFixtureResolver = class
   private
-    FContext: TRttiContext;
+    FRttiContext      : TRttiContext;
+    FSymbolObjectFunc : TSymbolObjectFunc;
     FSymbolResolveFunc: TSymbolResolveFunc;
   public
     constructor Create;
@@ -105,6 +107,7 @@ type
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    property SymbolObjectFunc: TSymbolObjectFunc read FSymbolObjectFunc write FSymbolObjectFunc;
     property SymbolResolveFunc: TSymbolResolveFunc read FSymbolResolveFunc write FSymbolResolveFunc;
   end;
 
@@ -214,12 +217,12 @@ end;
 
 constructor TSlimFixtureResolver.Create;
 begin
-  FContext := TRttiContext.Create;
+  FRttiContext := TRttiContext.Create;
 end;
 
 destructor TSlimFixtureResolver.Destroy;
 begin
-  FContext.Free;
+  FRttiContext.Free;
   inherited;
 end;
 
@@ -227,7 +230,7 @@ function TSlimFixtureResolver.GetRttiInstanceTypeFromInstance(Instance: TObject)
 var
   RttiType: TRttiType;
 begin
-  RttiType := FContext.GetType(Instance.ClassInfo);
+  RttiType := FRttiContext.GetType(Instance.ClassInfo);
   Result := RttiType as TRttiInstanceType;
 end;
 
@@ -265,7 +268,7 @@ var
   end;
 
 begin
-  for LType in FContext.GetTypes do
+  for LType in FRttiContext.GetTypes do
   begin
     if LType.IsInstance then
     begin
@@ -320,6 +323,16 @@ var
       Result := FSymbolResolveFunc(Result);
   end;
 
+  function TryArgRawToObject(out AObject: TObject): Boolean;
+  begin
+    Result := Assigned(FSymbolObjectFunc);
+    if Result then
+    begin
+      AObject := FSymbolObjectFunc(CurArgRaw.ToString);
+      Result := Assigned(AObject);
+    end;
+  end;
+
 begin
   NameIsEmpty := AName = '';
   HasArgs := AArgStartIndex > 0;
@@ -350,8 +363,13 @@ begin
           tkClass:
           begin
             var ParamClass: TClass := CheckMethodParams[ArgLoop].ParamType.AsInstance.MetaclassType;
+            var ParamObject: TObject := nil;
             if (CurArgRaw is TSlimList) and (ParamClass.InheritsFrom(TSlimList)) then
-              CurValue := CurArgRaw;
+              CurValue := CurArgRaw
+            else if TryArgRawToObject(ParamObject) then
+              CurValue := ParamObject
+            else
+              CurValue := nil;
           end;
           tkString,
           tkUString:
