@@ -17,6 +17,7 @@ uses
   IdComponent,
   IdContext,
   IdCustomTCPServer,
+  IdGlobal,
   IdIOHandler,
   IdServerIOHandler,
   IdServerIOHandlerSocket,
@@ -118,7 +119,7 @@ begin
     var LLength: Integer := ReadLength(Io);
     while LLength > 0 do
     begin
-      var LMessage: String := Io.ReadString(LLength);
+      var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
       if Assigned(FOnReadRequest) then
         FOnReadRequest(LMessage);
       if LMessage = 'bye' then
@@ -143,9 +144,14 @@ begin
 end;
 
 procedure TSlimServer.WriteString(AIo: TIdIOHandler; const AValue: String);
+var
+  Value      : UTF8String;
+  ValueLength: Integer;
 begin
-  WriteLength(AIo, Length(AValue));
-  AIo.Write(AValue);
+  Value := UTF8Encode(AValue);
+  ValueLength := Length(Value);
+  WriteLength(AIo, ValueLength);
+  AIo.Write(TIdBytes(@Value[1]), ValueLength);
   if Assigned(FOnWriteResponse) then
     FOnWriteResponse(AValue);
 end;
