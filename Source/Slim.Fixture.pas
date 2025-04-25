@@ -356,6 +356,16 @@ begin
         case ParamTypeKind of
           tkInteger:
             CurValue := StrToInt(CurArgRawToString);
+          tkEnumeration:
+          begin
+            var EnumStr: String := CurArgRawToString;
+            if SameText(EnumStr, 'true') then
+              CurValue := true
+            else if SameText(EnumStr, 'false') then
+              CurValue := false
+            else
+              CurValue := EnumStr;
+          end;
           tkInt64:
             CurValue := StrToInt64(CurArgRawToString);
           tkFloat:
