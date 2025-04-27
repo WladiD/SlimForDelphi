@@ -125,6 +125,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function GetParamValue(AParam: TRttiParameter; AValueRaw: TSlimEntry): TValue;
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
@@ -262,6 +263,66 @@ begin
   inherited;
 end;
 
+function TSlimFixtureResolver.GetParamValue(AParam: TRttiParameter; AValueRaw: TSlimEntry): TValue;
+var
+  ParamClass: TClass;
+
+  function ValueRawToString: String;
+  begin
+    Result := AValueRaw.ToString;
+    if Assigned(FSymbolResolveFunc) then
+      Result := FSymbolResolveFunc(Result);
+  end;
+
+  function TryValueRawToObject(out AObject: TObject): Boolean;
+  begin
+    Result := Assigned(FSymbolObjectFunc);
+    if Result then
+    begin
+      AObject := FSymbolObjectFunc(AValueRaw.ToString);
+      Result := Assigned(AObject) and (AObject is ParamClass);
+    end;
+  end;
+
+begin
+  var ParamTypeKind: TTypeKind := AParam.ParamType.TypeKind;
+  ParamClass := nil;
+  Result := nil;
+
+  case ParamTypeKind of
+    tkInteger:
+      Result := StrToInt(ValueRawToString);
+    tkEnumeration:
+    begin
+      var EnumStr: String := ValueRawToString;
+      if SameText(EnumStr, 'true') then
+        Result := true
+      else if SameText(EnumStr, 'false') then
+        Result := false
+      else
+        Result := EnumStr;
+    end;
+    tkInt64:
+      Result := StrToInt64(ValueRawToString);
+    tkFloat:
+      Result := StrToFloat(ValueRawToString, TFormatSettings.Invariant);
+    tkClass:
+    begin
+      ParamClass := AParam.ParamType.AsInstance.MetaclassType;
+      var ParamObject: TObject := nil;
+      if (AValueRaw is TSlimList) and (ParamClass.InheritsFrom(TSlimList)) then
+        Result := AValueRaw
+      else if TryValueRawToObject(ParamObject) then
+        Result := ParamObject
+      else
+        Result := nil;
+    end;
+    tkString,
+    tkUString:
+      Result := ValueRawToString;
+  end;
+end;
+
 function TSlimFixtureResolver.GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
 var
   RttiType: TRttiType;
@@ -352,23 +413,6 @@ var
       (not HasArgs and (ParametersCount = 0));
   end;
 
-  function CurArgRawToString: String;
-  begin
-    Result := CurArgRaw.ToString;
-    if Assigned(FSymbolResolveFunc) then
-      Result := FSymbolResolveFunc(Result);
-  end;
-
-  function TryArgRawToObject(out AObject: TObject): Boolean;
-  begin
-    Result := Assigned(FSymbolObjectFunc);
-    if Result then
-    begin
-      AObject := FSymbolObjectFunc(CurArgRaw.ToString);
-      Result := Assigned(AObject);
-    end;
-  end;
-
 begin
   NameIsEmpty := AName = '';
   HasArgs := AArgStartIndex > 0;
@@ -385,42 +429,7 @@ begin
       for var ArgLoop := 0 to ArgsCount - 1 do
       begin
         var ArgRawIndex: Integer := AArgStartIndex + ArgLoop;
-        var ParamTypeKind: TTypeKind := CheckMethodParams[ArgLoop].ParamType.TypeKind;
-        CurArgRaw := ARawStmt[ArgRawIndex];
-        var CurValue: TValue := nil;
-
-        case ParamTypeKind of
-          tkInteger:
-            CurValue := StrToInt(CurArgRawToString);
-          tkEnumeration:
-          begin
-            var EnumStr: String := CurArgRawToString;
-            if SameText(EnumStr, 'true') then
-              CurValue := true
-            else if SameText(EnumStr, 'false') then
-              CurValue := false
-            else
-              CurValue := EnumStr;
-          end;
-          tkInt64:
-            CurValue := StrToInt64(CurArgRawToString);
-          tkFloat:
-            CurValue := StrToFloat(CurArgRawToString, TFormatSettings.Invariant);
-          tkClass:
-          begin
-            var ParamClass: TClass := CheckMethodParams[ArgLoop].ParamType.AsInstance.MetaclassType;
-            var ParamObject: TObject := nil;
-            if (CurArgRaw is TSlimList) and (ParamClass.InheritsFrom(TSlimList)) then
-              CurValue := CurArgRaw
-            else if TryArgRawToObject(ParamObject) then
-              CurValue := ParamObject
-            else
-              CurValue := nil;
-          end;
-          tkString,
-          tkUString:
-            CurValue := CurArgRawToString;
-        end;
+        var CurValue: TValue := GetParamValue(CheckMethodParams[ArgLoop], ARawStmt[ArgRawIndex]);
         AInvokeArgs[ArgLoop] := CurValue;
       end;
     end
