@@ -19,7 +19,7 @@ uses
 type
 
   [SlimFixture('AddEntry', 'mfe')]
-  TSlimAddEntryFixture = class(TSlimFixture)
+  TSlimAddEntryFixture = class(TSlimDecisionTableFixture)
   private
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
@@ -34,7 +34,7 @@ type
   end;
 
   [SlimFixture('SelectEntry', 'mfe')]
-  TSlimSelectEntryFixture = class(TSlimFixture)
+  TSlimSelectEntryFixture = class(TSlimDecisionTableFixture)
   public
     function  CurName: String;
     procedure SetSelId(AId: Integer);

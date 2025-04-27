@@ -63,8 +63,20 @@ type
   TSlimFixture = class
   private
     FDelayedEvent: TEvent;
+  public
+    destructor Destroy; override;
+    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; virtual;
+    procedure InitDelayedEvent;
+    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
+    procedure TriggerDelayedEvent;
+    procedure WaitForDelayedEvent;
+  end;
+
   /// <summary>
-  /// The following public methods are called in this order:
+  /// Implements the methods of the decision table:
+  /// https://fitnesse.org/FitNesse/UserGuide/WritingAcceptanceTests/SliM/DecisionTable.html
+  ///
+  /// The public methods of this class are called in this order:
   /// 1. Table
   /// 2. Next the BeginTable method is called.
   ///    Use this for initializations if you want to.
@@ -77,19 +89,23 @@ type
   /// 3. Finally the EndTable method is called.
   ///    Use this for closedown and cleanup if you want to.
   /// </summary>
+  TSlimDecisionTableFixture = class(TSlimFixture)
   public
     procedure Table(AList: TSlimList); virtual;
     procedure BeginTable; virtual;
     procedure Reset; virtual;
     procedure Execute; virtual;
     procedure EndTable; virtual;
+  end;
+
+  /// <summary>
+  /// Implements the methods of the dynamic decision table:
+  /// https://fitnesse.org/FitNesse/UserGuide/WritingAcceptanceTests/SliM/DynamicDecisionTable.html
+  /// </summary>
+  TSlimDynamicDecisionTableFixture = class(TSlimFixture)
   public
-    destructor Destroy; override;
-    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; virtual;
-    procedure InitDelayedEvent;
-    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
-    procedure TriggerDelayedEvent;
-    procedure WaitForDelayedEvent;
+    function  &Get(const AFieldName: String): String; virtual;
+    procedure &Set(const AFieldName, AFieldValue: String); virtual;
   end;
 
   TSlimFixtureClass = class of TSlimFixture;
@@ -145,30 +161,6 @@ begin
   inherited;
 end;
 
-/// <summary>
-///   BeginTable is called once before a table is getting processed
-/// </summary>
-procedure TSlimFixture.BeginTable;
-begin
-
-end;
-
-/// <summary>
-///   EndTable is called after a table is being processed
-/// </summary>
-procedure TSlimFixture.EndTable;
-begin
-
-end;
-
-/// <summary>
-///   Execute is executed for each row after all Set* methods are executed
-/// </summary>
-procedure TSlimFixture.Execute;
-begin
-
-end;
-
 function TSlimFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
 begin
   Result := False;
@@ -180,22 +172,9 @@ begin
     FDelayedEvent := TEvent.Create(nil, True, False, '');
 end;
 
-/// <summary>
-///   This method is called before each row
-/// </summary>
-procedure TSlimFixture.Reset;
-begin
-
-end;
-
 function TSlimFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
 begin
   Result := smUnsynchronized;
-end;
-
-procedure TSlimFixture.Table(AList: TSlimList);
-begin
-
 end;
 
 procedure TSlimFixture.TriggerDelayedEvent;
@@ -211,6 +190,57 @@ begin
     FDelayedEvent.WaitFor(INFINITE);
     FreeAndNil(FDelayedEvent);
   end;
+end;
+
+{ TSlimDecisionTableFixture }
+
+procedure TSlimDecisionTableFixture.Table(AList: TSlimList);
+begin
+
+end;
+
+/// <summary>
+///   BeginTable is called once before a table is getting processed
+/// </summary>
+procedure TSlimDecisionTableFixture.BeginTable;
+begin
+
+end;
+
+/// <summary>
+///   This method is called before each row
+/// </summary>
+procedure TSlimDecisionTableFixture.Reset;
+begin
+
+end;
+
+/// <summary>
+///   EndTable is called after a table is being processed
+/// </summary>
+procedure TSlimDecisionTableFixture.EndTable;
+begin
+
+end;
+
+/// <summary>
+///   Execute is executed for each row after all Set* methods are executed
+/// </summary>
+procedure TSlimDecisionTableFixture.Execute;
+begin
+
+end;
+
+{ TSlimDynamicDecisionTableFixture }
+
+function TSlimDynamicDecisionTableFixture.&Get(const AFieldName: String): String;
+begin
+
+end;
+
+procedure TSlimDynamicDecisionTableFixture.&Set(const AFieldName, AFieldValue: String);
+begin
+
 end;
 
 { TSlimFixtureResolver }

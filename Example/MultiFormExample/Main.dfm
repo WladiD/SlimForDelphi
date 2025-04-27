@@ -3,7 +3,7 @@ object MainForm: TMainForm
   Top = 0
   Caption = 'Multi form example'
   ClientHeight = 398
-  ClientWidth = 703
+  ClientWidth = 399
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -14,7 +14,7 @@ object MainForm: TMainForm
   object MainGrid: TStringGrid
     Left = 0
     Top = 0
-    Width = 703
+    Width = 399
     Height = 363
     Align = alClient
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect, goFixedRowDefAlign]
@@ -23,7 +23,7 @@ object MainForm: TMainForm
   object BottomPanel: TPanel
     Left = 0
     Top = 363
-    Width = 703
+    Width = 399
     Height = 35
     Align = alBottom
     BevelEdges = [beTop]
