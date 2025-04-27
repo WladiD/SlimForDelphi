@@ -24,7 +24,7 @@ type
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
     function  Add: Boolean;
-    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; override;
+    function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; override;
     function  Id: Integer;
     procedure Reset; override;
     procedure SetEntryDate(const AValue: String);
@@ -56,7 +56,7 @@ begin
   Result := MainForm.Entries.Last.Id;
 end;
 
-function TSlimAddEntryFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
+function TSlimAddEntryFixture.HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean;
 begin
   Result := true;
   if SameText(AMethod.Name, 'Reset') then

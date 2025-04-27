@@ -318,10 +318,10 @@ end;
 
 procedure TSlimListUnserializer.ReadLengthAndEntry(ATarget: TSlimList);
 var
-  CurChar       : Char;
-  EntryLength   : Integer;
-  EntryString   : String;
-  SubEntryList  : TSlimList;
+  CurChar     : Char;
+  EntryLength : Integer;
+  EntryString : String;
+  SubEntryList: TSlimList;
 begin
   EntryLength := ReadLength;
   CurChar := LookChar;

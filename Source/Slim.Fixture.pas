@@ -54,6 +54,11 @@ type
 
   TDelayedInfo = record
     Owner: TComponent;
+    /// <summary>
+    ///   If ManualDelayedEvent is false, TSlimFixture.TriggerDelayedEvent is called automatically.
+    ///   Otherwise it must be called by the implementing TSlimFixture manually.
+    /// </summary>
+    ManualDelayedEvent: Boolean;
   end;
 
   /// <summary>
@@ -65,7 +70,7 @@ type
     FDelayedEvent: TEvent;
   public
     destructor Destroy; override;
-    function  HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean; virtual;
+    function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
     procedure TriggerDelayedEvent;
@@ -161,8 +166,9 @@ begin
   inherited;
 end;
 
-function TSlimFixture.HasDelayedInfo(AMethod: TRttiMethod; out AInfo: TDelayedInfo): Boolean;
+function TSlimFixture.HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean;
 begin
+  AInfo := Default(TDelayedInfo);
   Result := False;
 end;
 

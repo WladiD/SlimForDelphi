@@ -432,11 +432,14 @@ begin
           TDelayedMethod.Execute(
             procedure
             begin
-              TDelayedMethod.Execute(
-                procedure
-                begin
-                  AInstance.TriggerDelayedEvent;
-                end, Info.Owner);
+              if not Info.ManualDelayedEvent then
+              begin
+                TDelayedMethod.Execute(
+                  procedure
+                  begin
+                    AInstance.TriggerDelayedEvent;
+                  end, Info.Owner);
+              end;
               SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
             end, Info.Owner);
         except
