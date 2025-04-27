@@ -107,7 +107,7 @@ type
   /// Implements the methods of the dynamic decision table:
   /// https://fitnesse.org/FitNesse/UserGuide/WritingAcceptanceTests/SliM/DynamicDecisionTable.html
   /// </summary>
-  TSlimDynamicDecisionTableFixture = class(TSlimFixture)
+  TSlimDynamicDecisionTableFixture = class(TSlimDecisionTableFixture)
   public
     function  &Get(const AFieldName: String): String; virtual;
     procedure &Set(const AFieldName, AFieldValue: String); virtual;

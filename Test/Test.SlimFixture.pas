@@ -22,7 +22,7 @@ uses
 type
 
   [SlimFixture('Division', 'eg')]
-  TSlimDivisionFixture = class(TSlimFixture)
+  TSlimDivisionFixture = class(TSlimDecisionTableFixture)
   private
     FNumerator: Double;
     FDenominator: Double;
