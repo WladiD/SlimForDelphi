@@ -393,7 +393,6 @@ var
   ArgsCount        : Integer;
   CheckMethod      : TRttiMethod;
   CheckMethodParams: TArray<TRttiParameter>;
-  CurArgRaw        : TSlimEntry;
   HasArgs          : Boolean;
   NameIsEmpty      : Boolean;
 
