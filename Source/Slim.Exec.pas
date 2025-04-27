@@ -97,12 +97,16 @@ type
 
   TSlimStmtCallBase = class(TSlimStatement)
   protected
+    type
+    TFalseReasonGetInstanceAndMethod = (
+      frUndefined,
+      frNoInstanceFound);
     function ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
     function ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
     function ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
-    function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
     function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   public
     property InstanceParam: String read GetInstanceParam;
@@ -365,10 +369,18 @@ end;
 
 function TSlimStmtCallBase.ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
 var
-  Executed: Boolean;
+  Executed   : Boolean;
+  FalseReason: TFalseReasonGetInstanceAndMethod;
 begin
-  if not TryGetInstanceAndMethod(AInstance, ASlimMethod, AInvokeArgs) then
-    Exit(ResponseException(InstanceParam + '.' + FunctionParam, 'NO_INSTANCE'));
+  if not TryGetInstanceAndMethod(AInstance, ASlimMethod, AInvokeArgs, FalseReason) then
+  begin
+    AInstance := nil;
+    ASlimMethod := nil;
+    var FailException: TSlimList := nil;
+    if FalseReason = frNoInstanceFound then
+      FailException := ResponseException(InstanceParam, 'NO_INSTANCE');
+    Exit(FailException);
+  end;
 
   Executed := false;
 
@@ -463,7 +475,9 @@ end;
 
 function TSlimStmtCallBase.ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
 begin
-  if AMethodResult.IsInstanceOf(TSlimList) then
+  if not Assigned(ASlimMethod) then
+    Result := nil
+  else if AMethodResult.IsInstanceOf(TSlimList) then
     Result := AMethodResult.AsObject as TSlimList
   else if ASlimMethod.MethodKind = mkProcedure then
     Result := ResponseString('/__VOID__/')
@@ -471,13 +485,14 @@ begin
     Result := ResponseValue(AMethodResult);
 end;
 
-function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
+var
+  InstanceFound: Boolean;
 
   function TryGetFromInstances: Boolean;
   begin
-    Result := 
-      Context.Instances.TryGetValue(InstanceParam, AInstance) and
-      TryGetMethod(AInstance, ASlimMethod, AInvokeArgs);  
+    InstanceFound := Context.Instances.TryGetValue(InstanceParam, AInstance);
+    Result := InstanceFound and TryGetMethod(AInstance, ASlimMethod, AInvokeArgs);
   end;
 
   function TryGetFromLibInstances: Boolean;
@@ -492,9 +507,17 @@ function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; 
   end;
 
 begin
+  InstanceFound := False;
   Result :=
     TryGetFromInstances or
-    TryGetFromLibInstances;  
+    TryGetFromLibInstances;
+  if not Result then
+  begin
+    if not InstanceFound then
+      AFalseReason := frNoInstanceFound
+    else
+      AFalseReason := frUndefined;
+  end;
 end;
 
 function TSlimStmtCallBase.TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
