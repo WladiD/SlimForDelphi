@@ -19,6 +19,7 @@ uses
 
   WDDT.DelayedMethod,
 
+  Slim.Common,
   Slim.Fixture,
   Slim.List,
   Slim.Symbol;
@@ -69,7 +70,8 @@ type
     property Context: TSlimStatementContext read FContext;
     property RawStmt: TSlimList read FRawStmt;
   protected
-    function ResponseException(const AMessage: String; const ADefaultMeaning: String = ''): TSlimList;
+    function ResponseException(AException: Exception): TSlimList; overload;
+    function ResponseException(const AMessage: String; const ADefaultMeaning: String = ''): TSlimList; overload;
     function ResponseOk: TSlimList;
     function ResponseString(const AValue: String): TSlimList;
     function ResponseValue(const AValue: TValue): TSlimList;
@@ -141,6 +143,7 @@ type
 
   TSlimExecutor = class
   private
+    FStopExecute: Boolean;
     FContext: TSlimStatementContext;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
@@ -281,6 +284,11 @@ begin
   Result := SlimList([IdParam, '__EXCEPTION__:' + LMessage]);
 end;
 
+function TSlimStatement.ResponseException(AException: Exception): TSlimList;
+begin
+  Result := ResponseException(Format('%s: %s', [AException.ClassName, AException.Message]))
+end;
+
 function TSlimStatement.ResponseOk: TSlimList;
 begin
   Result := SlimList([IdParam, 'OK']);
@@ -393,17 +401,24 @@ end;
 
 function TSlimStmtCallBase.ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
 var
-  ExceptClassName: String;
-  ExceptMessage  : String;
-  SyncResult     : TValue;
+  CatchedExceptClass: ExceptClass;
+  ExceptMessage     : String;
+  SyncResult        : TValue;
 
   function ResponseException: TSlimList;
   begin
-    Result := Self.ResponseException(Format('%s: %s', [ExceptClassName, ExceptMessage]));
+    Result := Self.ResponseException(Format('%s: %s', [CatchedExceptClass.ClassName, ExceptMessage]));
+  end;
+
+  procedure HandleSyncException;
+  begin
+    if CatchedExceptClass.InheritsFrom(ESlimControlFlow) then
+      raise CatchedExceptClass.Create(ExceptMessage);
   end;
 
 begin
   var SyncMode: TFixtureSyncMode := AInstance.SyncMode(ASlimMethod);
+  CatchedExceptClass := nil;
 
   if SyncMode = smSynchronized then
   begin
@@ -415,7 +430,7 @@ begin
         except
           on E: Exception do
           begin
-            ExceptClassName := E.ClassName;
+            CatchedExceptClass := ExceptClass(E.ClassType);
             ExceptMessage := E.Message;
           end;
         end;
@@ -423,8 +438,11 @@ begin
 
     AExecuted := true;
 
-    if ExceptClassName <> '' then
-      Result := ResponseException
+    if Assigned(CatchedExceptClass) then
+    begin
+      HandleSyncException;
+      Result := ResponseException;
+    end
     else
       Result := SyncResult;
   end
@@ -457,7 +475,7 @@ begin
         except
           on E: Exception do
           begin
-            ExceptClassName := E.ClassName;
+            CatchedExceptClass := ExceptClass(E.ClassType);
             ExceptMessage := E.Message;
           end;
         end;
@@ -465,8 +483,11 @@ begin
 
     AExecuted := true;
 
-    if ExceptClassName <> '' then
+    if Assigned(CatchedExceptClass) then
+    begin
+      HandleSyncException;
       Exit(ResponseException);
+    end;
 
     AInstance.WaitForDelayedEvent;
     Result := SyncResult;
@@ -620,8 +641,13 @@ begin
     try
       Result := Stmt.Execute;
     except
+      on E: ESlimControlFlow do
+      begin
+        FStopExecute := true;
+        Exit(Stmt.ResponseException(E));
+      end;
       on E: Exception do
-        Exit(Stmt.ResponseException(Format('%s: %s', [E.ClassName, E.Message])));
+        Exit(Stmt.ResponseException(E));
     end;
   finally
     Stmt.Free;
@@ -642,6 +668,8 @@ begin
         if Assigned(LStmtResult) then
           Result.Add(LStmtResult);
       end;
+      if FStopExecute then
+        Break;
     end;
   except
     Result.Free;

@@ -15,6 +15,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
 
+  Slim.Common,
   Slim.List;
 
 type
@@ -64,10 +65,15 @@ type
   /// <summary>
   /// Base class for all fixtures
   /// </summary>
-  {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
+  {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([]) FIELDS([]) }
   TSlimFixture = class
   private
     FDelayedEvent: TEvent;
+  protected
+    procedure IgnoreAllTests(const AMessage: String = '');
+    procedure IgnoreScriptTest(const AMessage: String = '');
+    procedure StopSuite(const AMessage: String = '');
+    procedure StopTest(const AMessage: String = '');
   public
     destructor Destroy; override;
     function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
@@ -177,6 +183,26 @@ procedure TSlimFixture.InitDelayedEvent;
 begin
   if not Assigned(FDelayedEvent) then
     FDelayedEvent := TEvent.Create(nil, True, False, '');
+end;
+
+procedure TSlimFixture.IgnoreAllTests(const AMessage: String);
+begin
+  raise ESlimIgnoreAllTests.Create(AMessage);
+end;
+
+procedure TSlimFixture.IgnoreScriptTest(const AMessage: String);
+begin
+  raise ESlimIgnoreScriptTest.Create(AMessage);
+end;
+
+procedure TSlimFixture.StopSuite(const AMessage: String);
+begin
+  raise ESlimStopSuite.Create(AMessage);
+end;
+
+procedure TSlimFixture.StopTest(const AMessage: String);
+begin
+  raise ESlimStopTest.Create(AMessage);
 end;
 
 function TSlimFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
