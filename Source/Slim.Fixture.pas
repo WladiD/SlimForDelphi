@@ -21,23 +21,9 @@ uses
 type
 
   /// <summary>
-  ///   Classes with this attribute are automatically considered by the TSlimFixtureResolver
-  /// </summary>
-  SlimFixtureAttribute = class(TCustomAttribute)
-  private
-    FName     : String;
-    FNamespace: String;
-  public
-    constructor Create; overload;
-    constructor Create(const AName: String; const ANamespace: String = ''); overload;
-    property Name: String read FName;
-    property Namespace: String read FNamespace;
-  end;
-
-  /// <summary>
   ///   Determines how method calls should be synchronized
   /// </summary>
-  TFixtureSyncMode = (
+  TSyncMode = (
     smUndefined,
     /// <summary>
     ///   Method calls are not synchronized, i.e., they are executed directly from the thread
@@ -45,7 +31,7 @@ type
     /// </summary>
     smUnsynchronized,
     /// <summary>
-    ///   Each individual method call of the fixture is executed in a separate Synchronize call.
+    ///   The method is executed in a separate Synchronize call.
     /// </summary>
     smSynchronized,
     /// <summary>
@@ -63,6 +49,27 @@ type
   end;
 
   /// <summary>
+  ///   Classes with this attribute are automatically considered by the TSlimFixtureResolver
+  /// </summary>
+  SlimFixtureAttribute = class(TCustomAttribute)
+  private
+    FName     : String;
+    FNamespace: String;
+  public
+    constructor Create(const AName: String; const ANamespace: String = '');
+    property Name: String read FName;
+    property Namespace: String read FNamespace;
+  end;
+
+  SlimMethodSyncMode = class(TCustomAttribute)
+  private
+    FSyncMode: TSyncMode;
+  public
+    constructor Create(ASyncMode: TSyncMode);
+    property SyncMode: TSyncMode read FSyncMode;
+  end;
+
+  /// <summary>
   /// Base class for all fixtures
   /// </summary>
   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([]) FIELDS([]) }
@@ -77,7 +84,7 @@ type
     destructor Destroy; override;
     function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
-    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
+    function  SyncMode(AMethod: TRttiMethod): TSyncMode; virtual;
     procedure TriggerDelayedEvent; virtual;
     procedure WaitForDelayedEvent;
   end;
@@ -143,7 +150,7 @@ procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 implementation
 
 /// <summary>
-///   Call this procedure with your fixture class to avoid the code elimination for it by the compiler
+///   Call this procedure with your fixture class to avoid code elimination for it by the compiler
 /// </summary>
 procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 begin
@@ -152,16 +159,18 @@ end;
 
 { SlimFixtureAttribute }
 
-constructor SlimFixtureAttribute.Create;
-begin
-  inherited Create;
-end;
-
 constructor SlimFixtureAttribute.Create(const AName: String; const ANamespace: String);
 begin
   inherited Create;
   FName := AName;
   FNamespace := ANamespace;
+end;
+
+{ SlimMethodSyncMode }
+
+constructor SlimMethodSyncMode.Create(ASyncMode: TSyncMode);
+begin
+  FSyncMode:=ASyncMode;
 end;
 
 { TSlimFixture }
@@ -204,7 +213,7 @@ begin
   raise ESlimStopTest.Create(AMessage);
 end;
 
-function TSlimFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
+function TSlimFixture.SyncMode(AMethod: TRttiMethod): TSyncMode;
 begin
   Result := smUnsynchronized;
 end;

@@ -406,7 +406,7 @@ var
   end;
 
 begin
-  var SyncMode: TFixtureSyncMode := AInstance.SyncMode(ASlimMethod);
+  var SyncMode: TSyncMode := AInstance.SyncMode(ASlimMethod);
   CatchedExceptClass := nil;
 
   if SyncMode = smSynchronized then

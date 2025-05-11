@@ -30,7 +30,7 @@ type
     procedure SetEntryDate(const AValue: String);
     procedure SetName(const AValue: String);
     function  WorkingYearsForTAIFUN: Double;
-    function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; override;
+    function  SyncMode(AMethod: TRttiMethod): TSyncMode; override;
   end;
 
   [SlimFixture('SelectEntry', 'mfe')]
@@ -87,7 +87,7 @@ begin
     EntryForm.NameEdit.Text := AValue;
 end;
 
-function TSlimAddEntryFixture.SyncMode(AMethod: TRttiMethod): TFixtureSyncMode;
+function TSlimAddEntryFixture.SyncMode(AMethod: TRttiMethod): TSyncMode;
 begin
   if SameText(AMethod.Name, 'Reset') then
     Result := smSynchronizedAndDelayed
