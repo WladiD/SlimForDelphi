@@ -405,8 +405,17 @@ var
       raise CatchedExceptClass.Create(ExceptMessage);
   end;
 
+  function GetSyncMode: TSyncMode;
+  begin
+    var SyncAttrCustom: TCustomAttribute := ASlimMethod.GetAttribute(SlimMethodSyncModeAttribute);
+    if Assigned(SyncAttrCustom) then
+      Result := SlimMethodSyncModeAttribute(SyncAttrCustom).SyncMode
+    else
+      Result := AInstance.SyncMode(ASlimMethod);
+  end;
+
 begin
-  var SyncMode: TSyncMode := AInstance.SyncMode(ASlimMethod);
+  var SyncMode: TSyncMode := GetSyncMode;
   CatchedExceptClass := nil;
 
   if SyncMode = smSynchronized then

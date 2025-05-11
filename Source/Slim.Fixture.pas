@@ -61,7 +61,7 @@ type
     property Namespace: String read FNamespace;
   end;
 
-  SlimMethodSyncMode = class(TCustomAttribute)
+  SlimMethodSyncModeAttribute = class(TCustomAttribute)
   private
     FSyncMode: TSyncMode;
   public
@@ -166,9 +166,9 @@ begin
   FNamespace := ANamespace;
 end;
 
-{ SlimMethodSyncMode }
+{ SlimMethodSyncModeAttribute }
 
-constructor SlimMethodSyncMode.Create(ASyncMode: TSyncMode);
+constructor SlimMethodSyncModeAttribute.Create(ASyncMode: TSyncMode);
 begin
   FSyncMode:=ASyncMode;
 end;
