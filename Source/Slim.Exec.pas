@@ -70,8 +70,7 @@ type
     property Context: TSlimStatementContext read FContext;
     property RawStmt: TSlimList read FRawStmt;
   protected
-    function ResponseException(AException: Exception): TSlimList; overload;
-    function ResponseException(const AMessage: String; const ADefaultMeaning: String = ''): TSlimList; overload;
+    function ResponseException(AExceptClass: ExceptClass; const AMessage: String): TSlimList;
     function ResponseOk: TSlimList;
     function ResponseString(const AValue: String): TSlimList;
     function ResponseValue(const AValue: TValue): TSlimList;
@@ -273,20 +272,16 @@ begin
     AStartIndex := FArgStartIndex;
 end;
 
-function TSlimStatement.ResponseException(const AMessage, ADefaultMeaning: String): TSlimList;
+function TSlimStatement.ResponseException(AExceptClass: ExceptClass; const AMessage: String): TSlimList;
 var
-  LMessage: String;
+  LExceptMessage: String;
 begin
-  if ADefaultMeaning <> '' then
-    LMessage := ADefaultMeaning + ' ' + AMessage
+  if AExceptClass.InheritsFrom(ESlim) then
+    LExceptMessage := AMessage
   else
-    LMessage := AMessage;
-  Result := SlimList([IdParam, '__EXCEPTION__:' + LMessage]);
-end;
+    LExceptMessage :=Format('__EXCEPTION__:%s: %s', [AExceptClass.ClassName, AMessage]);
 
-function TSlimStatement.ResponseException(AException: Exception): TSlimList;
-begin
-  Result := ResponseException(Format('%s: %s', [AException.ClassName, AException.Message]))
+  Result := SlimList([IdParam, LExceptMessage]);
 end;
 
 function TSlimStatement.ResponseOk: TSlimList;
@@ -350,19 +345,19 @@ var
   SlimMethod   : TRttiMethod;
 begin
   if not Context.Resolver.TryGetSlimFixture(ClassParam, FixtureClass) then
-    Exit(ResponseException(ClassParam, 'NO_CLASS'));
+    raise ESlimNoClass.Create(ClassParam);
 
   if not HasRawArguments(ArgStartIndex) then
     ArgStartIndex := -1;
 
   if not Context.Resolver.TryGetSlimMethod(FixtureClass, '', RawStmt, ArgStartIndex,
     SlimMethod, InvokeArgs) then
-    Exit(ResponseException(ClassParam, 'NO_CONSTRUCTOR'));
+    raise ESlimNoConstructor.Create(ClassParam);
 
   try
     InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType,InvokeArgs);
   except
-    Exit(ResponseException(ClassParam, 'COULD_NOT_INVOKE_CONSTRUCTOR'));
+    raise ESlimCouldNotInvokeConstructor.Create(ClassParam);
   end;
 
   Instance := TSlimFixture(InstanceValue.AsObject);
@@ -384,10 +379,9 @@ begin
   begin
     AInstance := nil;
     ASlimMethod := nil;
-    var FailException: TSlimList := nil;
     if FalseReason = frNoInstanceFound then
-      FailException := ResponseException(InstanceParam, 'NO_INSTANCE');
-    Exit(FailException);
+      raise ESlimNoInstance.Create(InstanceParam);
+    Exit(nil);
   end;
 
   Executed := false;
@@ -404,11 +398,6 @@ var
   CatchedExceptClass: ExceptClass;
   ExceptMessage     : String;
   SyncResult        : TValue;
-
-  function ResponseException: TSlimList;
-  begin
-    Result := Self.ResponseException(Format('%s: %s', [CatchedExceptClass.ClassName, ExceptMessage]));
-  end;
 
   procedure HandleSyncException;
   begin
@@ -441,7 +430,7 @@ begin
     if Assigned(CatchedExceptClass) then
     begin
       HandleSyncException;
-      Result := ResponseException;
+      Result := ResponseException(CatchedExceptClass, ExceptMessage);
     end
     else
       Result := SyncResult;
@@ -486,7 +475,7 @@ begin
     if Assigned(CatchedExceptClass) then
     begin
       HandleSyncException;
-      Exit(ResponseException);
+      Exit(ResponseException(CatchedExceptClass, ExceptMessage));
     end;
 
     AInstance.WaitForDelayedEvent;
@@ -644,10 +633,10 @@ begin
       on E: ESlimControlFlow do
       begin
         FStopExecute := true;
-        Exit(Stmt.ResponseException(E));
+        Exit(Stmt.ResponseException(ExceptClass(E.ClassType), E.Message));
       end;
       on E: Exception do
-        Exit(Stmt.ResponseException(E));
+        Exit(Stmt.ResponseException(ExceptClass(E.ClassType), E.Message));
     end;
   finally
     Stmt.Free;
