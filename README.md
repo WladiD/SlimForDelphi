@@ -14,7 +14,19 @@ SlimForDelphi is a [Slim](https://fitnesse.org/FitNesse/UserGuide/WritingAccepta
 
 ### Setting up the Slim Server
 
-1.  Compile and run your Delphi application that uses `TSlimServer`. This application will act as the Slim server, listening for connections from FitNesse.
+1.  Compile and run your Delphi application that uses `TSlimServer`. This application will act as the Slim server, listening for connections from FitNesse. Your application just need few lines to integrate a Slim Server:
+
+    ```delphi
+    uses {...}, Slim.Server;
+
+    procedure TMainForm.AfterConstruction;
+    begin
+      inherited;
+      var SlimServer := TSlimServer.Create(Self);
+      SlimServer.DefaultPort := 9000;
+      SlimServer.Active := True;
+    end;
+    ```
 2.  Start FitNesse with the appropriate port and required parameters. For example:
 
     ```bash
