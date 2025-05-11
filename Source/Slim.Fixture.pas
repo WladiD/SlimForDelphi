@@ -67,9 +67,8 @@ type
   /// </summary>
   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([]) FIELDS([]) }
   TSlimFixture = class
-  private
-    FDelayedEvent: TEvent;
   protected
+    FDelayedEvent: TEvent;
     procedure IgnoreAllTests(const AMessage: String = '');
     procedure IgnoreScriptTest(const AMessage: String = '');
     procedure StopSuite(const AMessage: String = '');
@@ -79,7 +78,7 @@ type
     function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
     function  SyncMode(AMethod: TRttiMethod): TFixtureSyncMode; virtual;
-    procedure TriggerDelayedEvent;
+    procedure TriggerDelayedEvent; virtual;
     procedure WaitForDelayedEvent;
   end;
 
