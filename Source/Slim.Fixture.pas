@@ -85,6 +85,7 @@ type
     function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
     function  SyncMode(AMethod: TRttiMethod): TSyncMode; virtual;
+    function  SystemUnderTest: TObject; virtual;
     procedure TriggerDelayedEvent; virtual;
     procedure WaitForDelayedEvent;
   end;
@@ -216,6 +217,15 @@ end;
 function TSlimFixture.SyncMode(AMethod: TRttiMethod): TSyncMode;
 begin
   Result := smUnsynchronized;
+end;
+
+/// <summary>
+///   Each fixture may define a particular object, which is used, when the requested method is not
+///   exists in the fixture.
+/// </summary>
+function TSlimFixture.SystemUnderTest: TObject;
+begin
+  Result := nil;
 end;
 
 procedure TSlimFixture.TriggerDelayedEvent;

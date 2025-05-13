@@ -102,12 +102,12 @@ type
     TFalseReasonGetInstanceAndMethod = (
       frUndefined,
       frNoInstanceFound);
-    function ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
-    function ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
+    function ExecuteInternal(out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
+    function ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
     function ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
-    function TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
+    function TryGetInstanceAndMethod(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
     function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
   public
     property InstanceParam: String read GetInstanceParam;
@@ -370,14 +370,16 @@ end;
 
 { TSlimStmtCallBase }
 
-function TSlimStmtCallBase.ExecuteInternal(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
+function TSlimStmtCallBase.ExecuteInternal(out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
 var
-  Executed   : Boolean;
-  FalseReason: TFalseReasonGetInstanceAndMethod;
+  Executed       : Boolean;
+  FalseReason    : TFalseReasonGetInstanceAndMethod;
+  FixtureInstance: TSlimFixture;
+  Instance       : TObject;
 begin
-  if not TryGetInstanceAndMethod(AInstance, ASlimMethod, AInvokeArgs, FalseReason) then
+  if not TryGetInstanceAndMethod(FixtureInstance, Instance, ASlimMethod, AInvokeArgs, FalseReason) then
   begin
-    AInstance := nil;
+    Instance := nil;
     ASlimMethod := nil;
     if FalseReason = frNoInstanceFound then
       raise ESlimNoInstance.Create(InstanceParam);
@@ -387,13 +389,13 @@ begin
   Executed := false;
 
   if TThread.CurrentThread.ThreadID <> MainThreadID then
-    Result := ExecuteSynchronized(AInstance, ASlimMethod, AInvokeArgs, Executed);
+    Result := ExecuteSynchronized(FixtureInstance, Instance, ASlimMethod, AInvokeArgs, Executed);
 
   if not Executed then
-    Result := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+    Result := ASlimMethod.Invoke(Instance, AInvokeArgs);
 end;
 
-function TSlimStmtCallBase.ExecuteSynchronized(AInstance: TSlimFixture; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
+function TSlimStmtCallBase.ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
 var
   CatchedExceptClass: ExceptClass;
   ExceptMessage     : String;
@@ -411,7 +413,7 @@ var
     if Assigned(SyncAttrCustom) then
       Result := SlimMethodSyncModeAttribute(SyncAttrCustom).SyncMode
     else
-      Result := AInstance.SyncMode(ASlimMethod);
+      Result := AFixtureInstance.SyncMode(ASlimMethod);
   end;
 
 begin
@@ -452,8 +454,8 @@ begin
         Info: TDelayedInfo;
       begin
         try
-          if AInstance.HasDelayedInfo(ASlimMethod, Info) then
-            AInstance.InitDelayedEvent
+          if AFixtureInstance.HasDelayedInfo(ASlimMethod, Info) then
+            AFixtureInstance.InitDelayedEvent
           else
             raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not defined', [AInstance.ClassName, ASlimMethod.Name]);
 
@@ -465,7 +467,7 @@ begin
                 TDelayedMethod.Execute(
                   procedure
                   begin
-                    AInstance.TriggerDelayedEvent;
+                    AFixtureInstance.TriggerDelayedEvent;
                   end, Info.Owner);
               end;
               SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
@@ -487,7 +489,7 @@ begin
       Exit(ResponseException(CatchedExceptClass, ExceptMessage));
     end;
 
-    AInstance.WaitForDelayedEvent;
+    AFixtureInstance.WaitForDelayedEvent;
     Result := SyncResult;
   end;
 end;
@@ -504,31 +506,52 @@ begin
     Result := ResponseValue(AMethodResult);
 end;
 
-function TSlimStmtCallBase.TryGetInstanceAndMethod(out AInstance: TSlimFixture; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
+function TSlimStmtCallBase.TryGetInstanceAndMethod(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
 var
   InstanceFound: Boolean;
 
   function TryGetFromInstances: Boolean;
   begin
-    InstanceFound := Context.Instances.TryGetValue(InstanceParam, AInstance);
-    Result := InstanceFound and TryGetMethod(AInstance, ASlimMethod, AInvokeArgs);
+    InstanceFound := Context.Instances.TryGetValue(InstanceParam, AFixtureInstance);
+    Result := InstanceFound and TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs);
+    if Result then
+      AInstance := AFixtureInstance;
+  end;
+
+  function TryGetFromSystemUnderTest: Boolean;
+  var
+    Sut: TObject;
+  begin
+    Result := InstanceFound;
+    if Result then
+    begin
+      Sut := AFixtureInstance.SystemUnderTest;
+      Result := Assigned(Sut) and TryGetMethod(Sut, ASlimMethod, AInvokeArgs);
+      if Result then
+        AInstance := Sut;
+    end;
   end;
 
   function TryGetFromLibInstances: Boolean;
   begin
     for var Loop: Integer := Context.LibInstances.Count - 1 downto 0 do
     begin
-      AInstance := Context.LibInstances[Loop];
-      if TryGetMethod(AInstance, ASlimMethod, AInvokeArgs) then
+      AFixtureInstance := Context.LibInstances[Loop];
+      if TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs) then
+      begin
+        AInstance := AFixtureInstance;
         Exit(True);
+      end;
     end;
     Result := False;
   end;
 
 begin
+  AFixtureInstance := nil;
   InstanceFound := False;
   Result :=
     TryGetFromInstances or
+    TryGetFromSystemUnderTest or
     TryGetFromLibInstances;
   if not Result then
   begin
@@ -561,12 +584,11 @@ end;
 
 function TSlimStmtCall.Execute: TSlimList;
 var
-  Instance    : TSlimFixture;
   InvokeArgs  : TArray<TValue>;
   MethodResult: TValue;
   SlimMethod  : TRttiMethod;
 begin
-  MethodResult := ExecuteInternal(Instance, SlimMethod, InvokeArgs);
+  MethodResult := ExecuteInternal(SlimMethod, InvokeArgs);
   Result := ResponseExecute(SlimMethod, MethodResult);
 end;
 
@@ -590,12 +612,11 @@ end;
 
 function TSlimStmtCallAndAssign.Execute: TSlimList;
 var
-  Instance    : TSlimFixture;
   InvokeArgs  : TArray<TValue>;
   MethodResult: TValue;
   SlimMethod  : TRttiMethod;
 begin
-  MethodResult := ExecuteInternal(Instance, SlimMethod, InvokeArgs);
+  MethodResult := ExecuteInternal(SlimMethod, InvokeArgs);
   Context.Symbols.AddOrSetValue(SymbolParam, MethodResult);
   Result := ResponseExecute(SlimMethod, MethodResult);
 end;

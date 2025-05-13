@@ -48,6 +48,23 @@ type
     procedure TearDown;
     [Test]
     procedure LibInstanceTest;
+    [Test]
+    procedure SystemUnderTestTest;
+  end;
+
+  TMySystemUnderTest = class
+  public
+    function AnswerOfUniverse: String;
+  end;
+
+  [SlimFixture('MySutFixture')]
+  TMySutFixture = class(TSlimFixture)
+  private
+    FMySut: TMySystemUnderTest;
+  public
+    destructor Destroy; override;
+    function AnswerOfLife: String;
+    function SystemUnderTest: TObject; override;
   end;
 
 implementation
@@ -148,10 +165,76 @@ begin
   FGarbage := TObjectList.Create(True);
 end;
 
+procedure TestSlimStatement.SystemUnderTestTest;
+begin
+  var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
+    GarbageCollect(SlimList(['id', 'make', 'valid_instance', 'MySutFixture'])), FContext);
+  try
+    MakeStmt.Execute.Free;
+    Assert.AreEqual(1, FContext.Instances.Count);
+  finally
+    MakeStmt.Free;
+  end;
+
+  // The method AnswerOfUniverse is implemented on the SystemUnderTest
+  var CallResp1: TSlimList := nil;
+  var CallStmt1: TSlimStmtCall := TSlimStmtCall.Create(
+    GarbageCollect(SlimList(['call_id_1', 'call', 'valid_instance', 'AnswerOfUniverse'])), FContext);
+  try
+    CallResp1 := CallStmt1.Execute;
+    Assert.IsNotNull(CallResp1);
+    Assert.AreEqual('call_id_1', CallResp1[0].ToString);
+    Assert.AreEqual('42', CallResp1[1].ToString);
+  finally
+    CallStmt1.Free;
+    CallResp1.Free;
+  end;
+
+  var CallResp2: TSlimList := nil;
+  var CallStmt2: TSlimStmtCall := TSlimStmtCall.Create(
+    GarbageCollect(SlimList(['call_id_2', 'call', 'valid_instance', 'AnswerOfLife'])), FContext);
+  try
+    CallResp2 := CallStmt2.Execute;
+    Assert.IsNotNull(CallResp2);
+    Assert.AreEqual('call_id_2', CallResp2[0].ToString);
+    Assert.AreEqual('~42', CallResp2[1].ToString);
+  finally
+    CallStmt2.Free;
+    CallResp2.Free;
+  end;
+end;
+
 procedure TestSlimStatement.TearDown;
 begin
   FContext.Free;
   FGarbage.Free;
+end;
+
+{ TMySystemUnderTest }
+
+function TMySystemUnderTest.AnswerOfUniverse: String;
+begin
+  Result := '42';
+end;
+
+{ TMySutFixture }
+
+function TMySutFixture.AnswerOfLife: String;
+begin
+  Result := '~42';
+end;
+
+destructor TMySutFixture.Destroy;
+begin
+  FMySut.Free;
+  inherited;
+end;
+
+function TMySutFixture.SystemUnderTest: TObject;
+begin
+  if not Assigned(FMySut) then
+    FMySut := TMySystemUnderTest.Create;
+  Result := FMySut;
 end;
 
 end.
