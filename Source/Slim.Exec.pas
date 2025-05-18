@@ -541,7 +541,9 @@ var
       begin
         AInstance := AFixtureInstance;
         Exit(True);
-      end;
+      end
+      else if TryGetFromSystemUnderTest then
+        Exit(True);
     end;
     Result := False;
   end;

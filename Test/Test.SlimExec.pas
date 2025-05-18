@@ -28,38 +28,39 @@ type
 
   TGarbage = class;
 
-  [TestFixture]
-  TestSlimExecutor = class
-  private
+  TestExecBase = class
+  protected
     FGarbage: TGarbage;
+    FContext: TSlimStatementContext;
+  public
+    [Setup]
+    procedure Setup; virtual;
+    [TearDown]
+    procedure TearDown; virtual;
+  end;
+
+  [TestFixture]
+  TestSlimExecutor = class(TestExecBase)
+  private
     procedure Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
   protected
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
     [Test]
     procedure StopTestExceptionTest;
     [Test]
     procedure TwoMinuteExample;
+    [Test]
+    procedure SutOnLibInstance;
   end;
 
   [TestFixture]
-  TestSlimStatement = class
-  private
-    FContext: TSlimStatementContext;
-    FGarbage: TGarbage;
+  TestSlimStatement = class(TestExecBase)
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
     [Test]
-    procedure LibInstanceTest;
+    procedure LibInstance;
     [Test]
-    procedure SystemUnderTestTest;
+    procedure SystemUnderTest;
   end;
 
   TGarbage = class
@@ -76,18 +77,50 @@ type
     function AnswerOfUniverse: String;
   end;
 
+  TMyAnyObject = class
+  public
+    function HelloWorld: String;
+  end;
+
   [SlimFixture('MySutFixture')]
   TMySutFixture = class(TSlimFixture)
   private
+    FMyAnyObject: TMyAnyObject;
     FMySut: TMySystemUnderTest;
   public
     destructor Destroy; override;
     function AnswerOfLife: String;
+    function AnyObject: TObject;
     procedure RaiseStopException;
     function SystemUnderTest: TObject; override;
   end;
 
+  [SlimFixture('ReflectObject')]
+  TSlimReflectObjectFixture = class(TSlimFixture)
+   private
+    FTarget: TObject;
+   public
+    procedure ReflectObject(ATarget: TObject);
+    function  SystemUnderTest: TObject; override;
+  end;
+
 implementation
+
+
+{ TestExecBase }
+
+procedure TestExecBase.Setup;
+begin
+  FGarbage := TGarbage.Create;
+  FContext := TSlimStatementContext.Create;
+  FContext.InitAllMembers;
+end;
+
+procedure TestExecBase.TearDown;
+begin
+  FGarbage.Free;
+  FContext.Free;
+end;
 
 { TestSlimExecutor }
 
@@ -103,22 +136,14 @@ var
 begin
   Executor := nil;
   var Response: TSlimList := nil;
-  var SlimContext: TSlimStatementContext := TSlimStatementContext.Create;
-  SlimContext.InitAllMembers;
   try
-    Executor := TSlimExecutor.Create(SlimContext);
+    Executor := TSlimExecutor.Create(FContext);
     Response := Executor.Execute(AStmts);
     ACheckResponseProc(Response);
   finally
-    SlimContext.Free;
     Response.Free;
     Executor.Free;
   end;
-end;
-
-procedure TestSlimExecutor.Setup;
-begin
-  FGarbage := TGarbage.Create;
 end;
 
 procedure TestSlimExecutor.StopTestExceptionTest;
@@ -139,9 +164,25 @@ begin
     end);
 end;
 
-procedure TestSlimExecutor.TearDown;
+procedure TestSlimExecutor.SutOnLibInstance;
 begin
-  FGarbage.Free;
+  // Note: The method HelloWorld is not reachable through a fixture, but of a SystemUnderObject.
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'make', 'library1', 'ReflectObject']),
+      SlimList(['id_2', 'make', 'instance_1', 'MySutFixture']),
+      SlimList(['id_3', 'callAndAssign', 'AnyObject', 'instance_1', 'AnyObject']),
+      SlimList(['id_4', 'call', 'instance_1', 'ReflectObject', '$AnyObject']),
+      SlimList(['id_5', 'call', 'instance_1', 'HelloWorld'])
+    ])),
+    procedure(AResponse: TSlimList)
+    begin
+      Assert.AreEqual(5, AResponse.Count);
+      Assert.AreEqual(1, FContext.LibInstances.Count);
+      Assert.AreEqual(1, FContext.Instances.Count);
+      Assert.IsTrue(FContext.Symbols.ContainsKey('AnyObject'));
+      Assert.AreEqual('What a wonderful world, hello!', TSlimList(AResponse[4])[1].ToString);
+    end);
 end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
@@ -158,7 +199,7 @@ end;
 
 { TestSlimStatement }
 
-procedure TestSlimStatement.LibInstanceTest;
+procedure TestSlimStatement.LibInstance;
 begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
     FGarbage.Collect(SlimList(['id', 'make', 'library_instance', 'Division'])), FContext);
@@ -207,14 +248,7 @@ begin
   end;
 end;
 
-procedure TestSlimStatement.Setup;
-begin
-  FContext := TSlimStatementContext.Create;
-  FContext.InitAllMembers;
-  FGarbage := TGarbage.Create;
-end;
-
-procedure TestSlimStatement.SystemUnderTestTest;
+procedure TestSlimStatement.SystemUnderTest;
 begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
     FGarbage.Collect(SlimList(['id', 'make', 'valid_instance', 'MySutFixture'])), FContext);
@@ -253,44 +287,6 @@ begin
   end;
 end;
 
-procedure TestSlimStatement.TearDown;
-begin
-  FContext.Free;
-  FGarbage.Free;
-end;
-
-{ TMySystemUnderTest }
-
-function TMySystemUnderTest.AnswerOfUniverse: String;
-begin
-  Result := '42';
-end;
-
-{ TMySutFixture }
-
-function TMySutFixture.AnswerOfLife: String;
-begin
-  Result := '~42';
-end;
-
-destructor TMySutFixture.Destroy;
-begin
-  FMySut.Free;
-  inherited;
-end;
-
-procedure TMySutFixture.RaiseStopException;
-begin
-  StopTest;
-end;
-
-function TMySutFixture.SystemUnderTest: TObject;
-begin
-  if not Assigned(FMySut) then
-    FMySut := TMySystemUnderTest.Create;
-  Result := FMySut;
-end;
-
 { TGarbage }
 
 constructor TGarbage.Create;
@@ -308,6 +304,65 @@ function TGarbage.Collect(AList: TSlimList): TSlimList;
 begin
   FGarbage.Add(AList);
   Result := AList;
+end;
+
+{ TMySystemUnderTest }
+
+function TMySystemUnderTest.AnswerOfUniverse: String;
+begin
+  Result := '42';
+end;
+
+{ TMySutFixture }
+
+function TMySutFixture.AnswerOfLife: String;
+begin
+  Result := '~42';
+end;
+
+function TMySutFixture.AnyObject: TObject;
+begin
+  if not Assigned(FMyAnyObject) then
+    FMyAnyObject := TMyAnyObject.Create;
+  Result := FMyAnyObject;
+end;
+
+destructor TMySutFixture.Destroy;
+begin
+  FMySut.Free;
+  FMyAnyObject.Free;
+  inherited;
+end;
+
+procedure TMySutFixture.RaiseStopException;
+begin
+  StopTest;
+end;
+
+function TMySutFixture.SystemUnderTest: TObject;
+begin
+  if not Assigned(FMySut) then
+    FMySut := TMySystemUnderTest.Create;
+  Result := FMySut;
+end;
+
+{ TMyAnyObject }
+
+function TMyAnyObject.HelloWorld: String;
+begin
+  Result := 'What a wonderful world, hello!';
+end;
+
+{ TSlimReflectObjectFixture }
+
+procedure TSlimReflectObjectFixture.ReflectObject(ATarget: TObject);
+begin
+  FTarget := ATarget;
+end;
+
+function TSlimReflectObjectFixture.SystemUnderTest: TObject;
+begin
+  Result := FTarget;
 end;
 
 end.
