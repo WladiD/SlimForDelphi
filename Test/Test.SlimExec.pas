@@ -47,11 +47,13 @@ type
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
     [Test]
+    procedure AssignSymbol;
+    [Test]
     procedure StopTestExceptionTest;
     [Test]
-    procedure TwoMinuteExample;
-    [Test]
     procedure SutOnLibInstance;
+    [Test]
+    procedure TwoMinuteExample;
   end;
 
   [TestFixture]
@@ -182,6 +184,23 @@ begin
       Assert.AreEqual(1, FContext.Instances.Count);
       Assert.IsTrue(FContext.Symbols.ContainsKey('AnyObject'));
       Assert.AreEqual('What a wonderful world, hello!', TSlimList(AResponse[4])[1].ToString);
+    end);
+end;
+
+procedure TestSlimExecutor.AssignSymbol;
+begin
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'assign', 'MyFirstVar', 'Value of first var']),
+      SlimList(['id_2', 'assign', 'MySecondVar', 'Value of second var']),
+      SlimList(['id_3', 'assign', 'MyFirstVar', 'Value of first var was changed'])
+    ])),
+    procedure(AResponse: TSlimList)
+    begin
+      Assert.AreEqual(3, AResponse.Count);
+      Assert.AreEqual(2, FContext.Symbols.Count);
+      Assert.AreEqual('Value of first var was changed', FContext.Symbols['MyFirstVar'].ToString);
+      Assert.AreEqual('Value of second var', FContext.Symbols['MySecondVar'].ToString);
     end);
 end;
 

@@ -637,7 +637,8 @@ end;
 
 function TSlimStmtAssign.Execute: TSlimList;
 begin
-  Result := nil;
+  Context.Symbols.AddOrSetValue(SymbolParam, ValueParam);
+  Result := ResponseOk;
 end;
 
 { TSlimExecutor }
