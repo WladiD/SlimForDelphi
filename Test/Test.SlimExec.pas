@@ -19,6 +19,7 @@ uses
 
   DUnitX.TestFramework,
 
+  Slim.Common,
   Slim.Exec,
   Slim.Fixture,
   Slim.List,
@@ -40,14 +41,24 @@ type
   end;
 
   [TestFixture]
+  TestContext = class
+  public
+    [Test]
+    procedure EnsureScriptTableActors;
+  end;
+
+  [TestFixture]
   TestSlimExecutor = class(TestExecBase)
   private
     procedure Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
+    function  TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
   protected
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
     [Test]
     procedure AssignSymbol;
+    [Test]
+    procedure ScriptTableActor;
     [Test]
     procedure StopTestExceptionTest;
     [Test]
@@ -124,6 +135,27 @@ begin
   FContext.Free;
 end;
 
+{ TestContext }
+
+procedure TestContext.EnsureScriptTableActors;
+begin
+  var Context: TSlimStatementContext := TSlimStatementContext.Create;
+  try
+    Context.InitAllMembers;
+    Assert.IsNotNull(Context.Instances);
+    Assert.IsNotNull(Context.LibInstances);
+    Assert.AreEqual(1, Context.LibInstances.Count);
+    Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
+    Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
+
+    Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+
+    Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
+  finally
+    Context.Free;
+  end;
+end;
+
 { TestSlimExecutor }
 
 function TestSlimExecutor.CreateStmtsFromFile(const AFileName: String): TSlimList;
@@ -148,6 +180,48 @@ begin
   end;
 end;
 
+procedure TestSlimExecutor.ScriptTableActor;
+begin
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'make', 'scriptTableActor', 'MySutFixture']),
+      SlimList(['id_2', 'call', 'no_instance', 'getFixture']),
+      SlimList(['id_3', 'call', 'no_instance', 'pushFixture']),
+      SlimList(['id_4', 'make', 'scriptTableActor', 'ReflectObject']),
+      SlimList(['id_5', 'call', 'no_instance', 'getFixture']),
+      SlimList(['id_6', 'call', 'no_instance', 'popFixture']),
+      SlimList(['id_7', 'call', 'no_instance', 'getFixture']),
+      SlimList(['id_8', 'call', 'no_instance', 'popFixture']) // Here we should get an exception
+    ])),
+    procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
+    begin
+      Assert.AreEqual(8, AResponse.Count);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+      Assert.Contains(CallResponse[1].ToString, 'TMySutFixture');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
+      Assert.AreEqual(TSlimConsts.VoidResponse, CallResponse[1].ToString);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_5', CallResponse));
+      Assert.Contains(CallResponse[1].ToString, 'TSlimReflectObjectFixture');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_6', CallResponse));
+      Assert.AreEqual(TSlimConsts.VoidResponse, CallResponse[1].ToString);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_7', CallResponse));
+      Assert.Contains(CallResponse[1].ToString, 'TMySutFixture');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_8', CallResponse));
+      Assert.DoesNotContain(CallResponse[1].ToString, TSlimConsts.VoidResponse);
+
+      Assert.AreEqual(1, FContext.Instances.Count);
+      Assert.AreEqual(1, FContext.LibInstances.Count);
+    end);
+end;
+
 procedure TestSlimExecutor.StopTestExceptionTest;
 begin
   var Stmts: TSlimList := FGarbage.Collect(
@@ -168,6 +242,8 @@ end;
 
 procedure TestSlimExecutor.SutOnLibInstance;
 begin
+  Assert.AreEqual(1, FContext.LibInstances.Count);
+
   // Note: The method HelloWorld is not reachable through a fixture, but of a SystemUnderObject.
   Execute(
     FGarbage.Collect(SlimList([
@@ -180,7 +256,7 @@ begin
     procedure(AResponse: TSlimList)
     begin
       Assert.AreEqual(5, AResponse.Count);
-      Assert.AreEqual(1, FContext.LibInstances.Count);
+      Assert.AreEqual(2, FContext.LibInstances.Count);
       Assert.AreEqual(1, FContext.Instances.Count);
       Assert.IsTrue(FContext.Symbols.ContainsKey('AnyObject'));
       Assert.AreEqual('What a wonderful world, hello!', TSlimList(AResponse[4])[1].ToString);
@@ -204,6 +280,22 @@ begin
     end);
 end;
 
+function TestSlimExecutor.TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
+begin
+  for var Loop: Integer := 0 to AResponse.Count - 1 do
+  begin
+    if not (AResponse[Loop] is TSlimList) then
+      Continue;
+    var SubList: TSlimList := TSlimList(AResponse[Loop]);
+    if (SubList.Count > 0) and (SubList[0].ToString = AId) then
+    begin
+      ASlimList := SubList;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 procedure TestSlimExecutor.TwoMinuteExample;
 begin
   var Stmts: TSlimList := FGarbage.Collect(CreateStmtsFromFile('Data\TwoMinuteExample.txt'));
@@ -223,9 +315,10 @@ begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
     FGarbage.Collect(SlimList(['id', 'make', 'library_instance', 'Division'])), FContext);
   try
+    Assert.AreEqual(1, FContext.LibInstances.Count);
     MakeStmt.Execute.Free;
     Assert.AreEqual(0, FContext.Instances.Count);
-    Assert.AreEqual(1, FContext.LibInstances.Count);
+    Assert.AreEqual(2, FContext.LibInstances.Count);
   finally
     MakeStmt.Free;
   end;
@@ -236,7 +329,7 @@ begin
   try
     CallResp1 := CallStmt1.Execute;
     Assert.AreEqual('call_id_1', CallResp1[0].ToString);
-    Assert.AreEqual('/__VOID__/', CallResp1[1].ToString);
+    Assert.AreEqual(TSlimConsts.VoidResponse, CallResp1[1].ToString);
   finally
     CallStmt1.Free;
     CallResp1.Free;
@@ -248,7 +341,7 @@ begin
   try
     CallResp2 := CallStmt2.Execute;
     Assert.AreEqual('call_id_2', CallResp2[0].ToString);
-    Assert.AreEqual('/__VOID__/', CallResp2[1].ToString);
+    Assert.AreEqual(TSlimConsts.VoidResponse, CallResp2[1].ToString);
   finally
     CallStmt2.Free;
     CallResp2.Free;

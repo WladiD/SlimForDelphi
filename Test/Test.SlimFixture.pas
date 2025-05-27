@@ -11,11 +11,14 @@ interface
 uses
 
   System.Classes,
+  System.Generics.Collections,
   System.IOUtils,
   System.Rtti,
+  System.SysUtils,
 
   DUnitX.TestFramework,
 
+  Slim.Common,
   Slim.Fixture,
   Slim.List;
 
@@ -39,6 +42,26 @@ type
     procedure TryGetSlimFixtureTest;
     [Test]
     procedure TryGetSlimMethodTest;
+  end;
+
+  [TestFixture]
+  TestScriptTableActorStack = class
+  private
+    FActors   : TScriptTableActorStack;
+    FInstances: TSlimFixtureDictionary;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure SimpleCreate;
+    [Test]
+    procedure NoCurrentFixture;
+    [Test]
+    procedure FirstFixture;
+    [Test]
+    procedure MultipleFixtures;
   end;
 
 implementation
@@ -115,6 +138,134 @@ end;
 procedure TSlimDivisionFixture.SetNumerator(ANumerator: Double);
 begin
   FNumerator := ANumerator;
+end;
+
+{ TestScriptTableActorStack }
+
+procedure TestScriptTableActorStack.Setup;
+begin
+  FInstances:=TSlimFixtureDictionary.Create([doOwnsValues]);
+  FActors:=TScriptTableActorStack.Create(FInstances);
+end;
+
+procedure TestScriptTableActorStack.TearDown;
+begin
+  FInstances.Free;
+  FActors.Free;
+end;
+
+procedure TestScriptTableActorStack.SimpleCreate;
+begin
+  Assert.IsNotNull(FActors);
+  FreeAndNil(FActors);
+  // Unassigned Instances param should raise an exception
+  Assert.WillRaise(
+    procedure
+    begin
+      FActors := TScriptTableActorStack.Create(nil);
+    end);
+end;
+
+procedure TestScriptTableActorStack.MultipleFixtures;
+begin
+  var FirstFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  FirstFixture.SetNumerator(77);
+  FirstFixture.SetDenominator(7);
+  FInstances.Add(TSlimConsts.ScriptTableActor, FirstFixture);
+  Assert.AreEqual(1, FInstances.Count);
+
+  Assert.AreEqual(Double(11), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  var SecondFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  SecondFixture.SetNumerator(60);
+  SecondFixture.SetDenominator(6);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      FInstances.Add(TSlimConsts.ScriptTableActor, SecondFixture);
+    end);
+
+  FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, SecondFixture);
+  Assert.AreEqual(1, FInstances.Count); // FirstFixture was destroyed at previous AddOrSetValue
+
+  Assert.IsTrue(FActors.GetFixture = SecondFixture);
+  Assert.AreEqual(Double(10), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  FirstFixture := TSlimDivisionFixture.Create;
+  FirstFixture.SetNumerator(81);
+  FirstFixture.SetDenominator(9);
+
+  FActors.PushFixture;
+
+  FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, FirstFixture);
+
+  Assert.IsTrue(FActors.GetFixture = FirstFixture);
+  Assert.AreEqual(Double(9), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  var ThirdFixture: TSlimDivisionFixture := TSlimDivisionFixture.Create;
+  ThirdFixture.SetNumerator(21);
+  ThirdFixture.SetDenominator(7);
+
+  FActors.PushFixture;
+
+  FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, ThirdFixture);
+
+  Assert.IsTrue(FActors.GetFixture = ThirdFixture);
+  Assert.AreEqual(Double(3), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  FActors.PopFixture;
+
+  Assert.IsTrue(FActors.GetFixture = FirstFixture);
+  Assert.AreEqual(Double(9), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  FActors.PopFixture;
+
+  Assert.IsTrue(FActors.GetFixture = SecondFixture);
+  Assert.AreEqual(Double(10), TSlimDivisionFixture(FActors.GetFixture).Quotient);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      FActors.PopFixture;
+    end, ESlim);
+end;
+
+procedure TestScriptTableActorStack.NoCurrentFixture;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      FActors.GetFixture;
+    end, ESlim);
+  Assert.WillRaise(
+    procedure
+    begin
+      FActors.PushFixture;
+    end, ESlim);
+  Assert.WillRaise(
+    procedure
+    begin
+      FActors.PopFixture;
+    end, ESlim);
+end;
+
+procedure TestScriptTableActorStack.FirstFixture;
+begin
+  var Fixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  Fixture.SetNumerator(10);
+  Fixture.SetDenominator(2);
+
+  FInstances.Add(TSlimConsts.ScriptTableActor,Fixture);
+  Assert.AreEqual(1, FInstances.Count);
+  FActors.PushFixture;
+  Assert.AreEqual(0, FInstances.Count);
+
+  FActors.PopFixture;
+  Assert.AreEqual(1, FInstances.Count);
+
+  Assert.IsTrue(Fixture = FActors.GetFixture);
+  Assert.AreEqual(Double(5), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 end;
 
 end.

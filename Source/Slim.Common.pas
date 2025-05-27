@@ -41,6 +41,11 @@ type
     constructor Create(const ARequestedInstanceName: String; const ACustomMessage: String = '');
   end;
 
+  ESlimNoMethodInClass = class(ESlimStandardException) // NO_METHOD_IN_CLASS <some method> <some class>
+  public
+    constructor Create(const ARequestedMethod: String);
+  end;
+
   ESlimControlFlow = class abstract(ESlimStandardException);
 
   ESlimStop = class abstract(ESlimControlFlow);
@@ -63,6 +68,14 @@ type
   ESlimIgnoreAllTests = class(ESlimIgnore) // IGNORE_ALL_TESTS
   public
     constructor Create(const AReason: String = '');
+  end;
+
+type
+
+  TSlimConsts = record
+  public const
+    ScriptTableActor = 'scriptTableActor';
+    VoidResponse     = '/__VOID__/';
   end;
 
 implementation
@@ -102,6 +115,13 @@ end;
 constructor ESlimNoInstance.Create(const ARequestedInstanceName, ACustomMessage: String);
 begin
   CreateStandardException('NO_INSTANCE', [ARequestedInstanceName], ACustomMessage);
+end;
+
+{ ESlimNoMethodInClass }
+
+constructor ESlimNoMethodInClass.Create(const ARequestedMethod: String);
+begin
+  CreateStandardException('NO_METHOD_IN_CLASS', [ARequestedMethod], '');
 end;
 
 { ESlimNoClass }

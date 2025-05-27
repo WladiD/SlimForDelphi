@@ -34,9 +34,6 @@ type
     siCallAndAssign, // [<id>, callAndAssign, <symbol>, <instance>, <function>, <arg>...]
     siAssign);       // [<id>, assign, <symbol>, <value>]
 
-  TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
-  TSlimFixtureList = TObjectList<TSlimFixture>;
-
   TSlimStatementContext = class
   public type
     TContextMember = (cmInstances, cmLibInstances, cmResolver, cmSymbols);
@@ -101,7 +98,8 @@ type
     type
     TFalseReasonGetInstanceAndMethod = (
       frUndefined,
-      frNoInstanceFound);
+      frNoInstanceFound,
+      frNoMethodFound);
     function ExecuteInternal(out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
     function ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
@@ -212,16 +210,25 @@ begin
     FInstances := TSlimFixtureDictionary.Create([doOwnsValues]);
     Include(FOwnedMembers, cmInstances);
   end;
+
   if not Assigned(FLibInstances) and (cmLibInstances in AContextMembers) then
   begin
     FLibInstances := TSlimFixtureList.Create(True);
     Include(FOwnedMembers, cmLibInstances);
   end;
+
+  // Actors: The stack of library objects should be initialized with an instance of a class with
+  //         the following 3 methods:
+  //         getFixture, pushFixture and popFixture
+  if Assigned(FInstances) and Assigned(FLibInstances) and (FLibInstances.Count = 0) then
+    FLibInstances.Add(TScriptTableActorStack.Create(FInstances));
+
   if not Assigned(FResolver) and (cmResolver in AContextMembers) then
   begin
     FResolver := TSlimFixtureResolver.Create;
     Include(FOwnedMembers, cmResolver);
   end;
+
   if not Assigned(FSymbols) and (cmSymbols in AContextMembers) then
   begin
     FSymbols := TSlimSymbolDictionary.Create;
@@ -242,6 +249,14 @@ begin
   if cmInstances in FOwnedMembers then
     FInstances.Free;
   FInstances := AInstances;
+
+  if
+    Assigned(Instances) and
+    Assigned(LibInstances) and
+    (LibInstances.Count > 0) and
+    (LibInstances[0] is TScriptTableActorStack) then
+    TScriptTableActorStack(LibInstances[0]).Instances:=Instances;
+
   if AOwnIt then
     Include(FOwnedMembers, cmInstances)
   else
@@ -381,8 +396,13 @@ begin
   begin
     Instance := nil;
     ASlimMethod := nil;
-    if FalseReason = frNoInstanceFound then
-      raise ESlimNoInstance.Create(InstanceParam);
+
+    case FalseReason of
+      frNoInstanceFound:
+        raise ESlimNoInstance.Create(InstanceParam);
+      frNoMethodFound:
+        raise ESlimNoMethodInClass.Create(FunctionParam);
+    end;
     Exit(nil);
   end;
 
@@ -501,7 +521,7 @@ begin
   else if AMethodResult.IsInstanceOf(TSlimList) then
     Result := AMethodResult.AsObject as TSlimList
   else if ASlimMethod.MethodKind = mkProcedure then
-    Result := ResponseString('/__VOID__/')
+    Result := ResponseString(TSlimConsts.VoidResponse)
   else
     Result := ResponseValue(AMethodResult);
 end;
@@ -509,13 +529,19 @@ end;
 function TSlimStmtCallBase.TryGetInstanceAndMethod(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
 var
   InstanceFound: Boolean;
+  MethodFound  : Boolean;
 
   function TryGetFromInstances: Boolean;
   begin
     InstanceFound := Context.Instances.TryGetValue(InstanceParam, AFixtureInstance);
-    Result := InstanceFound and TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs);
+    Result := InstanceFound;
     if Result then
-      AInstance := AFixtureInstance;
+    begin
+      MethodFound := TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs);
+      Result := MethodFound;
+      if MethodFound then
+        AInstance := AFixtureInstance;
+    end;
   end;
 
   function TryGetFromSystemUnderTest: Boolean;
@@ -551,6 +577,7 @@ var
 begin
   AFixtureInstance := nil;
   InstanceFound := False;
+  MethodFound := False;
   Result :=
     TryGetFromInstances or
     TryGetFromSystemUnderTest or
@@ -559,6 +586,8 @@ begin
   begin
     if not InstanceFound then
       AFalseReason := frNoInstanceFound
+    else if not MethodFound then
+      AFalseReason := frNoMethodFound
     else
       AFalseReason := frUndefined;
   end;

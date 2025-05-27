@@ -11,9 +11,10 @@ interface
 uses
 
   System.Classes,
+  System.Generics.Collections,
   System.Rtti,
-  System.SysUtils,
   System.SyncObjs,
+  System.SysUtils,
 
   Slim.Common,
   Slim.List;
@@ -129,6 +130,23 @@ type
   TSlimFixtureClass = class of TSlimFixture;
   TSymbolResolveFunc = function(const AValue: String): String of object;
   TSymbolObjectFunc = function(const AValue: String): TObject of object;
+
+  TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
+  TSlimFixtureList = TObjectList<TSlimFixture>;
+
+  TScriptTableActorStack = class(TSlimFixture)
+  private
+    FInstances: TSlimFixtureDictionary;
+    FList     : TSlimFixtureList;
+    procedure RaiseNoScriptTableActorInstances;
+  public
+    constructor Create(AInstances: TSlimFixtureDictionary);
+    destructor  Destroy; override;
+    function  GetFixture: TSlimFixture;
+    procedure PopFixture;
+    procedure PushFixture;
+    property  Instances: TSlimFixtureDictionary read FInstances write FInstances;
+  end;
 
   TSlimFixtureResolver = class
   private
@@ -292,6 +310,49 @@ end;
 procedure TSlimDynamicDecisionTableFixture.&Set(const AFieldName, AFieldValue: String);
 begin
 
+end;
+
+{ TScriptTableActorStack }
+
+constructor TScriptTableActorStack.Create(AInstances: TSlimFixtureDictionary);
+begin
+  if not Assigned(AInstances) then
+    raise ESlim.Create('AInstances is required');
+  FInstances := AInstances;
+  FList := TSlimFixtureList.Create(True);
+end;
+
+destructor TScriptTableActorStack.Destroy;
+begin
+  FList.Free;
+  inherited;
+end;
+
+function TScriptTableActorStack.GetFixture: TSlimFixture;
+begin
+  if not FInstances.TryGetValue(TSlimConsts.ScriptTableActor, Result) then
+    RaiseNoScriptTableActorInstances;
+end;
+
+procedure TScriptTableActorStack.PopFixture;
+begin
+  if FList.Count = 0 then
+    raise ESlim.Create('No fixture on stack');
+  var Fixture: TSlimFixture:=FList.ExtractAt(FList.Count - 1);
+  FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, Fixture);
+end;
+
+procedure TScriptTableActorStack.PushFixture;
+begin
+  if not ((FInstances.Count > 0) and FInstances.ContainsKey(TSlimConsts.ScriptTableActor)) then
+    RaiseNoScriptTableActorInstances;
+  var Pair:=FInstances.ExtractPair(TSlimConsts.ScriptTableActor);
+  FList.Add(Pair.Value);
+end;
+
+procedure TScriptTableActorStack.RaiseNoScriptTableActorInstances;
+begin
+  raise ESlim.CreateFmt('No fixture with name "%s" found', [TSlimConsts.ScriptTableActor]);
 end;
 
 { TSlimFixtureResolver }
