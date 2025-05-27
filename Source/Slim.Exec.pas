@@ -250,12 +250,15 @@ begin
     FInstances.Free;
   FInstances := AInstances;
 
-  if
-    Assigned(Instances) and
-    Assigned(LibInstances) and
-    (LibInstances.Count > 0) and
-    (LibInstances[0] is TScriptTableActorStack) then
-    TScriptTableActorStack(LibInstances[0]).Instances:=Instances;
+  if Assigned(Instances) and Assigned(LibInstances) then
+  begin
+    if (LibInstances.Count > 0) and (LibInstances[0] is TScriptTableActorStack) then
+      TScriptTableActorStack(LibInstances[0]).Instances:=Instances
+    else if LibInstances.Count = 0 then
+      FLibInstances.Add(TScriptTableActorStack.Create(FInstances))
+    else if (LibInstances.Count > 0) and not (LibInstances[0] is TScriptTableActorStack) then
+      FLibInstances.Insert(0, TScriptTableActorStack.Create(FInstances));
+  end;
 
   if AOwnIt then
     Include(FOwnedMembers, cmInstances)

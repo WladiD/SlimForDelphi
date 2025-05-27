@@ -44,7 +44,9 @@ type
   TestContext = class
   public
     [Test]
-    procedure EnsureScriptTableActors;
+    procedure EnsureScriptTableActorsFullInit;
+    [Test]
+    procedure EnsureScriptTableActorsPartialInit;
   end;
 
   [TestFixture]
@@ -137,7 +139,7 @@ end;
 
 { TestContext }
 
-procedure TestContext.EnsureScriptTableActors;
+procedure TestContext.EnsureScriptTableActorsFullInit;
 begin
   var Context: TSlimStatementContext := TSlimStatementContext.Create;
   try
@@ -150,6 +152,25 @@ begin
 
     Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
+    Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
+  finally
+    Context.Free;
+  end;
+end;
+
+procedure TestContext.EnsureScriptTableActorsPartialInit;
+begin
+  var Context: TSlimStatementContext := TSlimStatementContext.Create;
+  try
+    Context.InitMembers([
+      TSlimStatementContext.TContextMember.cmLibInstances,
+      TSlimStatementContext.TContextMember.cmResolver,
+      TSlimStatementContext.TContextMember.cmSymbols]);
+
+    Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+
+    Assert.AreEqual(1, Context.LibInstances.Count);
+    Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
     Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
   finally
     Context.Free;
