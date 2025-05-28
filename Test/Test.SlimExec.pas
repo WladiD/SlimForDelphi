@@ -53,7 +53,6 @@ type
   TestSlimExecutor = class(TestExecBase)
   private
     procedure Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
-    function  TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
   protected
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
@@ -119,8 +118,25 @@ type
     function  SystemUnderTest: TObject; override;
   end;
 
+function TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
+
 implementation
 
+function TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
+begin
+  for var Loop: Integer := 0 to AResponse.Count - 1 do
+  begin
+    if not (AResponse[Loop] is TSlimList) then
+      Continue;
+    var SubList: TSlimList := TSlimList(AResponse[Loop]);
+    if (SubList.Count > 0) and (SubList[0].ToString = AId) then
+    begin
+      ASlimList := SubList;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
 
 { TestExecBase }
 
@@ -254,10 +270,13 @@ begin
     ]));
   Execute(Stmts,
     procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
     begin
       Assert.AreEqual(3, AResponse.Count);
-      Assert.AreEqual('id_3', (AResponse[2] as TSlimList)[0].ToString);
-      Assert.Contains((AResponse[2] as TSlimList)[1].ToString, 'ABORT_SLIM_TEST');
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
+      Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
+      Assert.Contains(CallResponse[1].ToString, 'ABORT_SLIM_TEST');
     end);
 end;
 
@@ -299,22 +318,6 @@ begin
       Assert.AreEqual('Value of first var was changed', FContext.Symbols['MyFirstVar'].ToString);
       Assert.AreEqual('Value of second var', FContext.Symbols['MySecondVar'].ToString);
     end);
-end;
-
-function TestSlimExecutor.TryGetSlimListById(AResponse: TSlimList; const AId: String; out ASlimList: TSlimList): Boolean;
-begin
-  for var Loop: Integer := 0 to AResponse.Count - 1 do
-  begin
-    if not (AResponse[Loop] is TSlimList) then
-      Continue;
-    var SubList: TSlimList := TSlimList(AResponse[Loop]);
-    if (SubList.Count > 0) and (SubList[0].ToString = AId) then
-    begin
-      ASlimList := SubList;
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
