@@ -236,7 +236,7 @@ begin
       Assert.Contains(CallResponse[1].ToString, 'TMySutFixture');
 
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_8', CallResponse));
-      Assert.DoesNotContain(CallResponse[1].ToString, TSlimConsts.VoidResponse);
+      Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
 
       Assert.AreEqual(1, FContext.Instances.Count);
       Assert.AreEqual(1, FContext.LibInstances.Count);

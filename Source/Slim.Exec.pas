@@ -294,10 +294,10 @@ function TSlimStatement.ResponseException(AExceptClass: ExceptClass; const AMess
 var
   LExceptMessage: String;
 begin
-  if AExceptClass.InheritsFrom(ESlim) then
+  if AExceptClass.InheritsFrom(ESlimStandardException) then
     LExceptMessage := AMessage
   else
-    LExceptMessage :=Format('__EXCEPTION__:%s: %s', [AExceptClass.ClassName, AMessage]);
+    LExceptMessage :=Format('%s:%s: %s', [TSlimConsts.ExceptionResponse, AExceptClass.ClassName, AMessage]);
 
   Result := SlimList([IdParam, LExceptMessage]);
 end;

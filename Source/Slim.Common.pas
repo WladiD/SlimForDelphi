@@ -74,8 +74,9 @@ type
 
   TSlimConsts = record
   public const
-    ScriptTableActor = 'scriptTableActor';
-    VoidResponse     = '/__VOID__/';
+    ExceptionResponse = '__EXCEPTION__';
+    ScriptTableActor  = 'scriptTableActor';
+    VoidResponse      = '/__VOID__/';
   end;
 
 implementation
@@ -94,7 +95,7 @@ begin
     StandardParams := StandardParams + StandardParam;
   end;
 
-  ComposedMsg := '__EXCEPTION__:';
+  ComposedMsg := TSlimConsts.ExceptionResponse + ':';
 
   if AStandardMessage <> '' then
   begin
