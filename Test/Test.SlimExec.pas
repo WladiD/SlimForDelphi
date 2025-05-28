@@ -277,6 +277,7 @@ begin
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
       Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
       Assert.Contains(CallResponse[1].ToString, 'ABORT_SLIM_TEST');
+      Assert.IsFalse(TryGetSlimListById(AResponse, 'id_4', CallResponse));
     end);
 end;
 
