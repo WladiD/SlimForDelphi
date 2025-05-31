@@ -203,7 +203,6 @@ end;
 procedure TestSlimExecutor.Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
 var
   Executor   : TSlimExecutor;
-  ResponseStr: String;
 begin
   Executor := nil;
   var Response: TSlimList := nil;

@@ -159,8 +159,8 @@ type
     function GetParamValue(AParamType: TRttiType; AValueRaw: TSlimEntry): TValue;
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
-    function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
-    function TryGetSlimProperty(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
+    function TryGetSlimMethod(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    function TryGetSlimProperty(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
     property SymbolObjectFunc: TSymbolObjectFunc read FSymbolObjectFunc write FSymbolObjectFunc;
     property SymbolResolveFunc: TSymbolResolveFunc read FSymbolResolveFunc write FSymbolResolveFunc;
   end;
@@ -494,7 +494,7 @@ begin
 end;
 
 /// <param name="AName">If empty, looks for a constructor</param>
-function TSlimFixtureResolver.TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+function TSlimFixtureResolver.TryGetSlimMethod(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
 var
   ArgsCount        : Integer;
   CheckMethod      : TRttiMethod;
@@ -524,7 +524,7 @@ begin
   if HasArgs then
     ArgsCount := ARawStmt.Count - AArgStartIndex;
 
-  for CheckMethod in AFixtureClass.GetMethods do
+  for CheckMethod in AInstance.GetMethods do
   begin
     if not (CheckMethodNameMatch and CheckMethodParamsMatch) then
       Continue;
@@ -547,11 +547,10 @@ begin
   Result := false;
 end;
 
-function TSlimFixtureResolver.TryGetSlimProperty(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
+function TSlimFixtureResolver.TryGetSlimProperty(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
 var
   ArgsCount          : Integer;
   CheckProperty      : TRttiProperty;
-  CheckPropertyParams: TArray<TRttiParameter>;
   HasArgs            : Boolean;
   RequestedRead      : Boolean;
   RequestedWrite     : Boolean;
@@ -587,7 +586,9 @@ begin
 
   HasArgs := AArgStartIndex > 0;
   if HasArgs then
-    ArgsCount := ARawStmt.Count - AArgStartIndex;
+    ArgsCount := ARawStmt.Count - AArgStartIndex
+  else
+    ArgsCount := 0;
 
   RequestedRead := not HasArgs;
   RequestedWrite := HasArgs and (ArgsCount = 1);
@@ -595,7 +596,7 @@ begin
   if not (RequestedRead or RequestedWrite) then
     Exit(False);
 
-  for CheckProperty in AFixtureClass.GetProperties do
+  for CheckProperty in AInstance.GetProperties do
   begin
     if not (CheckPropertyNameMatch and CheckPropertyAccess) then
       Continue;
