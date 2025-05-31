@@ -35,13 +35,25 @@ type
     function Quotient: Double;
   end;
 
+  [SlimFixture('DivisionWithProps', 'eg')]
+  TSlimDivisionWithPropsFixture = class(TSlimDecisionTableFixture)
+  private
+    FNumerator: Double;
+    FDenominator: Double;
+    function GetQuotient: Double;
+  public
+    property Numerator: Double read FNumerator write FNumerator;
+    property Denominator: Double read FDenominator write FDenominator;
+    property Quotient: Double read GetQuotient;
+  end;
+
   [TestFixture]
   TestSlimFixtureResolver = class
   public
     [Test]
-    procedure TryGetSlimFixtureTest;
+    procedure TryGetSlimFixture;
     [Test]
-    procedure TryGetSlimMethodTest;
+    procedure TryGetSlimMethod;
   end;
 
   [TestFixture]
@@ -68,7 +80,7 @@ implementation
 
 { TestSlimFixtureResolver }
 
-procedure TestSlimFixtureResolver.TryGetSlimFixtureTest;
+procedure TestSlimFixtureResolver.TryGetSlimFixture;
 var
   Resolver  : TSlimFixtureResolver;
   LClassType: TRttiInstanceType;
@@ -89,7 +101,7 @@ begin
   end;
 end;
 
-procedure TestSlimFixtureResolver.TryGetSlimMethodTest;
+procedure TestSlimFixtureResolver.TryGetSlimMethod;
 var
   Resolver  : TSlimFixtureResolver;
   LClassType: TRttiInstanceType;
@@ -138,6 +150,13 @@ end;
 procedure TSlimDivisionFixture.SetNumerator(ANumerator: Double);
 begin
   FNumerator := ANumerator;
+end;
+
+{ TSlimDivisionWithPropsFixture }
+
+function TSlimDivisionWithPropsFixture.GetQuotient: Double;
+begin
+  Result := FNumerator / FDenominator;
 end;
 
 { TestScriptTableActorStack }
@@ -267,5 +286,10 @@ begin
   Assert.IsTrue(Fixture = FActors.GetFixture);
   Assert.AreEqual(Double(5), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 end;
+
+initialization
+
+TDUnitX.RegisterTestFixture(TestSlimFixtureResolver);
+TDUnitX.RegisterTestFixture(TestScriptTableActorStack);
 
 end.

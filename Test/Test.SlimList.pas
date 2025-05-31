@@ -166,4 +166,10 @@ begin
   end;
 end;
 
+initialization
+
+TDUnitX.RegisterTestFixture(TestSlimListSerializer);
+TDUnitX.RegisterTestFixture(TestSlimListUnserializer);
+TDUnitX.RegisterTestFixture(TestSlimFunctions);
+
 end.

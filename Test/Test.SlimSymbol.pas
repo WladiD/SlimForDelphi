@@ -46,4 +46,8 @@ begin
   end;
 end;
 
+initialization
+
+TDUnitX.RegisterTestFixture(TestSlimSymbolDictionary);
+
 end.

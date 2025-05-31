@@ -502,4 +502,10 @@ begin
   Result := FTarget;
 end;
 
+initialization
+
+TDUnitX.RegisterTestFixture(TestContext);
+TDUnitX.RegisterTestFixture(TestSlimExecutor);
+TDUnitX.RegisterTestFixture(TestSlimStatement);
+
 end.
