@@ -73,7 +73,7 @@ type
   /// <summary>
   /// Base class for all fixtures
   /// </summary>
-  {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([]) FIELDS([]) }
+  {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
   TSlimFixture = class
   protected
     FDelayedEvent: TEvent;
@@ -156,10 +156,11 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function GetParamValue(AParam: TRttiParameter; AValueRaw: TSlimEntry): TValue;
+    function GetParamValue(AParamType: TRttiType; AValueRaw: TSlimEntry): TValue;
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
     function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    function TryGetSlimProperty(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
     property SymbolObjectFunc: TSymbolObjectFunc read FSymbolObjectFunc write FSymbolObjectFunc;
     property SymbolResolveFunc: TSymbolResolveFunc read FSymbolResolveFunc write FSymbolResolveFunc;
   end;
@@ -368,7 +369,7 @@ begin
   inherited;
 end;
 
-function TSlimFixtureResolver.GetParamValue(AParam: TRttiParameter; AValueRaw: TSlimEntry): TValue;
+function TSlimFixtureResolver.GetParamValue(AParamType: TRttiType; AValueRaw: TSlimEntry): TValue;
 var
   ParamClass: TClass;
 
@@ -390,7 +391,7 @@ var
   end;
 
 begin
-  var ParamTypeKind: TTypeKind := AParam.ParamType.TypeKind;
+  var ParamTypeKind: TTypeKind := AParamType.TypeKind;
   ParamClass := nil;
   Result := nil;
 
@@ -413,7 +414,7 @@ begin
       Result := StrToFloat(ValueRawToString, TFormatSettings.Invariant);
     tkClass:
     begin
-      ParamClass := AParam.ParamType.AsInstance.MetaclassType;
+      ParamClass := AParamType.AsInstance.MetaclassType;
       var ParamObject: TObject := nil;
       if (AValueRaw is TSlimList) and (ParamClass.InheritsFrom(TSlimList)) then
         Result := AValueRaw
@@ -533,13 +534,70 @@ begin
       for var ArgLoop := 0 to ArgsCount - 1 do
       begin
         var ArgRawIndex: Integer := AArgStartIndex + ArgLoop;
-        var CurValue: TValue := GetParamValue(CheckMethodParams[ArgLoop], ARawStmt[ArgRawIndex]);
+        var CurValue: TValue := GetParamValue(CheckMethodParams[ArgLoop].ParamType, ARawStmt[ArgRawIndex]);
         AInvokeArgs[ArgLoop] := CurValue;
       end;
     end
     else
       AInvokeArgs := nil;
     ASlimMethod := CheckMethod;
+    Exit(true);
+  end;
+
+  Result := false;
+end;
+
+function TSlimFixtureResolver.TryGetSlimProperty(AFixtureClass: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
+var
+  ArgsCount          : Integer;
+  CheckProperty      : TRttiProperty;
+  CheckPropertyParams: TArray<TRttiParameter>;
+  HasArgs            : Boolean;
+  RequestedRead      : Boolean;
+  RequestedWrite     : Boolean;
+
+  function CheckPropertyNameMatch: Boolean;
+  var
+    LName: String;
+  begin
+    LName := AName;
+    Result := SameText(LName, CheckProperty.Name);
+    if
+      not Result and
+      (
+        (RequestedWrite and LName.StartsWith('set', True)) or
+        (RequestedRead and LName.StartsWith('get'))
+      ) then
+    begin
+      LName := Copy(LName, 4);
+      Result := SameText(LName, CheckProperty.Name);
+    end;
+  end;
+
+  function CheckPropertyAccess: Boolean;
+  begin
+    Result :=
+      (RequestedRead and CheckProperty.IsReadable) or
+      (RequestedWrite and CheckProperty.IsWritable);
+  end;
+
+begin
+  HasArgs := AArgStartIndex > 0;
+  if HasArgs then
+    ArgsCount := ARawStmt.Count - AArgStartIndex;
+
+  RequestedRead := not HasArgs;
+  RequestedWrite := HasArgs and (ArgsCount = 1);
+
+  for CheckProperty in AFixtureClass.GetProperties do
+  begin
+    if not (CheckPropertyNameMatch and CheckPropertyAccess) then
+      Continue;
+    if HasArgs then
+      AInvokeArg := GetParamValue(CheckProperty.PropertyType, ARawStmt[AArgStartIndex])
+    else
+      AInvokeArg := nil;
+    ASlimProperty := CheckProperty;
     Exit(true);
   end;
 

@@ -54,6 +54,8 @@ type
     procedure TryGetSlimFixture;
     [Test]
     procedure TryGetSlimMethod;
+    [Test]
+    procedure TryGetSlimProperty;
   end;
 
   [TestFixture]
@@ -129,6 +131,49 @@ begin
     Assert.IsNotNull(SlimMethod);
     Assert.AreEqual('Quotient', SlimMethod.Name);
     Assert.AreEqual(0, Length(InvokeArgs));
+  finally
+    Stmts.Free;
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TryGetSlimProperty;
+var
+  Resolver    : TSlimFixtureResolver;
+  LClassType  : TRttiInstanceType;
+  Stmts       : TSlimList;
+  SlimProperty: TRttiProperty;
+  InvokeArg   : TValue;
+begin
+// TODO: Ein Test benötigt, wenn es mehr als 1 Parameter gibt,
+//       denn ohne Parameter ist der Getter und mit einem Parameter der Setter gemeint,
+//       andernfalls eine Exception werfen.
+// TODO: Eine Property sollte sowohl über SetAnyName, GetAnyName als auch über AnyName auffindbar sein.
+// TODO: Es sollte eine Exception geworfen werden, wenn ein leerer Name übergeben wird
+
+  Stmts := nil;
+  Resolver := TSlimFixtureResolver.Create;
+  try
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Stmts := SlimList(['CallId', '4.5']);
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Numerator', Stmts, 1, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Numerator', SlimProperty.Name);
+    Assert.AreEqual(Double(4.5), Double(InvokeArg.AsExtended));
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'setNumerator', Stmts, 1, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Numerator', SlimProperty.Name);
+    Assert.AreEqual(Double(4.5), Double(InvokeArg.AsExtended));
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'getNumerator', Stmts, 0, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Numerator', SlimProperty.Name);
+    Assert.IsTrue(InvokeArg.IsEmpty);
+
+    Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, 'getNumerator', Stmts, 1, SlimProperty, InvokeArg));
+
   finally
     Stmts.Free;
     Resolver.Free;
