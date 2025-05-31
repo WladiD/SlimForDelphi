@@ -145,12 +145,6 @@ var
   SlimProperty: TRttiProperty;
   InvokeArg   : TValue;
 begin
-// TODO: Ein Test benötigt, wenn es mehr als 1 Parameter gibt,
-//       denn ohne Parameter ist der Getter und mit einem Parameter der Setter gemeint,
-//       andernfalls eine Exception werfen.
-// TODO: Eine Property sollte sowohl über SetAnyName, GetAnyName als auch über AnyName auffindbar sein.
-// TODO: Es sollte eine Exception geworfen werden, wenn ein leerer Name übergeben wird
-
   Stmts := nil;
   Resolver := TSlimFixtureResolver.Create;
   try
@@ -172,8 +166,41 @@ begin
     Assert.AreEqual('Numerator', SlimProperty.Name);
     Assert.IsTrue(InvokeArg.IsEmpty);
 
+    Stmts.Free;
+    Stmts := SlimList(['CallId', '0.5']);
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Denominator', Stmts, 1, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Denominator', SlimProperty.Name);
+    Assert.AreEqual(Double(0.5), Double(InvokeArg.AsExtended));
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'SetDenominator', Stmts, 1, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Denominator', SlimProperty.Name);
+    Assert.AreEqual(Double(0.5), Double(InvokeArg.AsExtended));
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Quotient', nil, 0, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Quotient', SlimProperty.Name);
+    Assert.IsTrue(InvokeArg.IsEmpty);
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'GetQuotient', nil, 0, SlimProperty, InvokeArg));
+    Assert.IsNotNull(SlimProperty);
+    Assert.AreEqual('Quotient', SlimProperty.Name);
+    Assert.IsTrue(InvokeArg.IsEmpty);
+
+    Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, 'SetQuotient', Stmts, 1, SlimProperty, InvokeArg));
+
+    // Empty name property
+    Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, '', Stmts, 1, SlimProperty, InvokeArg));
+
+    // Getter should not be found when any params exists
     Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, 'getNumerator', Stmts, 1, SlimProperty, InvokeArg));
 
+    // Setter with more than 1 Parameter shoud not be found
+    Stmts.Free;
+    Stmts := SlimList(['CallId', '0.5', '1.5']);
+    Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, 'SetDenominator', Stmts, 1, SlimProperty, InvokeArg));
   finally
     Stmts.Free;
     Resolver.Free;

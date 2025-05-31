@@ -566,7 +566,7 @@ var
       not Result and
       (
         (RequestedWrite and LName.StartsWith('set', True)) or
-        (RequestedRead and LName.StartsWith('get'))
+        (RequestedRead and LName.StartsWith('get', True))
       ) then
     begin
       LName := Copy(LName, 4);
@@ -582,12 +582,18 @@ var
   end;
 
 begin
+  if String.IsNullOrWhiteSpace(AName) then
+    Exit(False);
+
   HasArgs := AArgStartIndex > 0;
   if HasArgs then
     ArgsCount := ARawStmt.Count - AArgStartIndex;
 
   RequestedRead := not HasArgs;
   RequestedWrite := HasArgs and (ArgsCount = 1);
+
+  if not (RequestedRead or RequestedWrite) then
+    Exit(False);
 
   for CheckProperty in AFixtureClass.GetProperties do
   begin
