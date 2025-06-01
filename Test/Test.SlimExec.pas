@@ -66,6 +66,10 @@ type
     procedure SutOnLibInstance;
     [Test]
     procedure TwoMinuteExample;
+    [Test]
+    procedure FixtureWithProperties;
+    [Test]
+    procedure FixtureWithPropertiesSyncModes;
   end;
 
   [TestFixture]
@@ -202,7 +206,7 @@ end;
 
 procedure TestSlimExecutor.Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
 var
-  Executor   : TSlimExecutor;
+  Executor: TSlimExecutor;
 begin
   Executor := nil;
   var Response: TSlimList := nil;
@@ -214,6 +218,40 @@ begin
     Response.Free;
     Executor.Free;
   end;
+end;
+
+procedure TestSlimExecutor.FixtureWithProperties;
+begin
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'make', 'instance_1', 'DivisionWithProps']),
+      SlimList(['id_2', 'call', 'instance_1', 'Numerator', '15']),
+      SlimList(['id_3', 'call', 'instance_1', 'Denominator', '5']),
+      SlimList(['id_4', 'call', 'instance_1', 'Quotient'])
+    ])),
+    procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
+    begin
+      Assert.AreEqual(4, AResponse.Count);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse));
+      Assert.AreEqual('OK', CallResponse[1].ToString);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+      Assert.AreEqual(TSlimConsts.VoidResponse, CallResponse[1].ToString);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
+      Assert.AreEqual(TSlimConsts.VoidResponse, CallResponse[1].ToString);
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_4', CallResponse));
+      Assert.AreEqual('3.0', CallResponse[1].ToString);
+    end);
+end;
+
+procedure TestSlimExecutor.FixtureWithPropertiesSyncModes;
+begin
+
 end;
 
 procedure TestSlimExecutor.ScriptTableActor;

@@ -96,17 +96,17 @@ type
   TSlimStmtCallBase = class(TSlimStatement)
   protected
     type
-    TFalseReasonGetInstanceAndMethod = (
+    TFalseReasonGetInstanceAndMember = (
       frUndefined,
       frNoInstanceFound,
-      frNoMethodFound);
-    function ExecuteInternal(out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
-    function ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
+      frNoMemberFound);
+    function ExecuteInternal(out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>): TValue;
+    function ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMember: TRttiMember; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
-    function ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
-    function TryGetInstanceAndMethod(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
-    function TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+    function ResponseExecute(ASlimMember: TRttiMember; const AMemberResult: TValue): TSlimList;
+    function TryGetInstanceAndMember(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMember): Boolean;
+    function TryGetMember(AInstance: TObject; out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>): Boolean;
   public
     property InstanceParam: String read GetInstanceParam;
     property FunctionParam: String read GetFunctionParam;
@@ -388,22 +388,22 @@ end;
 
 { TSlimStmtCallBase }
 
-function TSlimStmtCallBase.ExecuteInternal(out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): TValue;
+function TSlimStmtCallBase.ExecuteInternal(out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>): TValue;
 var
   Executed       : Boolean;
-  FalseReason    : TFalseReasonGetInstanceAndMethod;
+  FalseReason    : TFalseReasonGetInstanceAndMember;
   FixtureInstance: TSlimFixture;
   Instance       : TObject;
 begin
-  if not TryGetInstanceAndMethod(FixtureInstance, Instance, ASlimMethod, AInvokeArgs, FalseReason) then
+  if not TryGetInstanceAndMember(FixtureInstance, Instance, ASlimMember, AInvokeArgs, FalseReason) then
   begin
     Instance := nil;
-    ASlimMethod := nil;
+    ASlimMember := nil;
 
     case FalseReason of
       frNoInstanceFound:
         raise ESlimNoInstance.Create(InstanceParam);
-      frNoMethodFound:
+      frNoMemberFound:
         raise ESlimNoMethodInClass.Create(FunctionParam);
     end;
     Exit(nil);
@@ -412,13 +412,30 @@ begin
   Executed := false;
 
   if TThread.CurrentThread.ThreadID <> MainThreadID then
-    Result := ExecuteSynchronized(FixtureInstance, Instance, ASlimMethod, AInvokeArgs, Executed);
+    Result := ExecuteSynchronized(FixtureInstance, Instance, ASlimMember, AInvokeArgs, Executed);
 
   if not Executed then
-    Result := ASlimMethod.Invoke(Instance, AInvokeArgs);
+  begin
+    if ASlimMember is TRttiMethod then
+      Result := TRttiMethod(ASlimMember).Invoke(Instance, AInvokeArgs)
+    else if ASlimMember is TRttiProperty then
+    begin
+      case Length(AInvokeArgs) of
+        0:
+        begin
+          Result := TRttiProperty(ASlimMember).GetValue(Instance);
+        end;
+        1:
+        begin
+          TRttiProperty(ASlimMember).SetValue(Instance, AInvokeArgs[0]);
+          Result := TSlimConsts.VoidResponse;
+        end;
+      end;
+    end;
+  end;
 end;
 
-function TSlimStmtCallBase.ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMethod: TRttiMethod; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
+function TSlimStmtCallBase.ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMember: TRttiMember; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
 var
   CatchedExceptClass: ExceptClass;
   ExceptMessage     : String;
@@ -432,11 +449,11 @@ var
 
   function GetSyncMode: TSyncMode;
   begin
-    var SyncAttrCustom: TCustomAttribute := ASlimMethod.GetAttribute(SlimMethodSyncModeAttribute);
+    var SyncAttrCustom: TCustomAttribute := ASlimMember.GetAttribute(SlimMemberSyncModeAttribute);
     if Assigned(SyncAttrCustom) then
-      Result := SlimMethodSyncModeAttribute(SyncAttrCustom).SyncMode
+      Result := SlimMemberSyncModeAttribute(SyncAttrCustom).SyncMode
     else
-      Result := AFixtureInstance.SyncMode(ASlimMethod);
+      Result := AFixtureInstance.SyncMode(ASlimMember);
   end;
 
 begin
@@ -449,7 +466,8 @@ begin
       procedure
       begin
         try
-          SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+          if ASlimMember is TRttiMethod then
+            SyncResult := TRttiMethod(ASlimMember).Invoke(AInstance, AInvokeArgs);
         except
           on E: Exception do
           begin
@@ -477,10 +495,10 @@ begin
         Info: TDelayedInfo;
       begin
         try
-          if AFixtureInstance.HasDelayedInfo(ASlimMethod, Info) then
+          if AFixtureInstance.HasDelayedInfo(ASlimMember, Info) then
             AFixtureInstance.InitDelayedEvent
           else
-            raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not defined', [AInstance.ClassName, ASlimMethod.Name]);
+            raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not defined', [AInstance.ClassName, ASlimMember.Name]);
 
           TDelayedMethod.Execute(
             procedure
@@ -493,7 +511,11 @@ begin
                     AFixtureInstance.TriggerDelayedEvent;
                   end, Info.Owner);
               end;
-              SyncResult := ASlimMethod.Invoke(AInstance, AInvokeArgs);
+
+              if ASlimMember is TRttiMethod then
+              begin
+                SyncResult := TRttiMethod(ASlimMember).Invoke(AInstance, AInvokeArgs);
+              end;
             end, Info.Owner);
         except
           on E: Exception do
@@ -517,22 +539,31 @@ begin
   end;
 end;
 
-function TSlimStmtCallBase.ResponseExecute(ASlimMethod: TRttiMethod; const AMethodResult: TValue): TSlimList;
+function TSlimStmtCallBase.ResponseExecute(ASlimMember: TRttiMember; const AMemberResult: TValue): TSlimList;
+var
+  SlimMethod  : TRttiMethod absolute ASlimMember;
+  SlimProperty: TRttiProperty absolute ASlimMember;
 begin
-  if not Assigned(ASlimMethod) then
-    Result := nil
-  else if AMethodResult.IsInstanceOf(TSlimList) then
-    Result := AMethodResult.AsObject as TSlimList
-  else if ASlimMethod.MethodKind = mkProcedure then
-    Result := ResponseString(TSlimConsts.VoidResponse)
-  else
-    Result := ResponseValue(AMethodResult);
+  Result := nil;
+  if ASlimMember is TRttiMethod then
+  begin
+    if AMemberResult.IsInstanceOf(TSlimList) then
+      Result := AMemberResult.AsObject as TSlimList
+    else if SlimMethod.MethodKind = mkProcedure then
+      Result := ResponseString(TSlimConsts.VoidResponse)
+    else
+      Result := ResponseValue(AMemberResult);
+  end
+  else if ASlimMember is TRttiProperty then
+  begin
+    Result := ResponseValue(AMemberResult);
+  end;
 end;
 
-function TSlimStmtCallBase.TryGetInstanceAndMethod(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMethod): Boolean;
+function TSlimStmtCallBase.TryGetInstanceAndMember(out AFixtureInstance: TSlimFixture; out AInstance: TObject; out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>; out AFalseReason: TFalseReasonGetInstanceAndMember): Boolean;
 var
   InstanceFound: Boolean;
-  MethodFound  : Boolean;
+  MemberFound  : Boolean;
 
   function TryGetFromInstances: Boolean;
   begin
@@ -540,9 +571,9 @@ var
     Result := InstanceFound;
     if Result then
     begin
-      MethodFound := TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs);
-      Result := MethodFound;
-      if MethodFound then
+      MemberFound := TryGetMember(AFixtureInstance, ASlimMember, AInvokeArgs);
+      Result := MemberFound;
+      if MemberFound then
         AInstance := AFixtureInstance;
     end;
   end;
@@ -555,7 +586,7 @@ var
     if Result then
     begin
       Sut := AFixtureInstance.SystemUnderTest;
-      Result := Assigned(Sut) and TryGetMethod(Sut, ASlimMethod, AInvokeArgs);
+      Result := Assigned(Sut) and TryGetMember(Sut, ASlimMember, AInvokeArgs);
       if Result then
         AInstance := Sut;
     end;
@@ -566,7 +597,7 @@ var
     for var Loop: Integer := Context.LibInstances.Count - 1 downto 0 do
     begin
       AFixtureInstance := Context.LibInstances[Loop];
-      if TryGetMethod(AFixtureInstance, ASlimMethod, AInvokeArgs) then
+      if TryGetMember(AFixtureInstance, ASlimMember, AInvokeArgs) then
       begin
         AInstance := AFixtureInstance;
         Exit(True);
@@ -580,7 +611,7 @@ var
 begin
   AFixtureInstance := nil;
   InstanceFound := False;
-  MethodFound := False;
+  MemberFound := False;
   Result :=
     TryGetFromInstances or
     TryGetFromSystemUnderTest or
@@ -589,23 +620,46 @@ begin
   begin
     if not InstanceFound then
       AFalseReason := frNoInstanceFound
-    else if not MethodFound then
-      AFalseReason := frNoMethodFound
+    else if not MemberFound then
+      AFalseReason := frNoMemberFound
     else
       AFalseReason := frUndefined;
   end;
 end;
 
-function TSlimStmtCallBase.TryGetMethod(AInstance: TObject; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
+function TSlimStmtCallBase.TryGetMember(AInstance: TObject; out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>): Boolean;
 var
   ArgStartIndex: Integer;
   RttiClass    : TRttiInstanceType;
+  SlimMethod   : TRttiMethod;
+  SlimProperty : TRttiProperty;
 begin
   if not HasRawArguments(ArgStartIndex) then
     ArgStartIndex := -1;
   RttiClass := Context.Resolver.GetRttiInstanceTypeFromInstance(AInstance);
   Result := Context.Resolver.TryGetSlimMethod(RttiClass, FunctionParam, RawStmt, ArgStartIndex,
-    ASlimMethod, AInvokeArgs)
+    SlimMethod, AInvokeArgs);
+  if Result then
+  begin
+    ASlimMember := SlimMethod;
+  end
+  else
+  begin
+    var InvokeArg: TValue := nil;
+    Result := Context.Resolver.TryGetSlimProperty(RttiClass, FunctionParam, RawStmt, ArgStartIndex,
+      SlimProperty, InvokeArg);
+    if Result then
+    begin
+      ASlimMember := SlimProperty;
+      if InvokeArg.ToString = TSlimConsts.VoidResponse then
+        AInvokeArgs := nil
+      else
+      begin
+        SetLength(AInvokeArgs, 1);
+        AInvokeArgs[0] := InvokeArg;
+      end;
+    end;
+  end;
 end;
 
 { TSlimStmtCall }
@@ -619,11 +673,11 @@ end;
 function TSlimStmtCall.Execute: TSlimList;
 var
   InvokeArgs  : TArray<TValue>;
-  MethodResult: TValue;
-  SlimMethod  : TRttiMethod;
+  MemberResult: TValue;
+  SlimMember  : TRttiMember;
 begin
-  MethodResult := ExecuteInternal(SlimMethod, InvokeArgs);
-  Result := ResponseExecute(SlimMethod, MethodResult);
+  MemberResult := ExecuteInternal(SlimMember, InvokeArgs);
+  Result := ResponseExecute(SlimMember, MemberResult);
 end;
 
 function TSlimStmtCall.GetFunctionParam: String;
@@ -647,12 +701,12 @@ end;
 function TSlimStmtCallAndAssign.Execute: TSlimList;
 var
   InvokeArgs  : TArray<TValue>;
-  MethodResult: TValue;
-  SlimMethod  : TRttiMethod;
+  MemberResult: TValue;
+  SlimMember  : TRttiMember;
 begin
-  MethodResult := ExecuteInternal(SlimMethod, InvokeArgs);
-  Context.Symbols.AddOrSetValue(SymbolParam, MethodResult);
-  Result := ResponseExecute(SlimMethod, MethodResult);
+  MemberResult := ExecuteInternal(SlimMember, InvokeArgs);
+  Context.Symbols.AddOrSetValue(SymbolParam, MemberResult);
+  Result := ResponseExecute(SlimMember, MemberResult);
 end;
 
 function TSlimStmtCallAndAssign.GetFunctionParam: String;

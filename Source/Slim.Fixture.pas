@@ -62,7 +62,7 @@ type
     property Namespace: String read FNamespace;
   end;
 
-  SlimMethodSyncModeAttribute = class(TCustomAttribute)
+  SlimMemberSyncModeAttribute = class(TCustomAttribute)
   private
     FSyncMode: TSyncMode;
   public
@@ -83,9 +83,9 @@ type
     procedure StopTest(const AMessage: String = '');
   public
     destructor Destroy; override;
-    function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; virtual;
+    function  HasDelayedInfo(AMethod: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
-    function  SyncMode(AMethod: TRttiMethod): TSyncMode; virtual;
+    function  SyncMode(AMember: TRttiMember): TSyncMode; virtual;
     function  SystemUnderTest: TObject; virtual;
     procedure TriggerDelayedEvent; virtual;
     procedure WaitForDelayedEvent;
@@ -188,7 +188,7 @@ end;
 
 { SlimMethodSyncModeAttribute }
 
-constructor SlimMethodSyncModeAttribute.Create(ASyncMode: TSyncMode);
+constructor SlimMemberSyncModeAttribute.Create(ASyncMode: TSyncMode);
 begin
   FSyncMode:=ASyncMode;
 end;
@@ -201,7 +201,7 @@ begin
   inherited;
 end;
 
-function TSlimFixture.HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean;
+function TSlimFixture.HasDelayedInfo(AMethod: TRttiMember; var AInfo: TDelayedInfo): Boolean;
 begin
   AInfo := Default(TDelayedInfo);
   Result := False;
@@ -233,7 +233,7 @@ begin
   raise ESlimStopTest.Create(AMessage);
 end;
 
-function TSlimFixture.SyncMode(AMethod: TRttiMethod): TSyncMode;
+function TSlimFixture.SyncMode(AMember: TRttiMember): TSyncMode;
 begin
   Result := smUnsynchronized;
 end;
@@ -549,11 +549,11 @@ end;
 
 function TSlimFixtureResolver.TryGetSlimProperty(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
 var
-  ArgsCount          : Integer;
-  CheckProperty      : TRttiProperty;
-  HasArgs            : Boolean;
-  RequestedRead      : Boolean;
-  RequestedWrite     : Boolean;
+  ArgsCount     : Integer;
+  CheckProperty : TRttiProperty;
+  HasArgs       : Boolean;
+  RequestedRead : Boolean;
+  RequestedWrite: Boolean;
 
   function CheckPropertyNameMatch: Boolean;
   var
@@ -603,7 +603,7 @@ begin
     if HasArgs then
       AInvokeArg := GetParamValue(CheckProperty.PropertyType, ARawStmt[AArgStartIndex])
     else
-      AInvokeArg := nil;
+      AInvokeArg := TSlimConsts.VoidResponse;
     ASlimProperty := CheckProperty;
     Exit(true);
   end;

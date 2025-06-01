@@ -164,7 +164,7 @@ begin
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'getNumerator', Stmts, 0, SlimProperty, InvokeArg));
     Assert.IsNotNull(SlimProperty);
     Assert.AreEqual('Numerator', SlimProperty.Name);
-    Assert.IsTrue(InvokeArg.IsEmpty);
+    Assert.AreEqual(TSlimConsts.VoidResponse, InvokeArg.ToString);
 
     Stmts.Free;
     Stmts := SlimList(['CallId', '0.5']);
@@ -182,12 +182,12 @@ begin
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Quotient', nil, 0, SlimProperty, InvokeArg));
     Assert.IsNotNull(SlimProperty);
     Assert.AreEqual('Quotient', SlimProperty.Name);
-    Assert.IsTrue(InvokeArg.IsEmpty);
+    Assert.AreEqual(TSlimConsts.VoidResponse, InvokeArg.ToString);
 
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'GetQuotient', nil, 0, SlimProperty, InvokeArg));
     Assert.IsNotNull(SlimProperty);
     Assert.AreEqual('Quotient', SlimProperty.Name);
-    Assert.IsTrue(InvokeArg.IsEmpty);
+    Assert.AreEqual(TSlimConsts.VoidResponse, InvokeArg.ToString);
 
     Assert.IsFalse(Resolver.TryGetSlimProperty(LClassType, 'SetQuotient', Stmts, 1, SlimProperty, InvokeArg));
 
