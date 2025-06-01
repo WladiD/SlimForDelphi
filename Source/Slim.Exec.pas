@@ -101,6 +101,7 @@ type
       frNoInstanceFound,
       frNoMemberFound);
     function ExecuteInternal(out ASlimMember: TRttiMember; out AInvokeArgs: TArray<TValue>): TValue;
+    function ExecuteMember(AInstance: TObject; AMember: TRttiMember; AInvokeArgs: TArray<TValue>): TValue;
     function ExecuteSynchronized(AFixtureInstance: TSlimFixture; AInstance: TObject; ASlimMember: TRttiMember; const AInvokeArgs: TArray<TValue>; var AExecuted: Boolean): TValue;
     function GetFunctionParam: String; virtual; abstract;
     function GetInstanceParam: String; virtual; abstract;
@@ -415,21 +416,24 @@ begin
     Result := ExecuteSynchronized(FixtureInstance, Instance, ASlimMember, AInvokeArgs, Executed);
 
   if not Executed then
+    Result := ExecuteMember(Instance, ASlimMember, AInvokeArgs);
+end;
+
+function TSlimStmtCallBase.ExecuteMember(AInstance: TObject; AMember: TRttiMember; AInvokeArgs: TArray<TValue>): TValue;
+begin
+  if AMember is TRttiMethod then
+    Result := TRttiMethod(AMember).Invoke(AInstance, AInvokeArgs)
+  else if AMember is TRttiProperty then
   begin
-    if ASlimMember is TRttiMethod then
-      Result := TRttiMethod(ASlimMember).Invoke(Instance, AInvokeArgs)
-    else if ASlimMember is TRttiProperty then
-    begin
-      case Length(AInvokeArgs) of
-        0:
-        begin
-          Result := TRttiProperty(ASlimMember).GetValue(Instance);
-        end;
-        1:
-        begin
-          TRttiProperty(ASlimMember).SetValue(Instance, AInvokeArgs[0]);
-          Result := TSlimConsts.VoidResponse;
-        end;
+    case Length(AInvokeArgs) of
+      0:
+      begin
+        Result := TRttiProperty(AMember).GetValue(AInstance);
+      end;
+      1:
+      begin
+        TRttiProperty(AMember).SetValue(AInstance, AInvokeArgs[0]);
+        Result := TSlimConsts.VoidResponse;
       end;
     end;
   end;
@@ -466,8 +470,7 @@ begin
       procedure
       begin
         try
-          if ASlimMember is TRttiMethod then
-            SyncResult := TRttiMethod(ASlimMember).Invoke(AInstance, AInvokeArgs);
+          SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
         except
           on E: Exception do
           begin
@@ -512,10 +515,7 @@ begin
                   end, Info.Owner);
               end;
 
-              if ASlimMember is TRttiMethod then
-              begin
-                SyncResult := TRttiMethod(ASlimMember).Invoke(AInstance, AInvokeArgs);
-              end;
+              SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
             end, Info.Owner);
         except
           on E: Exception do

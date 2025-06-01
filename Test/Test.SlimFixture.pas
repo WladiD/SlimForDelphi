@@ -44,6 +44,7 @@ type
   public
     property Numerator: Double read FNumerator write FNumerator;
     property Denominator: Double read FDenominator write FDenominator;
+    [SlimMemberSyncMode(smSynchronized)]
     property Quotient: Double read GetQuotient;
   end;
 

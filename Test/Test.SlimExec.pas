@@ -15,7 +15,9 @@ uses
   System.Generics.Collections,
   System.IOUtils,
   System.Rtti,
+  System.SyncObjs,
   System.SysUtils,
+  System.Threading,
 
   DUnitX.TestFramework,
 
@@ -251,7 +253,42 @@ end;
 
 procedure TestSlimExecutor.FixtureWithPropertiesSyncModes;
 begin
+  var Done: TEvent:=TEvent.Create(nil, True, False, '');
+  try
+    var Task: IFuture<String> := TTask.Future<String>(
+      function: String
+      var
+        LQuotient: String;
+      begin
+        try
+          Execute(
+            FGarbage.Collect(SlimList([
+              SlimList(['id_1', 'make', 'instance_1', 'DivisionWithProps']),
+              SlimList(['id_2', 'call', 'instance_1', 'Numerator', '15']),
+              SlimList(['id_3', 'call', 'instance_1', 'Denominator', '5']),
+              SlimList(['id_4', 'call', 'instance_1', 'Quotient'])
+            ])),
+            procedure(AResponse: TSlimList)
+            var
+              CallResponse: TSlimList;
+            begin
+              Assert.AreEqual(4, AResponse.Count);
+              Assert.IsTrue(TryGetSlimListById(AResponse, 'id_4', CallResponse));
+              LQuotient:=CallResponse[1].ToString;
+            end);
+          Result := LQuotient;
+        finally
+          Done.SetEvent;
+        end;
+      end);
 
+    while Done.WaitFor(1) = wrTimeout do
+      CheckSynchronize;
+
+    Assert.AreEqual('3.0', Task.Value);
+  finally
+    Done.Free;
+  end;
 end;
 
 procedure TestSlimExecutor.ScriptTableActor;
