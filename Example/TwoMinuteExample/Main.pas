@@ -39,14 +39,14 @@ type
   end;
 
   [SlimFixture('Division', 'eg')]
-  TSlimDivisionFixture = class(TSlimFixture)
+  TSlimDivisionFixture = class(TSlimDecisionTableFixture)
   private
     FNumerator: Double;
     FDenominator: Double;
   public
     constructor Create;
-    procedure SetNumerator(ANumerator: Double);
-    procedure SetDenominator(ADenominator: Double);
+    property Numerator: Double read FNumerator write FNumerator;
+    property Denominator: Double read FDenominator write FDenominator;
     function Quotient: Double;
   end;
 
@@ -104,16 +104,6 @@ end;
 function TSlimDivisionFixture.Quotient: Double;
 begin
   Result := FNumerator / FDenominator;
-end;
-
-procedure TSlimDivisionFixture.SetDenominator(ADenominator: Double);
-begin
-  FDenominator := ADenominator;
-end;
-
-procedure TSlimDivisionFixture.SetNumerator(ANumerator: Double);
-begin
-  FNumerator := ANumerator;
 end;
 
 end.

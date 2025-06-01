@@ -24,13 +24,14 @@ type
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
     function  Add: Boolean;
-    function  HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean; override;
+    function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; override;
     function  Id: Integer;
+    [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure Reset; override;
     procedure SetEntryDate(const AValue: String);
     procedure SetName(const AValue: String);
     function  WorkingYearsForTAIFUN: Double;
-    function  SyncMode(AMethod: TRttiMethod): TSyncMode; override;
+    function  SyncMode(AMember: TRttiMember): TSyncMode; override;
   end;
 
   [SlimFixture('SelectEntry', 'mfe')]
@@ -56,10 +57,10 @@ begin
   Result := MainForm.Entries.Last.Id;
 end;
 
-function TSlimAddEntryFixture.HasDelayedInfo(AMethod: TRttiMethod; var AInfo: TDelayedInfo): Boolean;
+function TSlimAddEntryFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
 begin
   Result := true;
-  if SameText(AMethod.Name, 'Reset') then
+  if SameText(AMember.Name, 'Reset') then
     AInfo.Owner := MainForm
   else
     Result := false;
@@ -87,12 +88,9 @@ begin
     EntryForm.NameEdit.Text := AValue;
 end;
 
-function TSlimAddEntryFixture.SyncMode(AMethod: TRttiMethod): TSyncMode;
+function TSlimAddEntryFixture.SyncMode(AMember: TRttiMember): TSyncMode;
 begin
-  if SameText(AMethod.Name, 'Reset') then
-    Result := smSynchronizedAndDelayed
-  else
-    Result := smSynchronized;
+  Result := smSynchronized;
 end;
 
 function TSlimAddEntryFixture.TryGetEntryForm(out AForm: TEntryForm): Boolean;
