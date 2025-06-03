@@ -264,8 +264,8 @@ begin
           Execute(
             FGarbage.Collect(SlimList([
               SlimList(['id_1', 'make', 'instance_1', 'DivisionWithProps']),
-              SlimList(['id_2', 'call', 'instance_1', 'Numerator', '15']),
-              SlimList(['id_3', 'call', 'instance_1', 'Denominator', '5']),
+              SlimList(['id_2', 'call', 'instance_1', 'Numerator', '20']),
+              SlimList(['id_3', 'call', 'instance_1', 'Denominator', '4']),
               SlimList(['id_4', 'call', 'instance_1', 'Quotient'])
             ])),
             procedure(AResponse: TSlimList)
@@ -285,7 +285,7 @@ begin
     while Done.WaitFor(1) = wrTimeout do
       CheckSynchronize;
 
-    Assert.AreEqual('3.0', Task.Value);
+    Assert.AreEqual('5.0', Task.Value);
   finally
     Done.Free;
   end;

@@ -83,7 +83,7 @@ type
     procedure StopTest(const AMessage: String = '');
   public
     destructor Destroy; override;
-    function  HasDelayedInfo(AMethod: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
+    function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
     function  SyncMode(AMember: TRttiMember): TSyncMode; virtual;
     function  SystemUnderTest: TObject; virtual;
@@ -201,7 +201,7 @@ begin
   inherited;
 end;
 
-function TSlimFixture.HasDelayedInfo(AMethod: TRttiMember; var AInfo: TDelayedInfo): Boolean;
+function TSlimFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
 begin
   AInfo := Default(TDelayedInfo);
   Result := False;
