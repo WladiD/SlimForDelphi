@@ -15,6 +15,7 @@ uses
   System.IOUtils,
   System.Rtti,
   System.SysUtils,
+  System.Threading,
 
   DUnitX.TestFramework,
 
@@ -77,6 +78,13 @@ type
     procedure FirstFixture;
     [Test]
     procedure MultipleFixtures;
+  end;
+
+  [TestFixture]
+  TestSlimFixture = class
+  public
+    [Test]
+    procedure DelayedEvents;
   end;
 
 implementation
@@ -360,9 +368,31 @@ begin
   Assert.AreEqual(Double(5), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 end;
 
+{ TestSlimFixture }
+
+procedure TestSlimFixture.DelayedEvents;
+begin
+  var Fixture: TSlimFixture:=TSlimFixture.Create;
+  try
+    Fixture.InitDelayedEvent;
+
+    TTask.Run(
+      procedure
+      begin
+        Fixture.TriggerDelayedEvent;
+      end);
+
+    Fixture.WaitForDelayedEvent;
+    Assert.Pass;
+  finally
+    Fixture.Free;
+  end;
+end;
+
 initialization
 
 TDUnitX.RegisterTestFixture(TestSlimFixtureResolver);
 TDUnitX.RegisterTestFixture(TestScriptTableActorStack);
+TDUnitX.RegisterTestFixture(TestSlimFixture);
 
 end.
