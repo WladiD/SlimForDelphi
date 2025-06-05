@@ -43,6 +43,7 @@ type
     FDenominator: Double;
     function GetQuotient: Double;
   public
+    function SyncMode(AMember: TRttiMember): TSyncMode; override;
     property Numerator: Double read FNumerator write FNumerator;
     property Denominator: Double read FDenominator write FDenominator;
     [SlimMemberSyncMode(smSynchronized)]
@@ -85,6 +86,8 @@ type
   public
     [Test]
     procedure DelayedEvents;
+    [Test]
+    procedure MemberSyncMode;
   end;
 
 implementation
@@ -240,6 +243,14 @@ begin
   Result := FNumerator / FDenominator;
 end;
 
+function TSlimDivisionWithPropsFixture.SyncMode(AMember: TRttiMember): TSyncMode;
+begin
+  if SameText(AMember.Name, 'Numerator') or SameText(AMember.Name, 'Denominator') then
+    Result := smSynchronized
+  else
+    Result := smUnsynchronized;
+end;
+
 { TestScriptTableActorStack }
 
 procedure TestScriptTableActorStack.Setup;
@@ -386,6 +397,28 @@ begin
     Assert.Pass;
   finally
     Fixture.Free;
+  end;
+end;
+
+procedure TestSlimFixture.MemberSyncMode;
+var
+  InvokeArg   : TValue;
+  LClassType  : TRttiInstanceType;
+  Resolver    : TSlimFixtureResolver;
+  SlimProperty: TRttiProperty;
+begin
+  var Fixture: TSlimFixture := TSlimDivisionWithPropsFixture.Create;
+  try
+    Resolver := TSlimFixtureResolver.Create;
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'GetQuotient', nil, 0, SlimProperty, InvokeArg));
+    Assert.IsTrue(Fixture.SyncMode(SlimProperty) = smUnsynchronized); // Note: The attribute of Quotient is not evaluated at this level
+
+    Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Numerator', nil, 0, SlimProperty, InvokeArg));
+    Assert.IsTrue(Fixture.SyncMode(SlimProperty) = smSynchronized);
+  finally
+    Fixture.Free;
+    Resolver.Free;
   end;
 end;
 
