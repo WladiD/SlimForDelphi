@@ -2,6 +2,7 @@
 
 uses
   Vcl.Forms,
+  Common.LogSlimMain in '..\Common\Common.LogSlimMain.pas' {LogSlimMainForm},
   Main in 'Main.pas' {MainForm};
 
 {$R *.res}

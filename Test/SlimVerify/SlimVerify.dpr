@@ -2,8 +2,9 @@
 
 uses
   Vcl.Forms,
-  Main in 'Main.pas' {MainForm},
-  SlimFixtures in 'SlimFixtures.pas';
+  Common.LogSlimMain in '..\..\Example\Common\Common.LogSlimMain.pas' {LogSlimMainForm},
+  SlimFixtures in 'SlimFixtures.pas',
+  Main in 'Main.pas' {MainForm};
 
 {$R *.res}
 
