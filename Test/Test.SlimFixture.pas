@@ -404,9 +404,9 @@ procedure TestSlimFixture.MemberSyncMode;
 var
   InvokeArg   : TValue;
   LClassType  : TRttiInstanceType;
-  Resolver    : TSlimFixtureResolver;
   SlimProperty: TRttiProperty;
 begin
+  var Resolver: TSlimFixtureResolver:=nil;
   var Fixture: TSlimFixture := TSlimDivisionWithPropsFixture.Create;
   try
     Resolver := TSlimFixtureResolver.Create;
