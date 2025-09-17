@@ -11,3 +11,5 @@ Win32
 /Example/*/*.dsk
 /Example/*/*.local
 /Example/*/*.~dsk
+FitNesse
+/Test/TestInsightSettings.ini
