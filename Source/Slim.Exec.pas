@@ -11,6 +11,7 @@ interface
 uses
 
   System.Classes,
+  System.Contnrs,
   System.Generics.Collections,
   System.Rtti,
   System.SyncObjs,
@@ -41,7 +42,7 @@ type
   private
     FOwnedMembers: TContextMembers;
     FInstances   : TSlimFixtureDictionary;
-    FLibInstances: TSlimFixtureList;
+    FLibInstances: TObjectList;
     FResolver    : TSlimFixtureResolver;
     FSymbols     : TSlimSymbolDictionary;
   public
@@ -50,7 +51,7 @@ type
     procedure InitMembers(AContextMembers: TContextMembers);
     procedure SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);
   public
-    property LibInstances: TSlimFixtureList read FLibInstances;
+    property LibInstances: TObjectList read FLibInstances;
     property Resolver: TSlimFixtureResolver read FResolver;
     property Symbols: TSlimSymbolDictionary read FSymbols;
     property Instances: TSlimFixtureDictionary read FInstances;
@@ -214,7 +215,7 @@ begin
 
   if not Assigned(FLibInstances) and (cmLibInstances in AContextMembers) then
   begin
-    FLibInstances := TSlimFixtureList.Create(True);
+    FLibInstances := TObjectList.Create(True);
     Include(FOwnedMembers, cmLibInstances);
   end;
 
@@ -596,7 +597,7 @@ var
   begin
     for var Loop: Integer := Context.LibInstances.Count - 1 downto 0 do
     begin
-      AFixtureInstance := Context.LibInstances[Loop];
+      AFixtureInstance := Context.LibInstances[Loop] as TSlimFixture;
       if TryGetMember(AFixtureInstance, ASlimMember, AInvokeArgs) then
       begin
         AInstance := AFixtureInstance;

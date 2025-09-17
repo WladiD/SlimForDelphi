@@ -16,6 +16,7 @@ uses
   System.Rtti,
   System.SyncObjs,
   System.SysUtils,
+  System.Types,
 
   Slim.Common,
   Slim.List;
@@ -133,12 +134,11 @@ type
   TSymbolObjectFunc = function(const AValue: String): TObject of object;
 
   TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
-  TSlimFixtureList = TObjectList<TSlimFixture>;
 
   TScriptTableActorStack = class(TSlimFixture)
   private
     FInstances: TSlimFixtureDictionary;
-    FList     : TSlimFixtureList;
+    FList     : TObjectList;
     procedure RaiseNoScriptTableActorInstances;
   public
     constructor Create(AInstances: TSlimFixtureDictionary);
@@ -323,7 +323,7 @@ begin
   if not Assigned(AInstances) then
     raise ESlim.Create('AInstances is required');
   FInstances := AInstances;
-  FList := TSlimFixtureList.Create(True);
+  FList := TObjectList.Create(True);
 end;
 
 destructor TScriptTableActorStack.Destroy;
@@ -342,7 +342,7 @@ procedure TScriptTableActorStack.PopFixture;
 begin
   if FList.Count = 0 then
     raise ESlim.Create('No fixture on stack');
-  var Fixture: TSlimFixture:=FList.ExtractAt(FList.Count - 1);
+  var Fixture: TSlimFixture:=FList.Extract(FList[FList.Count - 1]) as TSlimFixture;
   FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, Fixture);
 end;
 
