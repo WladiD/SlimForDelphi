@@ -11,6 +11,7 @@ interface
 uses
 
   System.Classes,
+  System.Contnrs,
   System.Generics.Collections,
   System.Rtti,
   System.SyncObjs,
@@ -154,7 +155,7 @@ type
     FSymbolObjectFunc : TSymbolObjectFunc;
     FSymbolResolveFunc: TSymbolResolveFunc;
   protected
-    class var FFixtures: TList<TSlimFixtureClass>;
+    class var FFixtures: TClassList;
     class constructor Create;
     class destructor  Destroy;
     class procedure RegisterFixture(AFixtureClass: TSlimFixtureClass);
@@ -362,7 +363,7 @@ end;
 
 class constructor TSlimFixtureResolver.Create;
 begin
-  FFixtures := TList<TSlimFixtureClass>.Create;
+  FFixtures := TClassList.Create;
 end;
 
 class destructor TSlimFixtureResolver.Destroy;
@@ -488,8 +489,9 @@ var
   end;
 
 begin
-  for var FixtureClassType in FFixtures do
+  for var LoopClassType: TClass in FFixtures do
   begin
+    var FixtureClassType: TSlimFixtureClass:=TSlimFixtureClass(LoopClassType);
     LType := FRttiContext.GetType(FixtureClassType);
     if LType.IsInstance then
     begin
