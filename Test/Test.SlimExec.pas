@@ -578,6 +578,9 @@ end;
 
 initialization
 
+RegisterSlimFixture(TMySutFixture);
+RegisterSlimFixture(TSlimReflectObjectFixture);
+
 TDUnitX.RegisterTestFixture(TestContext);
 TDUnitX.RegisterTestFixture(TestSlimExecutor);
 TDUnitX.RegisterTestFixture(TestSlimStatement);

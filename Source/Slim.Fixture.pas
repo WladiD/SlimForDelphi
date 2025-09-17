@@ -153,6 +153,11 @@ type
     FRttiContext      : TRttiContext;
     FSymbolObjectFunc : TSymbolObjectFunc;
     FSymbolResolveFunc: TSymbolResolveFunc;
+  protected
+    class var FFixtures: TList<TSlimFixtureClass>;
+    class constructor Create;
+    class destructor  Destroy;
+    class procedure RegisterFixture(AFixtureClass: TSlimFixtureClass);
   public
     constructor Create;
     destructor Destroy; override;
@@ -169,12 +174,9 @@ procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 
 implementation
 
-/// <summary>
-///   Call this procedure with your fixture class to avoid code elimination for it by the compiler
-/// </summary>
 procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 begin
-  // Nothing to do
+  TSlimFixtureResolver.RegisterFixture(AFixtureClass);
 end;
 
 { SlimFixtureAttribute }
@@ -358,6 +360,16 @@ end;
 
 { TSlimFixtureResolver }
 
+class constructor TSlimFixtureResolver.Create;
+begin
+  FFixtures := TList<TSlimFixtureClass>.Create;
+end;
+
+class destructor TSlimFixtureResolver.Destroy;
+begin
+  FFixtures.Free;
+end;
+
 constructor TSlimFixtureResolver.Create;
 begin
   FRttiContext := TRttiContext.Create;
@@ -437,6 +449,11 @@ begin
   Result := RttiType as TRttiInstanceType;
 end;
 
+class procedure TSlimFixtureResolver.RegisterFixture(AFixtureClass: TSlimFixtureClass);
+begin
+  FFixtures.Add(AFixtureClass);
+end;
+
 /// <summary>
 ///   Try to find a fixture class by name
 /// </summary>
@@ -471,8 +488,9 @@ var
   end;
 
 begin
-  for LType in FRttiContext.GetTypes do
+  for var FixtureClassType in FFixtures do
   begin
+    LType := FRttiContext.GetType(FixtureClassType);
     if LType.IsInstance then
     begin
       AClassType := LType.AsInstance;
@@ -480,7 +498,6 @@ begin
       begin
         if
           (Attribute.ClassType = SlimFixtureAttribute) and
-          AClassType.MetaclassType.InheritsFrom(TSlimFixture) and
           (
             SlimFixtureNameMatch or
             AClassType.MetaclassType.ClassNameIs(AFixtureName)

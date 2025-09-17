@@ -424,6 +424,9 @@ end;
 
 initialization
 
+RegisterSlimFixture(TSlimDivisionFixture);
+RegisterSlimFixture(TSlimDivisionWithPropsFixture);
+
 TDUnitX.RegisterTestFixture(TestSlimFixtureResolver);
 TDUnitX.RegisterTestFixture(TestScriptTableActorStack);
 TDUnitX.RegisterTestFixture(TestSlimFixture);
