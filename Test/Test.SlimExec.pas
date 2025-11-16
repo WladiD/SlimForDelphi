@@ -417,9 +417,28 @@ end;
 
 procedure TestSlimExecutor.ImportTable;
 begin
+  // 1. Test with wrong namespace -> should fail
   Execute(
     FGarbage.Collect(SlimList([
-      SlimList(['id_1', 'import', 'AAAMyNamespace']),
+      SlimList(['id_1', 'import', 'WrongNamespace']),
+      SlimList(['id_2', 'make', 'instance_1', 'MyImportedFixture'])
+    ])),
+    procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
+    begin
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse), 'Import statement should have a response.');
+      Assert.AreEqual('OK', CallResponse[1].ToString, 'Import statement should return OK.');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse), 'Make statement should have a response.');
+      Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse, 'Make with wrong namespace should fail.');
+      Assert.Contains(CallResponse[1].ToString, 'NO_CLASS', 'Make with wrong namespace should fail with NO_CLASS.');
+    end);
+
+  // 2. Test with correct namespace -> should succeed
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'import', 'MyNamespace']),
       SlimList(['id_2', 'make', 'instance_1', 'MyImportedFixture']),
       SlimList(['id_3', 'call', 'instance_1', 'HelloWorld'])
     ])),
