@@ -37,7 +37,7 @@ type
 
   TSlimStatementContext = class
   public type
-    TContextMember = (cmInstances, cmLibInstances, cmResolver, cmSymbols);
+    TContextMember = (cmInstances, cmLibInstances, cmResolver, cmSymbols, cmImportedNamespaces);
     TContextMembers = set of TContextMember;
   private
     FOwnedMembers: TContextMembers;
@@ -45,12 +45,14 @@ type
     FLibInstances: TObjectList;
     FResolver    : TSlimFixtureResolver;
     FSymbols     : TSlimSymbolDictionary;
+    FImportedNamespaces: TStringList;
   public
     destructor Destroy; override;
     procedure InitAllMembers;
     procedure InitMembers(AContextMembers: TContextMembers);
     procedure SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);
   public
+    property ImportedNamespaces: TStringList read FImportedNamespaces;
     property LibInstances: TObjectList read FLibInstances;
     property Resolver: TSlimFixtureResolver read FResolver;
     property Symbols: TSlimSymbolDictionary read FSymbols;
@@ -196,13 +198,15 @@ begin
     FreeAndNil(Resolver);
   if cmSymbols in FOwnedMembers then
     FreeAndNil(Symbols);
+  if cmImportedNamespaces in FOwnedMembers then
+    FreeAndNil(FImportedNamespaces);
   FOwnedMembers := [];
   inherited;
 end;
 
 procedure TSlimStatementContext.InitAllMembers;
 begin
-  InitMembers([cmInstances..cmSymbols]);
+  InitMembers([cmInstances..cmImportedNamespaces]);
 end;
 
 procedure TSlimStatementContext.InitMembers(AContextMembers: TContextMembers);
@@ -235,6 +239,12 @@ begin
   begin
     FSymbols := TSlimSymbolDictionary.Create;
     Include(FOwnedMembers, cmSymbols);
+  end;
+
+  if not Assigned(FImportedNamespaces) and (cmImportedNamespaces in AContextMembers) then
+  begin
+    FImportedNamespaces := TStringList.Create;
+    Include(FOwnedMembers, cmImportedNamespaces);
   end;
 
   if Assigned(FResolver) and Assigned(FSymbols) then
@@ -344,7 +354,8 @@ end;
 
 function TSlimStmtImport.Execute: TSlimList;
 begin
-  Result := nil;
+  Context.ImportedNamespaces.Add(PathParam);
+  Result := ResponseOk;
 end;
 
 { TSlimStmtMake }
@@ -364,7 +375,7 @@ var
   InvokeArgs   : TArray<TValue>;
   SlimMethod   : TRttiMethod;
 begin
-  if not Context.Resolver.TryGetSlimFixture(ClassParam, FixtureClass) then
+  if not Context.Resolver.TryGetSlimFixture(ClassParam, Context.ImportedNamespaces, FixtureClass) then
     raise ESlimNoClass.Create(ClassParam);
 
   if not HasRawArguments(ArgStartIndex) then

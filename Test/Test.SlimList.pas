@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -56,7 +56,7 @@ var
   Content     : String;
 begin
   SlimList := nil;
-  Content := TFile.ReadAllText('Data\TwoMinuteExample.txt');
+  Content := TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt');
   try
     SlimList := SlimListUnserialize(Content);
     Content := SlimListSerialize(SlimList);
@@ -70,7 +70,7 @@ end;
 
 procedure TestSlimListUnserializer.TwoMinuteExampleTest;
 begin
-  TwoMinuteExample(TFile.ReadAllText('Data\TwoMinuteExample.txt'));
+  TwoMinuteExample(TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt'));
 end;
 
 class procedure TestSlimListUnserializer.TwoMinuteExample(const AContent: String);

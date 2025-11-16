@@ -164,7 +164,7 @@ type
     destructor Destroy; override;
     function GetParamValue(AParamType: TRttiType; AValueRaw: TSlimEntry): TValue;
     function GetRttiInstanceTypeFromInstance(Instance: TObject): TRttiInstanceType;
-    function TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
+    function TryGetSlimFixture(const AFixtureName: String; AImportedNamespaces: TStrings; out AClassType: TRttiInstanceType): Boolean;
     function TryGetSlimMethod(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimMethod: TRttiMethod; out AInvokeArgs: TArray<TValue>): Boolean;
     function TryGetSlimProperty(AInstance: TRttiInstanceType; const AName: String; ARawStmt: TSlimList; AArgStartIndex: Integer; out ASlimProperty: TRttiProperty; out AInvokeArg: TValue): Boolean;
     property SymbolObjectFunc: TSymbolObjectFunc read FSymbolObjectFunc write FSymbolObjectFunc;
@@ -472,42 +472,56 @@ end;
 ///   - By the class name of the fixture class
 ///     For the upper example: "TSlimDivisionFixture"
 /// </remarks>
-function TSlimFixtureResolver.TryGetSlimFixture(const AFixtureName: String; out AClassType: TRttiInstanceType): Boolean;
+function TSlimFixtureResolver.TryGetSlimFixture(const AFixtureName: String; AImportedNamespaces: TStrings; out AClassType: TRttiInstanceType): Boolean;
 var
-  Attribute: TCustomAttribute;
-  LType    : TRttiType;
-
-  function SlimFixtureNameMatch: Boolean;
-  begin
-    var FixtureAttr: SlimFixtureAttribute := SlimFixtureAttribute(Attribute);
-    Result :=
-      SameText(FixtureAttr.Name, AFixtureName) or
-      (
-        (FixtureAttr.Namespace <> '') and
-        SameText(FixtureAttr.Namespace + '.' + FixtureAttr.Name, AFixtureName)
-      );
-  end;
-
+  Attribute  : TCustomAttribute;
+  LType      : TRttiType;
+  FixtureAttr: SlimFixtureAttribute;
+  HasImport  : Boolean;
 begin
+  HasImport := Assigned(AImportedNamespaces) and (AImportedNamespaces.Count > 0);
+
   for var LoopClassType: TClass in FFixtures do
   begin
-    var FixtureClassType: TSlimFixtureClass:=TSlimFixtureClass(LoopClassType);
+    var FixtureClassType: TSlimFixtureClass := TSlimFixtureClass(LoopClassType);
     LType := FRttiContext.GetType(FixtureClassType);
-    if LType.IsInstance then
+    if not LType.IsInstance then
+      Continue;
+
+    AClassType := LType.AsInstance;
+    for Attribute in AClassType.GetAttributes do
     begin
-      AClassType := LType.AsInstance;
-      for Attribute in AClassType.GetAttributes do
+      if (Attribute.ClassType <> SlimFixtureAttribute) then
+        Continue;
+
+      FixtureAttr := SlimFixtureAttribute(Attribute);
+
+      // Priority 1: Match by class name (e.g., "TMyFixture")
+      if AClassType.MetaclassType.ClassNameIs(AFixtureName) then
+        Exit(true);
+
+      // Priority 2: Match by fully qualified name (e.g., "eg.Division")
+      if (FixtureAttr.Namespace <> '') and SameText(FixtureAttr.Namespace + '.' + FixtureAttr.Name, AFixtureName) then
+        Exit(true);
+
+      if HasImport then
       begin
-        if
-          (Attribute.ClassType = SlimFixtureAttribute) and
-          (
-            SlimFixtureNameMatch or
-            AClassType.MetaclassType.ClassNameIs(AFixtureName)
-          ) then
-          Exit(true);
+        // Priority 3 (with import): Match fixture simple name within imported namespaces
+        for var Namespace in AImportedNamespaces do
+        begin
+          if SameText(Namespace, FixtureAttr.Namespace) and SameText(AFixtureName, FixtureAttr.Name) then
+            Exit(True);
+        end;
+      end
+      else // No import
+      begin
+        // Priority 3 (no import): Match fixture by simple name.
+        if SameText(FixtureAttr.Name, AFixtureName) then
+           Exit(true);
       end;
     end;
   end;
+
   Result := false;
   AClassType := nil;
 end;

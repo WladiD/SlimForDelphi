@@ -50,11 +50,34 @@ type
     property Quotient: Double read GetQuotient;
   end;
 
+  // Fixtures for advanced resolver tests
+  [SlimFixture('AmbigFixture', 'ns1')]
+  TAmbigFixture1 = class(TSlimFixture);
+
+  [SlimFixture('AmbigFixture', 'ns2')]
+  TAmbigFixture2 = class(TSlimFixture);
+
+  [SlimFixture('GlobalFixture')]
+  TGlobalFixture = class(TSlimFixture);
+
+  [SlimFixture('GlobalFixture', 'ns1')]
+  TGlobalNsFixture = class(TSlimFixture);
+
   [TestFixture]
   TestSlimFixtureResolver = class
   public
     [Test]
     procedure TryGetSlimFixture;
+    [Test]
+    procedure TestAmbiguousWithoutImport;
+    [Test]
+    procedure TestAmbiguousWithImport;
+    [Test]
+    procedure TestGlobalAndImported;
+    [Test]
+    procedure TestCaseInsensitivity;
+    [Test]
+    procedure TestNotFound;
     [Test]
     procedure TryGetSlimMethod;
     [Test]
@@ -101,16 +124,141 @@ var
 begin
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', nil, LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
     LClassType := nil;
 
-    Assert.IsTrue(Resolver.TryGetSlimFixture('Division', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('Division', nil, LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
     Assert.AreEqual('Test.SlimFixture', LClassType.DeclaringUnitName);
 
-    Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', nil, LClassType));
   finally
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TestAmbiguousWithoutImport;
+var
+  Resolver  : TSlimFixtureResolver;
+  LClassType: TRttiInstanceType;
+begin
+  Resolver := TSlimFixtureResolver.Create;
+  try
+    // Without an import, the first registered fixture with the simple name wins.
+    // In this case, TAmbigFixture1 is registered first.
+    Assert.IsTrue(Resolver.TryGetSlimFixture('AmbigFixture', nil, LClassType), 'Should find the first registered ambiguous fixture.');
+    Assert.AreEqual(TAmbigFixture1, LClassType.MetaclassType, 'Should resolve to the first registered fixture.');
+  finally
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TestAmbiguousWithImport;
+var
+  Resolver  : TSlimFixtureResolver;
+  LClassType: TRttiInstanceType;
+  Imports   : TStringList;
+begin
+  Resolver := TSlimFixtureResolver.Create;
+  Imports := TStringList.Create;
+  try
+    // With an import, it should resolve to the specific fixture from the namespace.
+    Imports.Add('ns2');
+    Assert.IsTrue(Resolver.TryGetSlimFixture('AmbigFixture', Imports, LClassType), 'Should find fixture in imported namespace ns2.');
+    Assert.AreEqual(TAmbigFixture2, LClassType.MetaclassType, 'Should resolve to the fixture from namespace ns2.');
+
+    Imports.Clear;
+    Imports.Add('ns1');
+    Assert.IsTrue(Resolver.TryGetSlimFixture('AmbigFixture', Imports, LClassType), 'Should find fixture in imported namespace ns1.');
+    Assert.AreEqual(TAmbigFixture1, LClassType.MetaclassType, 'Should resolve to the fixture from namespace ns1.');
+  finally
+    Imports.Free;
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TestGlobalAndImported;
+var
+  Resolver  : TSlimFixtureResolver;
+  LClassType: TRttiInstanceType;
+  Imports   : TStringList;
+begin
+  Resolver := TSlimFixtureResolver.Create;
+  Imports := TStringList.Create;
+  try
+    // With import "ns1", it should find the namespaced fixture
+    Imports.Add('ns1');
+    Assert.IsTrue(Resolver.TryGetSlimFixture('GlobalFixture', Imports, LClassType), 'Should find namespaced fixture when imported.');
+    Assert.AreEqual(TGlobalNsFixture, LClassType.MetaclassType, 'Should resolve to TGlobalNsFixture.');
+
+    // Without an import, the first registered one wins. TGlobalFixture is registered before TGlobalNsFixture.
+    Imports.Clear;
+    Assert.IsTrue(Resolver.TryGetSlimFixture('GlobalFixture', nil, LClassType), 'Should find global fixture when not imported.');
+    Assert.AreEqual(TGlobalFixture, LClassType.MetaclassType, 'Should resolve to TGlobalFixture.');
+  finally
+    Imports.Free;
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TestCaseInsensitivity;
+var
+  Resolver  : TSlimFixtureResolver;
+  LClassType: TRttiInstanceType;
+  Imports   : TStringList;
+begin
+  Resolver := TSlimFixtureResolver.Create;
+  Imports := TStringList.Create;
+  try
+    // Test case insensitivity for different lookup types
+    Assert.IsTrue(Resolver.TryGetSlimFixture('tslimdivisionfixture', nil, LClassType), 'Class name should be case-insensitive.');
+    Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
+
+    Assert.IsTrue(Resolver.TryGetSlimFixture('EG.DIVISION', nil, LClassType), 'FQN should be case-insensitive.');
+    Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
+
+    Assert.IsTrue(Resolver.TryGetSlimFixture('division', nil, LClassType), 'Simple name should be case-insensitive.');
+    Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
+
+    Imports.Add('eG');
+    Assert.IsTrue(Resolver.TryGetSlimFixture('Division', Imports, LClassType), 'Imported lookup should be case-insensitive.');
+    Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
+  finally
+    Imports.Free;
+    Resolver.Free;
+  end;
+end;
+
+procedure TestSlimFixtureResolver.TestNotFound;
+var
+  Imports   : TStringList;
+  LClassType: TRttiInstanceType;
+  Resolver  : TSlimFixtureResolver;
+begin
+  Resolver := TSlimFixtureResolver.Create;
+  Imports := TStringList.Create;
+  try
+    // 1. Simple non-existent fixture
+    LClassType := nil;
+    Assert.IsFalse(Resolver.TryGetSlimFixture('NonExistentFixture', nil, LClassType), 'Should not find a non-existent fixture.');
+    Assert.IsNull(LClassType, 'LClassType should be nil for non-existent fixture.');
+
+    // 2. Non-existent fixture with import
+    LClassType := nil;
+    Imports.Add('ns1');
+    Assert.IsFalse(Resolver.TryGetSlimFixture('NonExistentFixture', Imports, LClassType), 'Should not find a non-existent fixture in an imported namespace.');
+    Assert.IsNull(LClassType, 'LClassType should be nil for non-existent fixture with import.');
+
+    // 3. Fixture with simple name from a different, un-imported namespace
+    // TAmbigFixture is in ns1 and ns2. If we import nsX, it shouldn't be found.
+    LClassType := nil;
+    Imports.Clear;
+    Imports.Add('nsX'); // A namespace that has no 'AmbigFixture'
+    Assert.IsFalse(Resolver.TryGetSlimFixture('AmbigFixture', Imports, LClassType), 'Should not find AmbigFixture by simple name if its namespace is not imported.');
+    Assert.IsNull(LClassType);
+  finally
+    Imports.Free;
     Resolver.Free;
   end;
 end;
@@ -126,7 +274,7 @@ begin
   Stmts := nil;
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', nil, LClassType));
     Stmts := SlimList(['CallId', '4.5']);
 
     Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setNumerator', Stmts, 1, SlimMethod, InvokeArgs));
@@ -160,7 +308,7 @@ begin
   Stmts := nil;
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', nil, LClassType));
     Stmts := SlimList(['CallId', '4.5']);
 
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Numerator', Stmts, 1, SlimProperty, InvokeArg));
@@ -274,7 +422,7 @@ begin
     procedure
     begin
       FActors := TScriptTableActorStack.Create(nil);
-    end);
+    end, ESlim);
 end;
 
 procedure TestScriptTableActorStack.MultipleFixtures;
@@ -288,14 +436,22 @@ begin
   Assert.AreEqual(Double(11), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 
   var SecondFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  try
+    SecondFixture.SetNumerator(60);
+    SecondFixture.SetDenominator(6);
+
+    Assert.WillRaise(
+      procedure
+      begin
+        FInstances.Add(TSlimConsts.ScriptTableActor, SecondFixture);
+      end, EListError);
+  finally
+    SecondFixture.Free;
+  end;
+
+  SecondFixture := TSlimDivisionFixture.Create; // Create a new instance
   SecondFixture.SetNumerator(60);
   SecondFixture.SetDenominator(6);
-
-  Assert.WillRaise(
-    procedure
-    begin
-      FInstances.Add(TSlimConsts.ScriptTableActor, SecondFixture);
-    end);
 
   FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, SecondFixture);
   Assert.AreEqual(1, FInstances.Count); // FirstFixture was destroyed at previous AddOrSetValue
@@ -410,7 +566,7 @@ begin
   var Fixture: TSlimFixture := TSlimDivisionWithPropsFixture.Create;
   try
     Resolver := TSlimFixtureResolver.Create;
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', nil, LClassType));
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'GetQuotient', nil, 0, SlimProperty, InvokeArg));
     Assert.IsTrue(Fixture.SyncMode(SlimProperty) = smUnsynchronized); // Note: The attribute of Quotient is not evaluated at this level
 
@@ -426,6 +582,11 @@ initialization
 
 RegisterSlimFixture(TSlimDivisionFixture);
 RegisterSlimFixture(TSlimDivisionWithPropsFixture);
+// The registration order matters for ambiguity tests
+RegisterSlimFixture(TAmbigFixture1);
+RegisterSlimFixture(TAmbigFixture2);
+RegisterSlimFixture(TGlobalFixture);
+RegisterSlimFixture(TGlobalNsFixture);
 
 TDUnitX.RegisterTestFixture(TestSlimFixtureResolver);
 TDUnitX.RegisterTestFixture(TestScriptTableActorStack);

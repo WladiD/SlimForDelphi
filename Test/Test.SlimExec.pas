@@ -72,6 +72,8 @@ type
     procedure FixtureWithProperties;
     [Test]
     procedure FixtureWithPropertiesSyncModes;
+    [Test]
+    procedure ImportTable;
   end;
 
   [TestFixture]
@@ -113,6 +115,12 @@ type
     function AnyObject: TObject;
     procedure RaiseStopException;
     function SystemUnderTest: TObject; override;
+  end;
+
+  [SlimFixture('MyImportedFixture', 'MyNamespace')]
+  TMyImportedFixture = class(TSlimFixture)
+  public
+    function HelloWorld: String;
   end;
 
   [SlimFixture('ReflectObject')]
@@ -203,7 +211,7 @@ end;
 
 function TestSlimExecutor.CreateStmtsFromFile(const AFileName: String): TSlimList;
 begin
-  Result := SlimListUnserialize(TFile.ReadAllText(AFileName));
+  Result := SlimListUnserialize(TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt'));
 end;
 
 procedure TestSlimExecutor.Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
@@ -397,13 +405,55 @@ end;
 
 procedure TestSlimExecutor.TwoMinuteExample;
 begin
-  var Stmts: TSlimList := FGarbage.Collect(CreateStmtsFromFile('Data\TwoMinuteExample.txt'));
+  var Stmts: TSlimList := FGarbage.Collect(CreateStmtsFromFile('Test\Data\TwoMinuteExample.txt'));
   Execute(Stmts,
     procedure(AResponse: TSlimList)
     begin
       Assert.AreEqual(Stmts.Count, AResponse.Count);
       var ResponseStr: String := SlimListSerialize(AResponse);
       Assert.IsNotEmpty(ResponseStr)
+    end);
+end;
+
+procedure TestSlimExecutor.ImportTable;
+begin
+  // 1. Test with wrong namespace -> should fail
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'import', 'WrongNamespace']),
+      SlimList(['id_2', 'make', 'instance_1', 'MyImportedFixture'])
+    ])),
+    procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
+    begin
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse), 'Import statement should have a response.');
+      Assert.AreEqual('OK', CallResponse[1].ToString, 'Import statement should return OK.');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse), 'Make statement should have a response.');
+      Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse, 'Make with wrong namespace should fail.');
+      Assert.Contains(CallResponse[1].ToString, 'NO_CLASS', 'Make with wrong namespace should fail with NO_CLASS.');
+    end);
+
+  // 2. Test with correct namespace -> should succeed
+  Execute(
+    FGarbage.Collect(SlimList([
+      SlimList(['id_1', 'import', 'MyNamespace']),
+      SlimList(['id_2', 'make', 'instance_1', 'MyImportedFixture']),
+      SlimList(['id_3', 'call', 'instance_1', 'HelloWorld'])
+    ])),
+    procedure(AResponse: TSlimList)
+    var
+      CallResponse: TSlimList;
+    begin
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse), 'Import statement should have a response.');
+      Assert.AreEqual('OK', CallResponse[1].ToString, 'Import statement should return OK.');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse), 'Make statement should have a response.');
+      Assert.AreEqual('OK', CallResponse[1].ToString, 'Make statement for imported fixture should succeed.');
+
+      Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse), 'Call statement should have a response.');
+      Assert.AreEqual('Hello from imported fixture!', CallResponse[1].ToString, 'Method call on imported fixture should succeed.');
     end);
 end;
 
@@ -557,6 +607,13 @@ begin
   Result := FMySut;
 end;
 
+{ TMyImportedFixture }
+
+function TMyImportedFixture.HelloWorld: String;
+begin
+  Result := 'Hello from imported fixture!';
+end;
+
 { TMyAnyObject }
 
 function TMyAnyObject.HelloWorld: String;
@@ -579,6 +636,7 @@ end;
 initialization
 
 RegisterSlimFixture(TMySutFixture);
+RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);
 
 TDUnitX.RegisterTestFixture(TestContext);
