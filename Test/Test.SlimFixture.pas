@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -101,15 +101,15 @@ var
 begin
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', nil, LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
     LClassType := nil;
 
-    Assert.IsTrue(Resolver.TryGetSlimFixture('Division', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('Division', nil, LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
     Assert.AreEqual('Test.SlimFixture', LClassType.DeclaringUnitName);
 
-    Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('eg.Division', nil, LClassType));
   finally
     Resolver.Free;
   end;
@@ -126,7 +126,7 @@ begin
   Stmts := nil;
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', nil, LClassType));
     Stmts := SlimList(['CallId', '4.5']);
 
     Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setNumerator', Stmts, 1, SlimMethod, InvokeArgs));
@@ -160,7 +160,7 @@ begin
   Stmts := nil;
   Resolver := TSlimFixtureResolver.Create;
   try
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', nil, LClassType));
     Stmts := SlimList(['CallId', '4.5']);
 
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'Numerator', Stmts, 1, SlimProperty, InvokeArg));
@@ -274,7 +274,7 @@ begin
     procedure
     begin
       FActors := TScriptTableActorStack.Create(nil);
-    end);
+    end, ESlim);
 end;
 
 procedure TestScriptTableActorStack.MultipleFixtures;
@@ -288,14 +288,22 @@ begin
   Assert.AreEqual(Double(11), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 
   var SecondFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  try
+    SecondFixture.SetNumerator(60);
+    SecondFixture.SetDenominator(6);
+
+    Assert.WillRaise(
+      procedure
+      begin
+        FInstances.Add(TSlimConsts.ScriptTableActor, SecondFixture);
+      end, EListError);
+  finally
+    SecondFixture.Free;
+  end;
+
+  SecondFixture := TSlimDivisionFixture.Create; // Create a new instance
   SecondFixture.SetNumerator(60);
   SecondFixture.SetDenominator(6);
-
-  Assert.WillRaise(
-    procedure
-    begin
-      FInstances.Add(TSlimConsts.ScriptTableActor, SecondFixture);
-    end);
 
   FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, SecondFixture);
   Assert.AreEqual(1, FInstances.Count); // FirstFixture was destroyed at previous AddOrSetValue
@@ -410,7 +418,7 @@ begin
   var Fixture: TSlimFixture := TSlimDivisionWithPropsFixture.Create;
   try
     Resolver := TSlimFixtureResolver.Create;
-    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', LClassType));
+    Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionWithPropsFixture', nil, LClassType));
     Assert.IsTrue(Resolver.TryGetSlimProperty(LClassType, 'GetQuotient', nil, 0, SlimProperty, InvokeArg));
     Assert.IsTrue(Fixture.SyncMode(SlimProperty) = smUnsynchronized); // Note: The attribute of Quotient is not evaluated at this level
 
