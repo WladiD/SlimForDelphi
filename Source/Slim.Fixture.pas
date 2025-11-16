@@ -17,6 +17,7 @@ uses
   System.SyncObjs,
   System.SysUtils,
   System.Types,
+  System.TypInfo,
 
   Slim.Common,
   Slim.List;
