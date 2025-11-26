@@ -142,14 +142,16 @@ type
     property ValueParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimExecutor = class
-  private
+  TSlimExecutor = class(TInterfacedObject)
+  protected
     FStopExecute: Boolean;
     FContext: TSlimStatementContext;
+    FManageInstances: Boolean;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create(AContext: TSlimStatementContext);
-    function Execute(ARawStmts: TSlimList): TSlimList;
+    function Execute(ARawStmts: TSlimList): TSlimList; virtual;
+    property ManageInstances: Boolean read FManageInstances write FManageInstances;
   end;
 
 function StringToSlimInstruction(const AValue: String): TSlimInstruction;
@@ -743,7 +745,9 @@ end;
 
 constructor TSlimExecutor.Create(AContext: TSlimStatementContext);
 begin
+  inherited Create;
   FContext := AContext;
+  FManageInstances := True;
 end;
 
 function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
@@ -778,7 +782,9 @@ function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 begin
   Result := TSlimList.Create;
   try
-    FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+    if FManageInstances then
+      FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+
     for var Loop := 0 to ARawStmts.Count - 1 do
     begin
       var LRawStmt: TSlimEntry := ARawStmts[Loop];

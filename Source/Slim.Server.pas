@@ -9,7 +9,6 @@ unit Slim.Server;
 interface
 
 uses
-
   System.Classes,
   System.SysUtils,
 
@@ -36,9 +35,12 @@ type
 
   TStringEvent = procedure(const AValue: String) of object;
 
+  TSlimExecutorClass = class of TSlimExecutor;
+
   TSlimServer = class(TIdTCPServer)
   private
     FContext        : TSlimStatementContext;
+    FExecutorClass  : TSlimExecutorClass;
     FOnReadRequest  : TStringEvent;
     FOnWriteResponse: TStringEvent;
   protected
@@ -50,6 +52,7 @@ type
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
+    property ExecutorClass: TSlimExecutorClass read FExecutorClass write FExecutorClass;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
     property OnWriteResponse: TStringEvent read FOnWriteResponse write FOnWriteResponse;
   end;
@@ -61,6 +64,7 @@ implementation
 procedure TSlimServer.AfterConstruction;
 begin
   inherited AfterConstruction;
+  FExecutorClass := TSlimExecutor;
   OnExecute := SlimServerExecute;
   FContext := TSlimStatementContext.Create;
   FContext.InitMembers([
@@ -81,7 +85,7 @@ var
   Stmts   : TSlimList;
 begin
   Stmts := nil;
-  Executor := TSlimExecutor.Create(FContext);
+  Executor := FExecutorClass.Create(FContext);
   try
     Stmts := SlimListUnserialize(ARequest);
     Result := Executor.Execute(Stmts);
@@ -157,3 +161,4 @@ begin
 end;
 
 end.
+
