@@ -16,7 +16,8 @@ uses
   Test.SlimList in 'Test.SlimList.pas',
   Test.SlimFixture in 'Test.SlimFixture.pas',
   Test.SlimExec in 'Test.SlimExec.pas',
-  Test.SlimSymbol in 'Test.SlimSymbol.pas';
+  Test.SlimSymbol in 'Test.SlimSymbol.pas',
+  Test.SlimProxy in 'Test.SlimProxy.pas';
 
 {$IFNDEF TESTINSIGHT}
 var

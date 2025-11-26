@@ -35,7 +35,7 @@ type
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
     FProxyFixtureNames: TStringList;
-    FTargets: TDictionary<string, TSlimProxyTarget>;
+    FTargets: TObjectDictionary<string, TSlimProxyTarget>;
     FActiveTarget: TSlimProxyTarget;
     function IsProxyCommand(ARawStmt: TSlimList): Boolean;
     procedure GetProxyFixtureNames;
@@ -121,7 +121,7 @@ constructor TSlimProxyExecutor.Create(AContext: TSlimStatementContext);
 begin
   inherited Create(AContext);
   ManageInstances := False;
-  FTargets := TDictionary<string, TSlimProxyTarget>.Create;
+  FTargets := TObjectDictionary<string, TSlimProxyTarget>.Create([doOwnsValues]);
   GetProxyFixtureNames;
 end;
 
@@ -165,7 +165,6 @@ begin
       FActiveTarget := nil;
 
     FTargets.Remove(LTargetName);
-    LTarget.Free;
   end;
 end;
 
