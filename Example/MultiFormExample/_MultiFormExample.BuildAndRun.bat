@@ -4,6 +4,19 @@ setlocal
 rem Change to the script's directory (Example/MultiFormExample/)
 pushd %~dp0
 
+set "EXE_NAME=MultiFormExample.exe"
+set "EXE_PATH=.\Win32\Debug\%EXE_NAME%"
+
+rem Check if the application is already running
+tasklist /FI "IMAGENAME eq %EXE_NAME%" 2>NUL | find /I /N "%EXE_NAME%">NUL
+if "%ERRORLEVEL%"=="0" (
+    echo.
+    echo WARNING: %EXE_NAME% is currently running.
+    echo Skipping build step to avoid file locking and allow starting another instance...
+    echo.
+    goto RunApp
+)
+
 rem 1. Call the build script
 echo Building MultiFormExample project...
 call _MultiFormExample.Build.bat
@@ -15,8 +28,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-rem Define the path to the executable
-set "EXE_PATH=.\Win32\Debug\MultiFormExample.exe"
+:RunApp
 
 rem Construct the optional port parameter
 set "SLIM_PORT_ARG="
