@@ -40,7 +40,7 @@ type
     function IsProxyCommand(ARawStmt: TSlimList): Boolean;
     procedure GetProxyFixtureNames;
   public
-    constructor Create(AContext: TSlimStatementContext);
+    constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
     function Execute(ARawStmts: TSlimList): TSlimList; override;
 
@@ -120,7 +120,7 @@ end;
 constructor TSlimProxyExecutor.Create(AContext: TSlimStatementContext);
 begin
   inherited Create(AContext);
-  ManageInstances := False;
+  ManageInstances := True; // Proxy needs to manage instances too
   FTargets := TObjectDictionary<string, TSlimProxyTarget>.Create([doOwnsValues]);
   GetProxyFixtureNames;
 end;

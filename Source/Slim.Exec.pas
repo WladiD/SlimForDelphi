@@ -142,14 +142,17 @@ type
     property ValueParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimExecutor = class(TInterfacedObject)
+  TSlimExecutor = class(TInterfacedObject, IInterface)
+  strict private
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
   protected
     FStopExecute: Boolean;
     FContext: TSlimStatementContext;
     FManageInstances: Boolean;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
-    constructor Create(AContext: TSlimStatementContext);
+    constructor Create(AContext: TSlimStatementContext); virtual;
     function Execute(ARawStmts: TSlimList): TSlimList; virtual;
     property ManageInstances: Boolean read FManageInstances write FManageInstances;
   end;
@@ -388,7 +391,7 @@ begin
     raise ESlimNoConstructor.Create(ClassParam);
 
   try
-    InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType,InvokeArgs);
+    InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType, InvokeArgs);
   except
     raise ESlimCouldNotInvokeConstructor.Create(ClassParam);
   end;
@@ -748,6 +751,16 @@ begin
   inherited Create;
   FContext := AContext;
   FManageInstances := True;
+end;
+
+function TSlimExecutor._AddRef: Integer;
+begin
+  Result := -1;
+end;
+
+function TSlimExecutor._Release: Integer;
+begin
+  Result := -1;
 end;
 
 function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;

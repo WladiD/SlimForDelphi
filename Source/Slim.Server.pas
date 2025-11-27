@@ -68,9 +68,11 @@ begin
   OnExecute := SlimServerExecute;
   FContext := TSlimStatementContext.Create;
   FContext.InitMembers([
+    TSlimStatementContext.TContextMember.cmInstances,
     TSlimStatementContext.TContextMember.cmLibInstances,
     TSlimStatementContext.TContextMember.cmResolver,
-    TSlimStatementContext.TContextMember.cmSymbols]);
+    TSlimStatementContext.TContextMember.cmSymbols,
+    TSlimStatementContext.TContextMember.cmImportedNamespaces]);
 end;
 
 destructor TSlimServer.Destroy;

@@ -2,3 +2,4 @@
 
  * [[Two Minute Example][Playground.TwoMinuteExample]]
  * [[Multi Form Example][Playground.MultiFormExample]]
+ * [[Multi Form Example controlled by !-SlimProxy-!][Playground.MultiFormExampleProxy]]
