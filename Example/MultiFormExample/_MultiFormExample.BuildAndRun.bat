@@ -38,9 +38,7 @@ if not "%~1"=="" (
 
 echo.
 echo Running "%EXE_PATH%" %SLIM_PORT_ARG%...
-
-rem Start the executable in a new window without blocking the batch script
-start "" "%EXE_PATH%" %SLIM_PORT_ARG%
+"%EXE_PATH%" %SLIM_PORT_ARG%
 
 rem Go back to the original directory
 popd

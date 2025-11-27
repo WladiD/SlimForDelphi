@@ -9,6 +9,7 @@ Win32
 /Test/dunitx-results.xml
 /Example/*/*.identcache
 /Example/*/*.dsk
+/Example/*/*.dsv
 /Example/*/*.local
 /Example/*/*.~dsk
 /Test/TestInsightSettings.ini

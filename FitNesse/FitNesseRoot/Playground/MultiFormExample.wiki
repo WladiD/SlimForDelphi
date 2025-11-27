@@ -2,15 +2,16 @@
 Help: Multi Form Example
 ---
 !define TEST_SYSTEM {slim}
-#!define COMMAND_PATTERN {C:\WC\SlimForDelphi\Example\MultiFormExample\Win32\Debug\MultiFormExample.exe}
-!define slim.port {9000}
+!define slim.port {0}
+!define COMMAND_PATTERN {..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat}
+
 The veterans...
 
 | add entry |
 | name | entry date | add? | id? | working years for company? |
 | Alice | 1990-01-01 | true | $AliceId= | >35 |
 
-Here are the employees at OurCompany who all came together from OtherCompany:
+Here are the employees at !-OurCompany-! who all came together from !-OtherCompany-!:
 
 | add entry |
 | name | entry date | add? | id? | working years for company? |
