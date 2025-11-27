@@ -1,0 +1,28 @@
+---
+Help: Multi Form Example
+---
+!define TEST_SYSTEM {slim}
+#!define COMMAND_PATTERN {C:\WC\SlimForDelphi\Example\MultiFormExample\Win32\Debug\MultiFormExample.exe}
+!define slim.port {9000}
+The veterans...
+
+| add entry |
+| name | entry date | add? | id? | working years for company? |
+| Alice | 1990-01-01 | true | $AliceId= | >35 |
+
+Here are the employees at OurCompany who all came together from OtherCompany:
+
+| add entry |
+| name | entry date | add? | id? | working years for company? |
+| Bob | 2016-09-21 | true | $BobId= | >8 |
+| Charlie | 2017-09-25 | true | $CharlieId= | >7 |
+| David | 2023-01-01 | true | $DavidId= | >2 |
+| prev ids: $BobId, $CharlieId, $DavidId | 2025-05-01 | true | $LastId= | >0 |
+
+| select entry |
+| sel id | cur name? |
+| $CharlieId | Charlie |
+| $AliceId | Alice |
+| $LastId | prev ids: $BobId, $CharlieId, $DavidId |
+| $BobId | Bob |
+| $DavidId | David |
