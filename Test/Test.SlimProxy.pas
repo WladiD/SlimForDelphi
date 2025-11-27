@@ -1,4 +1,4 @@
-unit Test.SlimProxy;
+﻿unit Test.SlimProxy;
 
 interface
 
@@ -90,12 +90,12 @@ begin
       CallResponse: TSlimList;
     begin
       Assert.AreEqual(2, AResponse.Count);
-      
+
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse));
       Assert.AreEqual('OK', CallResponse[1].ToString);
 
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
-      // If successful, it returns VoidResponse (usually empty string or specific void marker? 
+      // If successful, it returns VoidResponse (usually empty string or specific void marker?
       // Slim.Exec returns '/__VOID__/' usually, or just 'OK' for make?)
       // Checking Slim.Proxy.Fixtures logic:
       // procedure TSlimProxyFixture.ConnectToTarget... calls FExecutor.AddTarget...
