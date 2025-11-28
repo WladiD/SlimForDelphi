@@ -393,7 +393,8 @@ begin
   try
     InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType, InvokeArgs);
   except
-    raise ESlimCouldNotInvokeConstructor.Create(ClassParam);
+    on E: Exception do
+      raise ESlimCouldNotInvokeConstructor.Create(ClassParam + ': ' + E.Message);
   end;
 
   Instance := TSlimFixture(InstanceValue.AsObject);
@@ -480,6 +481,7 @@ var
 begin
   var SyncMode: TSyncMode := GetSyncMode;
   CatchedExceptClass := nil;
+  SyncResult := TValue.Empty;
 
   if SyncMode = smSynchronized then
   begin
@@ -795,7 +797,7 @@ function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 begin
   Result := TSlimList.Create;
   try
-    if FManageInstances then
+    if FManageInstances and not Assigned(FContext.Instances) then
       FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
     for var Loop := 0 to ARawStmts.Count - 1 do
