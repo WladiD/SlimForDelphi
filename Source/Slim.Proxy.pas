@@ -34,11 +34,9 @@ type
 
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
-    FProxyFixtureNames: TStringList;
     FTargets: TObjectDictionary<string, TSlimProxyTarget>;
     FActiveTarget: TSlimProxyTarget;
-    function IsProxyCommand(ARawStmt: TSlimList): Boolean;
-    procedure GetProxyFixtureNames;
+    function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
@@ -82,6 +80,8 @@ begin
   FClient.Host := FHost;
   FClient.Port := FPort;
   FClient.Connect;
+  // Consume the greeting message from the server (e.g. "Slim -- V0.5")
+  FClient.IOHandler.ReadLn;
 end;
 
 procedure TSlimProxyTarget.Disconnect;
@@ -100,13 +100,13 @@ begin
 
   // Send command
   LRequestBytes := TEncoding.UTF8.GetBytes(ACommand);
-  LLengthStr := Format('%.6x:', [Length(LRequestBytes)]);
+  LLengthStr := Format('%.6d:', [Length(LRequestBytes)]);
   FClient.IOHandler.Write(LLengthStr);
   FClient.IOHandler.Write(TIdBytes(LRequestBytes));
 
   // Read response
   LLengthStr := FClient.IOHandler.ReadString(6);
-  if not TryStrToInt('$' + LLengthStr, LResponseLength) then
+  if not TryStrToInt(LLengthStr, LResponseLength) then
     raise ESlim.CreateFmt('Invalid response length: "%s"', [LLengthStr]);
 
   // Read colon
@@ -122,14 +122,18 @@ begin
   inherited Create(AContext);
   ManageInstances := True; // Proxy needs to manage instances too
   FTargets := TObjectDictionary<string, TSlimProxyTarget>.Create([doOwnsValues]);
-  GetProxyFixtureNames;
+  if FManageInstances then
+     FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 end;
 
 destructor TSlimProxyExecutor.Destroy;
 begin
+  // Ensure instances are freed before the executor is destroyed.
+  if FManageInstances and Assigned(FContext) and Assigned(FContext.Instances) then
+    FContext.Instances.Clear;
+
   FActiveTarget := nil;
   FreeAndNil(FTargets);
-  FProxyFixtureNames.Free;
   inherited;
 end;
 
@@ -168,18 +172,71 @@ begin
   end;
 end;
 
+function TSlimProxyExecutor.TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
+var
+  LCommandStr, LResponseStr: string;
+  LResponseList: TSlimList;
+  LId: string;
+begin
+  Result := False;
+  AResult := nil;
+  LResponseList := nil;
+  if not Assigned(FActiveTarget) then
+    Exit;
+
+  LId := ARawStmt[0].ToString;
+  var LForwardList := TSlimList.Create;
+  try
+    try
+      LForwardList.Add(ARawStmt); // Wrap in list as expected by Slim Server
+      LCommandStr := SlimListSerialize(LForwardList);
+      LResponseStr := FActiveTarget.SendCommand(LCommandStr);
+      LResponseList := SlimListUnserialize(LResponseStr);
+
+      // Expecting list of results: [[id, result]]
+      if (LResponseList.Count > 0) and (LResponseList[0] is TSlimList) then
+      begin
+         // Extract the inner list which is the actual result for the statement
+         AResult := TSlimList(LResponseList.Extract(LResponseList[0]));
+      end
+      else
+        raise ESlim.Create('Invalid response format from target');
+
+      Result := True;
+    except
+      on E: Exception do
+      begin
+        AResult := SlimList([LId, TSlimConsts.ExceptionResponse + E.Message]);
+        Result := True; // Handled, but with error result
+      end;
+    end;
+  finally
+    // ARawStmt belongs to the caller (ARawStmts list in Execute).
+    // LForwardList.Add took ownership. We must extract it back to prevent
+    // LForwardList.Free from destroying ARawStmt.
+    LForwardList.Extract(ARawStmt);
+    LForwardList.Free;
+    if Assigned(LResponseList) then
+      LResponseList.Free;
+  end;
+end;
+
 function TSlimProxyExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 var
   LStmtResult: TSlimList;
   LRawStmt: TSlimList;
-  LId, LCommandStr, LResponseStr: string;
+  LInstr: string;
   LRawStmtEntry: TSlimEntry;
   I: Integer;
+  LIsLocal: Boolean;
+  LClass: TRttiInstanceType;
+  LFixture: TSlimFixture;
 begin
   LStmtResult := nil;
   Result := TSlimList.Create;
   try
     FStopExecute := False;
+
     for I := 0 to ARawStmts.Count - 1 do
     begin
       LRawStmtEntry := ARawStmts[I];
@@ -187,54 +244,100 @@ begin
         continue;
 
       LRawStmt := LRawStmtEntry as TSlimList;
-      LId := LRawStmt[0].ToString;
+      if LRawStmt.Count > 1 then
+        LInstr := LRawStmt[1].ToString
+      else
+        LInstr := '';
 
-      if IsProxyCommand(LRawStmt) then
+      LIsLocal := False;
+
+      // --- Decision Logic: Local or Remote? ---
+
+      if SameText(LInstr, 'import') then
       begin
-        LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
-        // Post-execution logic: Inject executor into newly created proxy fixtures
-        if SameText(LRawStmt[1].ToString, 'make') then
+        // Import is always executed locally AND broadcasted
+        LIsLocal := True;
+      end
+      else if SameText(LInstr, 'make') and (LRawStmt.Count > 3) then
+      begin
+        // Check if the class exists locally and is a Proxy Fixture
+        if FContext.Resolver.TryGetSlimFixture(LRawStmt[3].ToString, FContext.ImportedNamespaces, LClass) then
         begin
-          var LInstanceName := LRawStmt[2].ToString;
-          var LClassName := LRawStmt[3].ToString;
-          if FProxyFixtureNames.IndexOf(LClassName) > -1 then
-          begin
-            var LFixture: TSlimFixture;
-            if FContext.Instances.TryGetValue(LInstanceName, LFixture) and (LFixture is TSlimProxyFixture) then
-            begin
-              (LFixture as TSlimProxyFixture).Executor := Self as ISlimProxyExecutor;
-            end;
-          end;
+          if LClass.MetaclassType.InheritsFrom(TSlimProxyFixture) then
+            LIsLocal := True;
         end;
       end
-      else
+      else if SameText(LInstr, 'call') and (LRawStmt.Count > 2) then
       begin
-        if Assigned(FActiveTarget) then
+        // Check if instance is local
+        if FContext.Instances.TryGetValue(LRawStmt[2].ToString, LFixture) then
+           LIsLocal := True;
+      end
+      else if SameText(LInstr, 'callAndAssign') and (LRawStmt.Count > 3) then
+      begin
+        // Check if instance is local
+        if FContext.Instances.TryGetValue(LRawStmt[3].ToString, LFixture) then
+           LIsLocal := True;
+      end
+      else if SameText(LInstr, 'assign') then
+      begin
+         // Assign is usually a local operation (storing symbols)
+         LIsLocal := True;
+      end;
+
+      // --- 1. Local Execution ---
+      if LIsLocal then
+      begin
+        // Special case: Directly create TSlimProxyFixture to bypass problematic RTTI constructor invocation
+        if SameText(LInstr, 'make') and (LRawStmt.Count > 3) and SameText(LRawStmt[3].ToString, 'SlimProxy') then
         begin
-          var LForwardList := TSlimList.Create;
-          try
-            try
-              LForwardList.Add(LRawStmt);
-              LCommandStr := SlimListSerialize(LForwardList);
-              LResponseStr := FActiveTarget.SendCommand(LCommandStr);
-              LStmtResult := SlimListUnserialize(LResponseStr);
-              // The result from a single command is a list containing the result list
-              // e.g. [[<id>, OK]] -> we need to extract the inner list
-              if (LStmtResult.Count > 0) and (LStmtResult[0] is TSlimList) then
-                LStmtResult := LStmtResult[0] as TSlimList
-              else
-                raise ESlim.Create('Invalid response format from target');
-            except
-              on E: Exception do
-                LStmtResult := SlimList([LId, TSlimConsts.ExceptionResponse + E.Message]);
-            end;
-          finally
-            LForwardList.Free;
+          var LInstName := LRawStmt[2].ToString;
+          var LProxyFixture: TSlimProxyFixture := TSlimProxyFixture.Create; // Direct instantiation
+          FContext.Instances.AddOrSetValue(LInstName, LProxyFixture);
+          LProxyFixture.Executor := Self as ISlimProxyExecutor; // Inject executor
+          LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']); // Simulate successful make response
+        end
+        else // Normal local execution
+        begin
+          LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
+
+          // Special Post-Execution Logic for 'make' on ProxyFixtures
+          if SameText(LInstr, 'make') and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
+          begin
+             var LInstName := LRawStmt[2].ToString;
+             if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyFixture) then
+             begin
+               (LFixture as TSlimProxyFixture).Executor := Self as ISlimProxyExecutor;
+             end;
+          end;
+        end;
+      end;
+
+      // --- 2. Remote Execution (Forwarding) ---
+      // Forward if NOT Local OR if it is 'import' (Broadcast)
+      if (not LIsLocal) or SameText(LInstr, 'import') then
+      begin
+        var LRemoteResult: TSlimList;
+        if TryForwardToTarget(LRawStmt, LRemoteResult) then
+        begin
+          if not LIsLocal then
+          begin
+            // If not local, the remote result is THE result
+            if Assigned(LStmtResult) then LStmtResult.Free;
+            LStmtResult := LRemoteResult;
+          end
+          else
+          begin
+            // If it was local (e.g. Import), we prioritize local success, but we must free the remote result
+            // Ideally, if remote fails, we might want to warn, but for 'import', usually OK is expected.
+            if Assigned(LRemoteResult) then LRemoteResult.Free;
           end;
         end
-        else
+        else if not LIsLocal then
         begin
-          LStmtResult := SlimList([LId, TSlimConsts.ExceptionResponse + 'No active target selected.']);
+           // Error: No active target and not handled locally
+           if Assigned(LStmtResult) then LStmtResult.Free;
+           LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
         end;
       end;
 
@@ -250,78 +353,7 @@ begin
   end;
 end;
 
-procedure TSlimProxyExecutor.GetProxyFixtureNames;
-var
-  LType: TRttiType;
-  LAttribute: TCustomAttribute;
-  LRttiContext: TRttiContext;
-  LFixtureAttr: SlimFixtureAttribute;
-begin
-  FProxyFixtureNames := TStringList.Create;
-  LRttiContext := TRttiContext.Create;
-  try
-    LType := LRttiContext.GetType(TSlimProxyFixture);
-    if Assigned(LType) then
-    begin
-      FProxyFixtureNames.Add(LType.Name); // Add the class name, e.g., 'TSlimProxyFixture'
-      for LAttribute in LType.GetAttributes do
-      begin
-        if LAttribute is SlimFixtureAttribute then
-        begin
-          LFixtureAttr := LAttribute as SlimFixtureAttribute;
-          FProxyFixtureNames.Add(LFixtureAttr.Name); // Add the fixture name, e.g., 'SlimProxy'
-          if LFixtureAttr.Namespace <> '' then
-            FProxyFixtureNames.Add(LFixtureAttr.Namespace + '.' + LFixtureAttr.Name);
-        end;
-      end;
-    end;
-  finally
-    LRttiContext.Free;
-  end;
-end;
+// Remove old methods (GetProxyFixtureNames, IsProxyCommand)
 
-function TSlimProxyExecutor.IsProxyCommand(ARawStmt: TSlimList): Boolean;
-var
-  Instr, ClassOrInstanceName: string;
-  LFixture: TSlimFixture;
-begin
-  Result := False;
-  if ARawStmt.Count < 2 then
-    Exit;
-
-  Instr := ARawStmt[1].ToString;
-
-  if SameText(Instr, 'import') then
-  begin
-    // Imports are always handled by the current context (proxy)
-    Result := True;
-    Exit;
-  end;
-
-  if (ARawStmt.Count < 3) then
-    Exit;
-
-  if SameText(Instr, 'make') then
-  begin
-    // Check class name: [<id>, make, <instance>, <class>, ...]
-    if ARawStmt.Count > 3 then
-    begin
-      ClassOrInstanceName := ARawStmt[3].ToString;
-      Result := FProxyFixtureNames.IndexOf(ClassOrInstanceName) > -1;
-    end;
-  end
-  else if SameText(Instr, 'call') or SameText(Instr, 'callAndAssign') then
-  begin
-    // Check instance name: [<id>, call, <instance>, <function>, ...]
-    ClassOrInstanceName := ARawStmt[2].ToString;
-
-    // Is the instance one of the proxy's instances?
-    if FContext.Instances.TryGetValue(ClassOrInstanceName, LFixture) then
-    begin
-      // It's a proxy command if the fixture instance is one of our proxy fixture types.
-      Result := (LFixture is TSlimProxyFixture);
-    end;
-  end;
-end;
 
 end.

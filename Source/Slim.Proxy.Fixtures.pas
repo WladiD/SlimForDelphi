@@ -1,4 +1,4 @@
-unit Slim.Proxy.Fixtures;
+﻿unit Slim.Proxy.Fixtures;
 
 interface
 
@@ -24,8 +24,7 @@ type
     procedure SwitchToTarget(const AName: String);
     procedure DisconnectTarget(const AName: String);
     procedure Disconnect;
-
-    property Executor: ISlimProxyExecutor write FExecutor;
+    property  Executor: ISlimProxyExecutor write FExecutor;
   end;
 
 implementation
@@ -51,6 +50,8 @@ begin
 
   if not CreateProcess(nil, PChar(Cmd), nil, nil, False, 0, nil, nil, SI, PI) then
     RaiseLastOSError;
+
+  Sleep(2000); // TODO: Remove, when reliable waiting method exists
 
   CloseHandle(PI.hProcess);
   CloseHandle(PI.hThread);

@@ -44,7 +44,7 @@ type
     FOnReadRequest  : TStringEvent;
     FOnWriteResponse: TStringEvent;
   protected
-    function  Execute(const ARequest: String): TSlimList;
+    function  Execute(AExecutor: TSlimExecutor; const ARequest: String): TSlimList;
     function  ReadLength(AIo: TIdIOHandler): Integer;
     procedure SlimServerExecute(AContext: TIdContext);
     procedure WriteLength(AIo: TIdIOHandler; ALength: Integer);
@@ -81,19 +81,16 @@ begin
   inherited;
 end;
 
-function TSlimServer.Execute(const ARequest: String): TSlimList;
+function TSlimServer.Execute(AExecutor: TSlimExecutor; const ARequest: String): TSlimList;
 var
-  Executor: TSlimExecutor;
-  Stmts   : TSlimList;
+  Stmts: TSlimList;
 begin
   Stmts := nil;
-  Executor := FExecutorClass.Create(FContext);
   try
     Stmts := SlimListUnserialize(ARequest);
-    Result := Executor.Execute(Stmts);
+    Result := AExecutor.Execute(Stmts);
   finally
     Stmts.Free;
-    Executor.Free;
   end;
 end;
 
@@ -116,30 +113,36 @@ end;
 procedure TSlimServer.SlimServerExecute(AContext: TIdContext);
 var
   Io: TIdIOHandler;
+  LExecutor: TSlimExecutor;
 begin
   Io := AContext.Connection.IOHandler;
   Io.WriteLn('Slim -- V0.5');
 
+  LExecutor := FExecutorClass.Create(FContext);
   var Stream: TStringStream := TStringStream.Create;
   try
-    var LLength: Integer := ReadLength(Io);
-    while LLength > 0 do
-    begin
-      var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
-      if Assigned(FOnReadRequest) then
-        FOnReadRequest(LMessage);
-      if LMessage = 'bye' then
-        Break;
-      var Response: TSlimList := Execute(LMessage);
-      try
-        WriteString(Io, SlimListSerialize(Response));
-      finally
-        Response.Free;
+    try
+      var LLength: Integer := ReadLength(Io);
+      while LLength > 0 do
+      begin
+        var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
+        if Assigned(FOnReadRequest) then
+          FOnReadRequest(LMessage);
+        if LMessage = 'bye' then
+          Break;
+        var Response: TSlimList := Execute(LExecutor, LMessage);
+        try
+          WriteString(Io, SlimListSerialize(Response));
+        finally
+          Response.Free;
+        end;
+        LLength := ReadLength(Io);
       end;
-      LLength := ReadLength(Io);
+    finally
+      Stream.Free;
     end;
   finally
-    Stream.Free;
+    LExecutor.Free;
   end;
 end;
 

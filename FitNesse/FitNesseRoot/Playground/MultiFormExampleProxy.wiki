@@ -3,66 +3,65 @@ Help: Multi Form Example with Proxy
 Test
 ---
 !define TEST_SYSTEM {slim}
-!define slim.port {0}
-!define slim.host {127.0.0.1}
+!define slim.port {9000}
 !define COMMAND_PATTERN {..\Example\SlimProxy\_SlimProxy.BuildAndRun.bat}
 
 !3 Start 3 instances of MultiFormExample on different ports
 
-| script | slim proxy |
-| start process | cmd.exe | /c ..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090 |
-| start process | cmd.exe | /c ..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091 |
-| start process | cmd.exe | /c ..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092 |
+|script        |slim proxy                                                                                    |
+|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
+|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
+|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
 
 !3 Connect Proxy to targets
 
-| script | slim proxy |
-| connect to target | Target1 | localhost | 8090 |
-| connect to target | Target2 | localhost | 8091 |
-| connect to target | Target3 | localhost | 8092 |
+|script            |slim proxy            |
+|connect to target;|Target1|localhost|8090|
+|connect to target;|Target2|localhost|8091|
+|connect to target;|Target3|localhost|8092|
 
 !3 Switch to Target 1 and add Alice (ID 1)
 
-| script | slim proxy |
-| switch to target | Target1 |
+|script          |slim proxy|
+|switch to target|Target1   |
 
-| add entry |
-| name | entry date | add? | id? | working years for company? |
-| Alice | 1990-01-01 | true | $AliceId= | >35 |
+
+|add entry                                                 |
+|name |entry date|add?|id?      |working years for company?|
+|Alice|1990-01-01|true|$AliceId=|>35                       |
 
 !3 Switch to Target 2 and add Bob (ID 1) and Bob2 (ID 2)
 
-| script | slim proxy |
-| switch to target | Target2 |
+|script          |slim proxy|
+|switch to target|Target2   |
 
-| add entry |
-| name | entry date | add? | id? | working years for company? |
-| Bob | 2016-09-21 | true | $BobId= | >8 |
-| Bob2 | 2018-01-01 | true | $Bob2Id= | >5 |
+|add entry                                               |
+|name|entry date|add?|id?     |working years for company?|
+|Bob |2016-09-21|true|$BobId= |>8                        |
+|Bob2|2018-01-01|true|$Bob2Id=|>5                        |
 
 !3 Verify separation
 
 !4 On Target 1: ID 1 is Alice, ID 2 is unknown
 
-| script | slim proxy |
-| switch to target | Target1 |
+|script          |slim proxy|
+|switch to target|Target1   |
 
-| select entry |
-| sel id | cur name? |
-| $AliceId | Alice |
-| $Bob2Id | |
+|select entry      |
+|sel id  |cur name?|
+|$AliceId|Alice    |
 
 !4 On Target 2: ID 1 is Bob, ID 2 is Bob2
 
-| script | slim proxy |
-| switch to target | Target2 |
+|script          |slim proxy|
+|switch to target|Target2   |
 
-| select entry |
-| sel id | cur name? |
-| $BobId | Bob |
-| $Bob2Id | Bob2 |
+|select entry     |
+|sel id |cur name?|
+|$BobId |Bob      |
+|$Bob2Id|Bob2     |
 
 !3 Cleanup (Disconnect)
 
-| script | slim proxy |
-| disconnect |
+|script|slim proxy|
+|disconnect       |
