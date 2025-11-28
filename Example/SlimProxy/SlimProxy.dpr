@@ -31,7 +31,7 @@ begin
 end;
 
 var
-  LPort: Integer = 8085;
+  LPort: Integer;
   LServer: TSlimServer;
 begin
   try
@@ -40,7 +40,7 @@ begin
     Writeln('SlimProxy starting...');
 
     if not HasSlimPortParam(LPort) then
-      LPort := 8085; // Default port if no --SlimPort=X is provided
+      LPort := 9000; // Default port if no --SlimPort=X is provided
 
     Writeln('Using Port: ', LPort);
 
@@ -50,7 +50,6 @@ begin
       LServer.DefaultPort := LPort;
       LServer.OnConnect := TLogger.OnConnect;
       LServer.OnException := TLogger.OnException;
-
       LServer.ExecutorClass := TSlimProxyExecutor;
       LServer.Active := True;
 
@@ -65,7 +64,6 @@ begin
       Writeln('SlimProxy shutting down...');
       LServer.Free;
     end;
-
   except
     on E: Exception do
       Writeln(E.ClassName, ': ', E.Message);
