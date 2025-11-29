@@ -1,4 +1,9 @@
 @echo off
+
+rem Kill any existing instances of SlimProxy.exe and MultiFormExample.exe
+rem taskkill /IM SlimProxy.exe /F 2>nul
+rem taskkill /IM MultiFormExample.exe /F 2>nul
+
 setlocal
 pushd %~dp0
 
