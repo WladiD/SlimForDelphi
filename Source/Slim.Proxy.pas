@@ -232,13 +232,13 @@ var
   LClass: TRttiInstanceType;
   LFixture: TSlimFixture;
 begin
-  LStmtResult := nil;
   Result := TSlimList.Create;
   try
     FStopExecute := False;
 
     for I := 0 to ARawStmts.Count - 1 do
     begin
+      LStmtResult := nil;
       LRawStmtEntry := ARawStmts[I];
       if not (LRawStmtEntry is TSlimList) then
         continue;
@@ -323,7 +323,7 @@ begin
           if not LIsLocal then
           begin
             // If not local, the remote result is THE result
-            if Assigned(LStmtResult) then LStmtResult.Free;
+            LStmtResult.Free;
             LStmtResult := LRemoteResult;
           end
           else
@@ -336,7 +336,7 @@ begin
         else if not LIsLocal then
         begin
            // Error: No active target and not handled locally
-           if Assigned(LStmtResult) then LStmtResult.Free;
+           LStmtResult.Free;
            LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
         end;
       end;

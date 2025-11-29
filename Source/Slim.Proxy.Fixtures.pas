@@ -19,6 +19,7 @@ type
   private
     FExecutor: ISlimProxyExecutor;
   public
+    destructor Destroy; override;
     procedure StartProcess(const APath, AArgs: String);
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
     procedure SwitchToTarget(const AName: String);
@@ -35,6 +36,12 @@ uses
   Slim.Common;
 
 { TSlimProxyFixture }
+
+destructor TSlimProxyFixture.Destroy;
+begin
+  Pointer(FExecutor):=nil;
+  inherited;
+end;
 
 procedure TSlimProxyFixture.StartProcess(const APath, AArgs: String);
 var
