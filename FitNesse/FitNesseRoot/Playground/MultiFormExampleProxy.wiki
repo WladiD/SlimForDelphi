@@ -4,6 +4,7 @@ Test
 ---
 !define TEST_SYSTEM {slim}
 !define slim.port {9000}
+!define slim.host {127.0.0.1}
 !define COMMAND_PATTERN {..\Example\SlimProxy\_SlimProxy.BuildAndRun.bat}
 
 !3 Start 3 instances of MultiFormExample on different ports
@@ -40,9 +41,18 @@ Test
 |Bob |2016-09-21|true|$BobId= |>8                        |
 |Bob2|2018-01-01|true|$Bob2Id=|>5                        |
 
+!3 Switch to Target 3 and add Charlie (ID 1)
+
+|script          |slim proxy|
+|switch to target|Target3   |
+
+|add entry                                                   |
+|name   |entry date|add?|id?         |working years for company?|
+|Charlie|2020-02-20|true|$CharlieId= |>4                        |
+
 !3 Verify separation
 
-!4 On Target 1: ID 1 is Alice, ID 2 is unknown
+!4 On Target 1: ID 1 is Alice
 
 |script          |slim proxy|
 |switch to target|Target1   |
@@ -60,6 +70,15 @@ Test
 |sel id |cur name?|
 |$BobId |Bob      |
 |$Bob2Id|Bob2     |
+
+!4 On Target 3: ID 1 is Charlie
+
+|script          |slim proxy|
+|switch to target|Target3   |
+
+|select entry       |
+|sel id     |cur name?|
+|$CharlieId |Charlie  |
 
 !3 Cleanup (Disconnect)
 
