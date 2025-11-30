@@ -6,8 +6,11 @@ rem Change to the script's directory
 pushd %~dp0
 
 call _SlimProxy.Build.bat
-
-start Win32\Debug\SlimProxy.exe
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Proxy build failed. Aborting.
+    popd
+    exit /b %ERRORLEVEL%
+)
 
 rem Navigate to the FitNesse directory relative to the project root
 cd ..\..\FitNesse
