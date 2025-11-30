@@ -15,34 +15,32 @@ uses
   Slim.Proxy.Fixtures;
 
 type
+
   TSlimProxyTarget = class
   private
     FClient: TIdTCPClient;
-    FName: string;
-    FHost: string;
+    FHost: String;
+    FName: String;
     FPort: Integer;
   public
-    constructor Create(const AName, AHost: string; APort: Integer);
+    constructor Create(const AName, AHost: String; APort: Integer);
     destructor Destroy; override;
-
     procedure Connect;
     procedure Disconnect;
-    function SendCommand(ACommand: string): string;
-
-    property Name: string read FName;
+    function  SendCommand(ACommand: String): String;
+    property  Name: String read FName;
   end;
 
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
-    FTargets: TObjectDictionary<string, TSlimProxyTarget>;
     FActiveTarget: TSlimProxyTarget;
+    FTargets: TObjectDictionary<string, TSlimProxyTarget>;
     function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
     function Execute(ARawStmts: TSlimList): TSlimList; override;
-
-    // Target Management
+  public // Target Management
     procedure AddTarget(const AName, AHost: string; APort: Integer);
     procedure SwitchToTarget(const AName: string);
     procedure DisconnectTarget(const AName: string);
@@ -56,7 +54,7 @@ uses
 
 { TSlimProxyTarget }
 
-constructor TSlimProxyTarget.Create(const AName, AHost: string; APort: Integer);
+constructor TSlimProxyTarget.Create(const AName, AHost: String; APort: Integer);
 begin
   inherited Create;
   FName := AName;
@@ -74,8 +72,7 @@ end;
 
 procedure TSlimProxyTarget.Connect;
 var
-  LGreeting: string;
-  LRetry: Integer;
+  LGreeting: String;
 begin
   if FClient.Connected then
     Exit;
@@ -83,7 +80,7 @@ begin
   FClient.Host := FHost;
   FClient.Port := FPort;
 
-  for LRetry := 1 to 200 do // Max 20 seconds wait
+  for var LRetry := 1 to 200 do // Max 20 seconds wait
   begin
     try
       FClient.Connect;
@@ -110,13 +107,13 @@ begin
     FClient.Disconnect;
 end;
 
-function TSlimProxyTarget.SendCommand(ACommand: string): string;
+function TSlimProxyTarget.SendCommand(ACommand: String): String;
 var
   LRequestBytes: TBytes;
-  LLengthStr: string;
+  LLengthStr: String;
   LResponseLength: Integer;
 begin
-  Connect; // Ensure connection
+  Connect;
 
   // Send command
   LRequestBytes := TEncoding.UTF8.GetBytes(ACommand);
@@ -141,7 +138,7 @@ constructor TSlimProxyExecutor.Create(AContext: TSlimStatementContext);
 begin
   inherited Create(AContext);
   ManageInstances := True; // Proxy needs to manage instances too
-  FTargets := TObjectDictionary<string, TSlimProxyTarget>.Create([doOwnsValues]);
+  FTargets := TObjectDictionary<String, TSlimProxyTarget>.Create([doOwnsValues]);
   if FManageInstances then
      FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 end;
@@ -160,11 +157,11 @@ begin
   end;
 
   FActiveTarget := nil;
-  FreeAndNil(FTargets);
+  FTargets.Free;
   inherited;
 end;
 
-procedure TSlimProxyExecutor.AddTarget(const AName, AHost: string; APort: Integer);
+procedure TSlimProxyExecutor.AddTarget(const AName, AHost: String; APort: Integer);
 var
   LTarget: TSlimProxyTarget;
 begin
@@ -176,13 +173,13 @@ begin
   LTarget.Connect;
 end;
 
-procedure TSlimProxyExecutor.SwitchToTarget(const AName: string);
+procedure TSlimProxyExecutor.SwitchToTarget(const AName: String);
 begin
   if not FTargets.TryGetValue(AName, FActiveTarget) then
     raise ESlim.CreateFmt('Target with name "%s" not found.', [AName]);
 end;
 
-procedure TSlimProxyExecutor.DisconnectTarget(const AName: string);
+procedure TSlimProxyExecutor.DisconnectTarget(const AName: String);
 var
   LTarget: TSlimProxyTarget;
 begin
@@ -196,9 +193,10 @@ end;
 
 function TSlimProxyExecutor.TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
 var
-  LCommandStr, LResponseStr: string;
+  LCommandStr: String;
+  LResponseStr: String;
   LResponseList: TSlimList;
-  LId: string;
+  LId: String;
 begin
   Result := False;
   AResult := nil;
@@ -238,8 +236,7 @@ begin
     // LForwardList.Free from destroying ARawStmt.
     LForwardList.Extract(ARawStmt);
     LForwardList.Free;
-    if Assigned(LResponseList) then
-      LResponseList.Free;
+    LResponseList.Free;
   end;
 end;
 
@@ -247,7 +244,7 @@ function TSlimProxyExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 var
   LStmtResult: TSlimList;
   LRawStmt: TSlimList;
-  LInstr: string;
+  LInstr: String;
   LRawStmtEntry: TSlimEntry;
   I: Integer;
   LIsLocal: Boolean;
@@ -374,8 +371,5 @@ begin
     raise;
   end;
 end;
-
-// Remove old methods (GetProxyFixtureNames, IsProxyCommand)
-
 
 end.
