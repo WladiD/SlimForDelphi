@@ -39,7 +39,7 @@ Test
 |add entry                                               |
 |name|entry date|add?|id?     |working years for company?|
 |Bob |2016-09-21|true|$BobId= |>8                        |
-|Bob2|2018-01-01|true|$Bob2Id=|>5                        |
+|Brenda|2018-01-01|true|$BrendaId=|>5                    |
 
 !3 Switch to Target 3 and add Charlie (ID 1)
 
@@ -69,7 +69,7 @@ Test
 |select entry     |
 |sel id |cur name?|
 |$BobId |Bob      |
-|$Bob2Id|Bob2     |
+|$BrendaId|Brenda |
 
 !4 On Target 3: ID 1 is Charlie
 
