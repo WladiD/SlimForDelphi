@@ -73,6 +73,8 @@ begin
 end;
 
 procedure TSlimProxyTarget.Connect;
+var
+  LGreeting: string;
 begin
   if FClient.Connected then
     Exit;
@@ -80,8 +82,13 @@ begin
   FClient.Host := FHost;
   FClient.Port := FPort;
   FClient.Connect;
-  // Consume the greeting message from the server (e.g. "Slim -- V0.5")
-  FClient.IOHandler.ReadLn;
+  // Consume and validate the greeting message from the server (e.g. "Slim -- V0.5")
+  LGreeting := FClient.IOHandler.ReadLn;
+  if not LGreeting.StartsWith('Slim --') then
+  begin
+    FClient.Disconnect;
+    raise ESlim.CreateFmt('Invalid greeting from target %s:%d: "%s"', [FHost, FPort, LGreeting]);
+  end;
 end;
 
 procedure TSlimProxyTarget.Disconnect;
