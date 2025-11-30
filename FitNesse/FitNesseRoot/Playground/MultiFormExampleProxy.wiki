@@ -84,3 +84,4 @@ Test
 
 |script|slim proxy|
 |disconnect       |
+|start process;    |cmd.exe|!-/c taskkill /IM SlimProxy.exe /F-!|
