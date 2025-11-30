@@ -9,10 +9,10 @@ Test
 
 !3 Start 3 instances of MultiFormExample on different ports
 
-|script        |slim proxy                                                                                    |
-|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
-|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
-|start process;|cmd.exe|/c C:\WC\SlimForDelphi\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
+|script        |slim proxy                                                           |
+|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
+|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
+|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
 
 !3 Connect Proxy to targets
 
