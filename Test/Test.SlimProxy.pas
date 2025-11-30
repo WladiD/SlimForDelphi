@@ -41,6 +41,7 @@ begin
   Executor := TSlimProxyExecutor.Create(FContext);
   var Response: TSlimList := nil;
   try
+    Executor.ConnectRetries := 1;
     Response := Executor.Execute(AStmts);
     if Assigned(ACheckResponseProc) then
       ACheckResponseProc(Response);
@@ -93,12 +94,8 @@ begin
       Assert.AreEqual('OK', CallResponse[1].ToString);
 
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
-      // If successful, it returns VoidResponse (usually empty string or specific void marker?
-      // Slim.Exec returns '/__VOID__/' usually, or just 'OK' for make?)
-      // Checking Slim.Proxy.Fixtures logic:
-      // procedure TSlimProxyFixture.ConnectToTarget... calls FExecutor.AddTarget...
-      // AddTarget returns nothing (void).
-      Assert.AreEqual(TSlimConsts.VoidResponse, CallResponse[1].ToString);
+      // ConnectToTarget should fail quickly (1 retry) and return an exception because no server is running on port 8080.
+      Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
     end);
 end;
 

@@ -23,6 +23,7 @@ type
     FHost: String;
     FName: String;
     FPort: Integer;
+    FConnectRetries: Integer;
   public
     constructor Create(const AName, AHost: String; APort: Integer);
     destructor Destroy; override;
@@ -30,17 +31,20 @@ type
     procedure Disconnect;
     function  SendCommand(ACommand: String): String;
     property  Name: String read FName;
+    property  ConnectRetries: Integer read FConnectRetries write FConnectRetries;
   end;
 
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
     FActiveTarget: TSlimProxyTarget;
     FTargets: TObjectDictionary<string, TSlimProxyTarget>;
+    FConnectRetries: Integer;
     function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
     function Execute(ARawStmts: TSlimList): TSlimList; override;
+    property ConnectRetries: Integer read FConnectRetries write FConnectRetries;
   public // Target Management
     procedure AddTarget(const AName, AHost: string; APort: Integer);
     procedure SwitchToTarget(const AName: string);
@@ -62,6 +66,7 @@ begin
   FHost := AHost;
   FPort := APort;
   FClient := TIdTCPClient.Create(nil);
+  FConnectRetries := 200;
 end;
 
 destructor TSlimProxyTarget.Destroy;
@@ -81,13 +86,13 @@ begin
   FClient.Host := FHost;
   FClient.Port := FPort;
 
-  for var LRetry := 1 to 200 do // Max 20 seconds wait
+  for var LRetry := 1 to FConnectRetries do // Configurable wait
   begin
     try
       FClient.Connect;
       Break;
     except
-      if LRetry = 200 then
+      if LRetry = FConnectRetries then
         raise;
       TThread.Sleep(100);
     end;
@@ -142,6 +147,7 @@ begin
   FTargets := TObjectDictionary<String, TSlimProxyTarget>.Create([doOwnsValues]);
   if FManageInstances then
      FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+  FConnectRetries := 200;
 end;
 
 destructor TSlimProxyExecutor.Destroy;
@@ -170,6 +176,7 @@ begin
     raise ESlim.CreateFmt('Target with name "%s" already exists.', [AName]);
 
   LTarget := TSlimProxyTarget.Create(AName, AHost, APort);
+  LTarget.ConnectRetries := FConnectRetries;
   FTargets.Add(AName, LTarget);
   LTarget.Connect;
 end;
