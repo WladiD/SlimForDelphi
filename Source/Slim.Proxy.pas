@@ -75,13 +75,26 @@ end;
 procedure TSlimProxyTarget.Connect;
 var
   LGreeting: string;
+  LRetry: Integer;
 begin
   if FClient.Connected then
     Exit;
 
   FClient.Host := FHost;
   FClient.Port := FPort;
-  FClient.Connect;
+
+  for LRetry := 1 to 200 do // Max 20 seconds wait
+  begin
+    try
+      FClient.Connect;
+      Break;
+    except
+      if LRetry = 200 then
+        raise;
+      TThread.Sleep(100);
+    end;
+  end;
+
   // Consume and validate the greeting message from the server (e.g. "Slim -- V0.5")
   LGreeting := FClient.IOHandler.ReadLn;
   if not LGreeting.StartsWith('Slim --') then
@@ -160,6 +173,7 @@ begin
 
   LTarget := TSlimProxyTarget.Create(AName, AHost, APort);
   FTargets.Add(AName, LTarget);
+  LTarget.Connect;
 end;
 
 procedure TSlimProxyExecutor.SwitchToTarget(const AName: string);

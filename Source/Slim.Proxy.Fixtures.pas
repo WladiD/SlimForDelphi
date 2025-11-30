@@ -1,4 +1,4 @@
-﻿unit Slim.Proxy.Fixtures;
+unit Slim.Proxy.Fixtures;
 
 interface
 
@@ -56,8 +56,6 @@ begin
 
   if not CreateProcess(nil, PChar(Cmd), nil, nil, False, 0, nil, nil, SI, PI) then
     RaiseLastOSError;
-
-  Sleep(2000); // TODO: Remove, when reliable waiting method exists
 
   CloseHandle(PI.hProcess);
   CloseHandle(PI.hThread);
