@@ -1,6 +1,9 @@
 @echo off
 setlocal
 
+rem Kill any existing instances of SlimProxy.exe and MultiFormExample.exe
+taskkill /IM SlimProxy.exe /F 2>nul
+taskkill /IM MultiFormExample.exe /F 2>nul
 
 rem Change to the script's directory
 pushd %~dp0
@@ -11,6 +14,8 @@ if %ERRORLEVEL% neq 0 (
     popd
     exit /b %ERRORLEVEL%
 )
+
+start Win32\Debug\SlimProxy.exe
 
 rem Navigate to the FitNesse directory relative to the project root
 cd ..\..\FitNesse
