@@ -37,10 +37,8 @@ uses
 procedure TestSlimProxy.Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
 var
   Executor: TSlimProxyExecutor;
-  ExecutorHolder: IInterface;
 begin
   Executor := TSlimProxyExecutor.Create(FContext);
-  ExecutorHolder := Executor; // Hold reference to manage lifetime
   var Response: TSlimList := nil;
   try
     Response := Executor.Execute(AStmts);
@@ -48,7 +46,7 @@ begin
       ACheckResponseProc(Response);
   finally
     Response.Free;
-    // Executor will be freed when ExecutorHolder and other references (in fixtures) go out of scope
+    Executor.Free;
   end;
 end;
 

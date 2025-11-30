@@ -127,10 +127,17 @@ begin
 end;
 
 destructor TSlimProxyExecutor.Destroy;
+var
+  LFixture: TSlimFixture;
 begin
   // Ensure instances are freed before the executor is destroyed.
   if FManageInstances and Assigned(FContext) and Assigned(FContext.Instances) then
+  begin
+    for LFixture in FContext.Instances.Values do
+      if LFixture is TSlimProxyFixture then
+        TSlimProxyFixture(LFixture).Executor := nil;
     FContext.Instances.Clear;
+  end;
 
   FActiveTarget := nil;
   FreeAndNil(FTargets);

@@ -142,8 +142,9 @@ type
     property ValueParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimExecutor = class(TInterfacedObject, IInterface)
+  TSlimExecutor = class(TObject, IInterface)
   strict private
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
   protected
@@ -753,6 +754,14 @@ begin
   inherited Create;
   FContext := AContext;
   FManageInstances := True;
+end;
+
+function TSlimExecutor.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+  if GetInterface(IID, Obj) then
+    Result := 0
+  else
+    Result := E_NOINTERFACE;
 end;
 
 function TSlimExecutor._AddRef: Integer;

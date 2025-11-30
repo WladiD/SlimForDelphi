@@ -39,7 +39,6 @@ uses
 
 destructor TSlimProxyFixture.Destroy;
 begin
-  Pointer(FExecutor):=nil; // Workaround: Prevents _Release call on potentially destroyed Executor object
   inherited;
 end;
 
