@@ -24,7 +24,6 @@ type
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
     procedure SwitchToTarget(const AName: String);
     procedure DisconnectTarget(const AName: String);
-    procedure Disconnect;
     property  Executor: ISlimProxyExecutor write FExecutor;
   end;
 
@@ -77,12 +76,6 @@ procedure TSlimProxyFixture.DisconnectTarget(const AName: String);
 begin
   if not Assigned(FExecutor) then raise ESlim.Create('Executor not assigned');
   FExecutor.DisconnectTarget(AName);
-end;
-
-procedure TSlimProxyFixture.Disconnect;
-begin
-  if not Assigned(FExecutor) then raise ESlim.Create('Executor not assigned');
-  FExecutor.DisconnectTarget(''); // An empty name could signify the active target
 end;
 
 initialization

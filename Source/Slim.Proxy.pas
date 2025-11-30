@@ -184,19 +184,13 @@ end;
 
 procedure TSlimProxyExecutor.DisconnectTarget(const AName: string);
 var
-  LTargetName: string;
   LTarget: TSlimProxyTarget;
 begin
-  LTargetName := AName;
-  if (LTargetName = '') and Assigned(FActiveTarget) then
-    LTargetName := FActiveTarget.Name;
-
-  if FTargets.TryGetValue(LTargetName, LTarget) then
+  if FTargets.TryGetValue(AName, LTarget) then
   begin
     if FActiveTarget = LTarget then
       FActiveTarget := nil;
-
-    FTargets.Remove(LTargetName);
+    FTargets.Remove(AName);
   end;
 end;
 

@@ -83,5 +83,7 @@ Test
 !3 Cleanup (Disconnect)
 
 |script|slim proxy|
-|disconnect       |
+|disconnect target;|Target1|
+|disconnect target;|Target2|
+|disconnect target;|Target3|
 |start process;    |cmd.exe|!-/c taskkill /IM SlimProxy.exe /F-!|
