@@ -7,19 +7,19 @@ Test
 !define slim.host {127.0.0.1}
 !define COMMAND_PATTERN {..\Example\SlimProxy\_SlimProxy.BuildAndRun.bat}
 
-!3 Start 3 instances of MultiFormExample on different ports
+!3 Start MultiFormExample on Port 8090 and wait for connection (ensures build is done)
 
-|script        |slim proxy                                                           |
-|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
-|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
-|start process;|cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
+|script            |slim proxy                                                           |
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
+|connect to target;|Target1|localhost                                               |8090|
 
-!3 Connect Proxy to targets
+!3 Start remaining instances (will skip build because instance 1 is running)
 
-|script            |slim proxy            |
-|connect to target;|Target1|localhost|8090|
-|connect to target;|Target2|localhost|8091|
-|connect to target;|Target3|localhost|8092|
+|script            |slim proxy                                                           |
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
+|connect to target;|Target2|localhost                                               |8091|
+|connect to target;|Target3|localhost                                               |8092|
 
 !3 Switch to Target 1 and add Alice (ID 1)
 
@@ -61,15 +61,15 @@ Test
 |sel id  |cur name?|
 |$AliceId|Alice    |
 
-!4 On Target 2: ID 1 is Bob, ID 2 is Bob2
+!4 On Target 2: ID 1 is Bob, ID 2 is Brenda
 
 |script          |slim proxy|
 |switch to target|Target2   |
 
-|select entry     |
-|sel id |cur name?|
-|$BobId |Bob      |
-|$BrendaId|Brenda |
+|select entry       |
+|sel id     |cur name?|
+|$BobId     |Bob      |
+|$BrendaId  |Brenda   |
 
 !4 On Target 3: ID 1 is Charlie
 
