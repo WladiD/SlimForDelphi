@@ -41,7 +41,7 @@ begin
   Executor := TSlimProxyExecutor.Create(FContext);
   var Response: TSlimList := nil;
   try
-    Executor.ConnectRetries := 1;
+    Executor.ConnectTimeout := 100;
     Response := Executor.Execute(AStmts);
     if Assigned(ACheckResponseProc) then
       ACheckResponseProc(Response);

@@ -1,9 +1,9 @@
-﻿unit Slim.Proxy;
+unit Slim.Proxy;
 
 interface
 
 uses
-
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
@@ -23,7 +23,7 @@ type
     FHost: String;
     FName: String;
     FPort: Integer;
-    FConnectRetries: Integer;
+    FConnectTimeout: Integer;
   public
     constructor Create(const AName, AHost: String; APort: Integer);
     destructor Destroy; override;
@@ -31,20 +31,20 @@ type
     procedure Disconnect;
     function  SendCommand(ACommand: String): String;
     property  Name: String read FName;
-    property  ConnectRetries: Integer read FConnectRetries write FConnectRetries;
+    property  ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout;
   end;
 
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
     FActiveTarget: TSlimProxyTarget;
     FTargets: TObjectDictionary<string, TSlimProxyTarget>;
-    FConnectRetries: Integer;
+    FConnectTimeout: Integer;
     function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
     function Execute(ARawStmts: TSlimList): TSlimList; override;
-    property ConnectRetries: Integer read FConnectRetries write FConnectRetries;
+    property ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout;
   public // Target Management
     procedure AddTarget(const AName, AHost: string; APort: Integer);
     procedure SwitchToTarget(const AName: string);
@@ -66,7 +66,7 @@ begin
   FHost := AHost;
   FPort := APort;
   FClient := TIdTCPClient.Create(nil);
-  FConnectRetries := 200;
+  FConnectTimeout := 20000; // Default 20s
 end;
 
 destructor TSlimProxyTarget.Destroy;
@@ -79,6 +79,7 @@ end;
 procedure TSlimProxyTarget.Connect;
 var
   LGreeting: String;
+  LStart: Cardinal;
 begin
   if FClient.Connected then
     Exit;
@@ -86,13 +87,14 @@ begin
   FClient.Host := FHost;
   FClient.Port := FPort;
 
-  for var LRetry := 1 to FConnectRetries do // Configurable wait
+  LStart := GetTickCount;
+  while True do
   begin
     try
       FClient.Connect;
       Break;
     except
-      if LRetry = FConnectRetries then
+      if (GetTickCount - LStart) >= Cardinal(FConnectTimeout) then
         raise;
       TThread.Sleep(100);
     end;
@@ -147,7 +149,7 @@ begin
   FTargets := TObjectDictionary<String, TSlimProxyTarget>.Create([doOwnsValues]);
   if FManageInstances then
      FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
-  FConnectRetries := 200;
+  FConnectTimeout := 20000; // Default 20s
 end;
 
 destructor TSlimProxyExecutor.Destroy;
@@ -176,7 +178,7 @@ begin
     raise ESlim.CreateFmt('Target with name "%s" already exists.', [AName]);
 
   LTarget := TSlimProxyTarget.Create(AName, AHost, APort);
-  LTarget.ConnectRetries := FConnectRetries;
+  LTarget.ConnectTimeout := FConnectTimeout; // Pass timeout to target
   FTargets.Add(AName, LTarget);
   LTarget.Connect;
 end;
