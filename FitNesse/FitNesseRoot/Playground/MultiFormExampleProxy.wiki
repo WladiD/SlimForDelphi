@@ -3,29 +3,27 @@ Help: Multi Form Example with Proxy
 Test
 ---
 !define TEST_SYSTEM {slim}
-!define slim.port {9000}
+!define slim.port {0}
 !define slim.host {127.0.0.1}
 !define COMMAND_PATTERN {..\Example\SlimProxy\_SlimProxy.BuildAndRun.bat}
+!define APP_BASE_PORT {9000}
 
-!3 Start MultiFormExample on Port 8090 and wait for connection (ensures build is done)
-
-|script            |slim proxy                                                           |
-|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8090|
-|connect to target;|Target1|localhost                                               |8090|
-
-!3 Start remaining instances (will skip build because instance 1 is running)
+!3 Start MultiFormExample on Port ${= ${APP_BASE_PORT}+1 =} and wait for connection (ensures build is done)
 
 |script            |slim proxy                                                           |
-|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8091|
-|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat 8092|
-|connect to target;|Target2|localhost                                               |8091|
-|connect to target;|Target3|localhost                                               |8092|
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+1 =}|
+|connect to target;|Target1|localhost                                               |${= ${APP_BASE_PORT}+1 =}|
+
+|script            |slim proxy                                                           |
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+2 =}|
+|start process;    |cmd.exe|/c ..\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+3 =}|
+|connect to target;|Target2|localhost                                               |${= ${APP_BASE_PORT}+2 =}|
+|connect to target;|Target3|localhost                                               |${= ${APP_BASE_PORT}+3 =}|
 
 !3 Switch to Target 1 and add Alice (ID 1)
 
 |script          |slim proxy|
 |switch to target|Target1   |
-
 
 |add entry                                                 |
 |name |entry date|add?|id?      |working years for company?|
