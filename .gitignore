@@ -1,6 +1,6 @@
 __recovery
 __history
-Win32
+Win??
 /Test/*.local
 /Test/*.identcache
 /Test/*.dsk
