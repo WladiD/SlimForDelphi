@@ -27,6 +27,7 @@ uses
   Vcl.StdCtrls,
 
   Slim.Server,
+  Slim.CmdUtils,
 
   Data,
   Entry;
@@ -75,7 +76,11 @@ begin
   UpdateMainGrid;
 
   var SlimServer: TSlimServer := TSlimServer.Create(Self);
-  SlimServer.DefaultPort := 9000;
+  var LPort: Integer;
+  if not HasSlimPortParam(LPort) then
+    LPort := 9000;
+
+  SlimServer.DefaultPort := LPort;
   SlimServer.Active := True;
 end;
 

@@ -30,7 +30,7 @@ type
     procedure Reset; override;
     procedure SetEntryDate(const AValue: String);
     procedure SetName(const AValue: String);
-    function  WorkingYearsForTAIFUN: Double;
+    function  WorkingYearsForCompany: Double;
     function  SyncMode(AMember: TRttiMember): TSyncMode; override;
   end;
 
@@ -100,7 +100,7 @@ begin
     AForm := Screen.FocusedForm as TEntryForm;
 end;
 
-function TSlimAddEntryFixture.WorkingYearsForTAIFUN: Double;
+function TSlimAddEntryFixture.WorkingYearsForCompany: Double;
 begin
   Result := MainForm.Entries.Last.WorkingYears;
 end;

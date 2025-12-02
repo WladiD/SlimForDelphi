@@ -13,6 +13,7 @@ uses
   System.Character,
   System.Classes,
   System.Contnrs,
+  System.Types,
   System.SysUtils;
 
 type
@@ -44,6 +45,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function Add(AEntry: TSlimEntry): Integer;
+    function Extract(AEntry: TSlimEntry): TSlimEntry;
     property Count: Integer read GetCount;
     property Entries[AIndex: Integer]: TSlimEntry read GetEntry; default;
   end;
@@ -158,6 +160,11 @@ end;
 function TSlimList.Add(AEntry: TSlimEntry): Integer;
 begin
   Result := FList.Add(AEntry);
+end;
+
+function TSlimList.Extract(AEntry: TSlimEntry): TSlimEntry;
+begin
+  Result := TSlimEntry(FList.Extract(AEntry));
 end;
 
 function TSlimList.GetCount: Integer;

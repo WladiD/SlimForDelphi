@@ -1,0 +1,89 @@
+---
+Help: Multi Form Example with Proxy
+Test
+---
+!define TEST_SYSTEM {slim}
+!define slim.port {0}
+!define slim.host {127.0.0.1}
+!define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat}
+!define APP_BASE_PORT {9000}
+
+!3 Start MultiFormExample on Port ${= ${APP_BASE_PORT}+1 =} and wait for connection (ensures build is done)
+
+|script            |slim proxy                                                           |
+|start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+1 =}|
+|connect to target;|Target1|localhost                                               |${= ${APP_BASE_PORT}+1 =}|
+
+!4 Start more instances
+
+|script            |slim proxy                                                           |
+|start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+2 =}|
+|start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${= ${APP_BASE_PORT}+3 =}|
+|connect to target;|Target2|localhost                                               |${= ${APP_BASE_PORT}+2 =}|
+|connect to target;|Target3|localhost                                               |${= ${APP_BASE_PORT}+3 =}|
+
+!3 Switch to Target 1 and add Alice (ID 1)
+
+|script          |slim proxy|
+|switch to target|Target1   |
+
+|add entry                                                 |
+|name |entry date|add?|id?      |working years for company?|
+|Alice|1990-01-01|true|$AliceId=|>35                       |
+
+!3 Switch to Target 2 and add Bob (ID 1) and Bob2 (ID 2)
+
+|script          |slim proxy|
+|switch to target|Target2   |
+
+|add entry                                               |
+|name|entry date|add?|id?     |working years for company?|
+|Bob |2016-09-21|true|$BobId= |>8                        |
+|Brenda|2018-01-01|true|$BrendaId=|>5                    |
+
+!3 Switch to Target 3 and add Charlie (ID 1)
+
+|script          |slim proxy|
+|switch to target|Target3   |
+
+|add entry                                                   |
+|name   |entry date|add?|id?         |working years for company?|
+|Charlie|2020-02-20|true|$CharlieId= |>4                        |
+
+!3 Verify separation
+
+!4 On Target 1: ID 1 is Alice
+
+|script          |slim proxy|
+|switch to target|Target1   |
+
+|select entry      |
+|sel id  |cur name?|
+|$AliceId|Alice    |
+
+!4 On Target 2: ID 1 is Bob, ID 2 is Brenda
+
+|script          |slim proxy|
+|switch to target|Target2   |
+
+|select entry       |
+|sel id     |cur name?|
+|$BobId     |Bob      |
+|$BrendaId  |Brenda   |
+
+!4 On Target 3: ID 1 is Charlie
+
+|script          |slim proxy|
+|switch to target|Target3   |
+
+|select entry       |
+|sel id     |cur name?|
+|$CharlieId |Charlie  |
+
+!3 Cleanup (Disconnect)
+
+|script|slim proxy|
+|disconnect target;|Target1|
+|disconnect target;|Target2|
+|disconnect target;|Target3|
+|start process;    |cmd.exe|!-/c taskkill /IM SlimProxy.exe /F-!|

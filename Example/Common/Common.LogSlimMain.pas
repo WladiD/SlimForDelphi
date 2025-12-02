@@ -22,7 +22,8 @@ uses
   Vcl.StdCtrls,
 
   Slim.Fixture,
-  Slim.Server;
+  Slim.Server,
+  Slim.CmdUtils;
 
 type
 
@@ -44,10 +45,16 @@ implementation
 { TMainForm }
 
 procedure TLogSlimMainForm.AfterConstruction;
+var
+  LPort: Integer;
 begin
   inherited;
   FSlimServer := TSlimServer.Create(Self);
-  FSlimServer.DefaultPort := 9000;
+
+  if not HasSlimPortParam(LPort) then
+    LPort := 9000;
+
+  FSlimServer.DefaultPort := LPort;
   FSlimServer.Active := True;
   FSlimServer.OnReadRequest := ReadRequestHandler;
   FSlimServer.OnWriteResponse := WriteResponseHandler;
