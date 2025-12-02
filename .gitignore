@@ -12,6 +12,11 @@ Win32
 /Example/*/*.dsv
 /Example/*/*.local
 /Example/*/*.~dsk
+/Projects/*/*.identcache
+/Projects/*/*.dsk
+/Projects/*/*.dsv
+/Projects/*/*.local
+/Projects/*/*.~dsk
 /Test/TestInsightSettings.ini
 /FitNesse/FitNesseRoot/FitNesse
 /FitNesse/FitNesseRoot/files/testResults/
