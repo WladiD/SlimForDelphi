@@ -147,11 +147,17 @@ procedure TSlimServer.WriteString(AIo: TIdIOHandler; const AValue: String);
 var
   Value      : UTF8String;
   ValueLength: Integer;
+  Bytes      : TIdBytes;
 begin
   Value := UTF8Encode(AValue);
   ValueLength := Length(Value);
   WriteLength(AIo, ValueLength);
-  AIo.Write(TIdBytes(@Value[1]), ValueLength);
+  if ValueLength > 0 then
+  begin
+    SetLength(Bytes, ValueLength);
+    Move(Value[1], Bytes[0], ValueLength);
+    AIo.Write(Bytes);
+  end;
   if Assigned(FOnWriteResponse) then
     FOnWriteResponse(AValue);
 end;
