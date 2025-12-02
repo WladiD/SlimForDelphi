@@ -9,7 +9,6 @@ unit Slim.Server;
 interface
 
 uses
-
   System.Classes,
   System.SysUtils,
 
@@ -36,13 +35,16 @@ type
 
   TStringEvent = procedure(const AValue: String) of object;
 
+  TSlimExecutorClass = class of TSlimExecutor;
+
   TSlimServer = class(TIdTCPServer)
   private
     FContext        : TSlimStatementContext;
+    FExecutorClass  : TSlimExecutorClass;
     FOnReadRequest  : TStringEvent;
     FOnWriteResponse: TStringEvent;
   protected
-    function  Execute(const ARequest: String): TSlimList;
+    function  Execute(AExecutor: TSlimExecutor; const ARequest: String): TSlimList;
     function  ReadLength(AIo: TIdIOHandler): Integer;
     procedure SlimServerExecute(AContext: TIdContext);
     procedure WriteLength(AIo: TIdIOHandler; ALength: Integer);
@@ -50,6 +52,7 @@ type
   public
     procedure AfterConstruction; override;
     destructor Destroy; override;
+    property ExecutorClass: TSlimExecutorClass read FExecutorClass write FExecutorClass;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
     property OnWriteResponse: TStringEvent read FOnWriteResponse write FOnWriteResponse;
   end;
@@ -61,12 +64,15 @@ implementation
 procedure TSlimServer.AfterConstruction;
 begin
   inherited AfterConstruction;
+  FExecutorClass := TSlimExecutor;
   OnExecute := SlimServerExecute;
   FContext := TSlimStatementContext.Create;
   FContext.InitMembers([
+    TSlimStatementContext.TContextMember.cmInstances,
     TSlimStatementContext.TContextMember.cmLibInstances,
     TSlimStatementContext.TContextMember.cmResolver,
-    TSlimStatementContext.TContextMember.cmSymbols]);
+    TSlimStatementContext.TContextMember.cmSymbols,
+    TSlimStatementContext.TContextMember.cmImportedNamespaces]);
 end;
 
 destructor TSlimServer.Destroy;
@@ -75,19 +81,16 @@ begin
   inherited;
 end;
 
-function TSlimServer.Execute(const ARequest: String): TSlimList;
+function TSlimServer.Execute(AExecutor: TSlimExecutor; const ARequest: String): TSlimList;
 var
-  Executor: TSlimExecutor;
-  Stmts   : TSlimList;
+  Stmts: TSlimList;
 begin
   Stmts := nil;
-  Executor := TSlimExecutor.Create(FContext);
   try
     Stmts := SlimListUnserialize(ARequest);
-    Result := Executor.Execute(Stmts);
+    Result := AExecutor.Execute(Stmts);
   finally
     Stmts.Free;
-    Executor.Free;
   end;
 end;
 
@@ -110,30 +113,36 @@ end;
 procedure TSlimServer.SlimServerExecute(AContext: TIdContext);
 var
   Io: TIdIOHandler;
+  LExecutor: TSlimExecutor;
 begin
   Io := AContext.Connection.IOHandler;
   Io.WriteLn('Slim -- V0.5');
 
+  LExecutor := FExecutorClass.Create(FContext);
   var Stream: TStringStream := TStringStream.Create;
   try
-    var LLength: Integer := ReadLength(Io);
-    while LLength > 0 do
-    begin
-      var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
-      if Assigned(FOnReadRequest) then
-        FOnReadRequest(LMessage);
-      if LMessage = 'bye' then
-        Break;
-      var Response: TSlimList := Execute(LMessage);
-      try
-        WriteString(Io, SlimListSerialize(Response));
-      finally
-        Response.Free;
+    try
+      var LLength: Integer := ReadLength(Io);
+      while LLength > 0 do
+      begin
+        var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
+        if Assigned(FOnReadRequest) then
+          FOnReadRequest(LMessage);
+        if LMessage = 'bye' then
+          Break;
+        var Response: TSlimList := Execute(LExecutor, LMessage);
+        try
+          WriteString(Io, SlimListSerialize(Response));
+        finally
+          Response.Free;
+        end;
+        LLength := ReadLength(Io);
       end;
-      LLength := ReadLength(Io);
+    finally
+      Stream.Free;
     end;
   finally
-    Stream.Free;
+    LExecutor.Free;
   end;
 end;
 
@@ -163,3 +172,4 @@ begin
 end;
 
 end.
+

@@ -142,14 +142,20 @@ type
     property ValueParam: String index 3 read GetRawStmtString;
   end;
 
-  TSlimExecutor = class
-  private
+  TSlimExecutor = class(TObject, IInterface)
+  strict private
+    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
+    function _AddRef: Integer; stdcall;
+    function _Release: Integer; stdcall;
+  protected
     FStopExecute: Boolean;
     FContext: TSlimStatementContext;
+    FManageInstances: Boolean;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
-    constructor Create(AContext: TSlimStatementContext);
-    function Execute(ARawStmts: TSlimList): TSlimList;
+    constructor Create(AContext: TSlimStatementContext); virtual;
+    function Execute(ARawStmts: TSlimList): TSlimList; virtual;
+    property ManageInstances: Boolean read FManageInstances write FManageInstances;
   end;
 
 function StringToSlimInstruction(const AValue: String): TSlimInstruction;
@@ -386,9 +392,10 @@ begin
     raise ESlimNoConstructor.Create(ClassParam);
 
   try
-    InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType,InvokeArgs);
+    InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType, InvokeArgs);
   except
-    raise ESlimCouldNotInvokeConstructor.Create(ClassParam);
+    on E: Exception do
+      raise ESlimCouldNotInvokeConstructor.Create(ClassParam + ': ' + E.Message);
   end;
 
   Instance := TSlimFixture(InstanceValue.AsObject);
@@ -475,6 +482,7 @@ var
 begin
   var SyncMode: TSyncMode := GetSyncMode;
   CatchedExceptClass := nil;
+  SyncResult := TValue.Empty;
 
   if SyncMode = smSynchronized then
   begin
@@ -743,7 +751,27 @@ end;
 
 constructor TSlimExecutor.Create(AContext: TSlimStatementContext);
 begin
+  inherited Create;
   FContext := AContext;
+  FManageInstances := True;
+end;
+
+function TSlimExecutor.QueryInterface(const IID: TGUID; out Obj): HResult;
+begin
+  if GetInterface(IID, Obj) then
+    Result := 0
+  else
+    Result := E_NOINTERFACE;
+end;
+
+function TSlimExecutor._AddRef: Integer;
+begin
+  Result := -1;
+end;
+
+function TSlimExecutor._Release: Integer;
+begin
+  Result := -1;
 end;
 
 function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
@@ -778,7 +806,9 @@ function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 begin
   Result := TSlimList.Create;
   try
-    FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+    if FManageInstances and not Assigned(FContext.Instances) then
+      FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
+
     for var Loop := 0 to ARawStmts.Count - 1 do
     begin
       var LRawStmt: TSlimEntry := ARawStmts[Loop];
