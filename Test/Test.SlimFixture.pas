@@ -271,17 +271,17 @@ begin
     Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setNumerator', Stmts, 1, SlimMethod, InvokeArgs));
     Assert.IsNotNull(SlimMethod);
     Assert.AreEqual('SetNumerator', SlimMethod.Name);
-    Assert.AreEqual(1, Length(InvokeArgs));
+    Assert.AreEqual(1, Integer(Length(InvokeArgs)));
 
     Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'setDenominator', Stmts, 1, SlimMethod, InvokeArgs));
     Assert.IsNotNull(SlimMethod);
     Assert.AreEqual('SetDenominator', SlimMethod.Name);
-    Assert.AreEqual(1, Length(InvokeArgs));
+    Assert.AreEqual(1, Integer(Length(InvokeArgs)));
 
     Assert.IsTrue(Resolver.TryGetSlimMethod(LClassType, 'quotient', Stmts, 0, SlimMethod, InvokeArgs));
     Assert.IsNotNull(SlimMethod);
     Assert.AreEqual('Quotient', SlimMethod.Name);
-    Assert.AreEqual(0, Length(InvokeArgs));
+    Assert.AreEqual(0, Integer(Length(InvokeArgs)));
   finally
     Stmts.Free;
     Resolver.Free;
@@ -422,7 +422,7 @@ begin
   FirstFixture.SetNumerator(77);
   FirstFixture.SetDenominator(7);
   FInstances.Add(TSlimConsts.ScriptTableActor, FirstFixture);
-  Assert.AreEqual(1, FInstances.Count);
+  Assert.AreEqual(1, Integer(FInstances.Count));
 
   Assert.AreEqual(Double(11), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 
@@ -445,7 +445,7 @@ begin
   SecondFixture.SetDenominator(6);
 
   FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, SecondFixture);
-  Assert.AreEqual(1, FInstances.Count); // FirstFixture was destroyed at previous AddOrSetValue
+  Assert.AreEqual(1, Integer(FInstances.Count)); // FirstFixture was destroyed at previous AddOrSetValue
 
   Assert.IsTrue(FActors.GetFixture = SecondFixture);
   Assert.AreEqual(Double(10), TSlimDivisionFixture(FActors.GetFixture).Quotient);
@@ -515,12 +515,12 @@ begin
   Fixture.SetDenominator(2);
 
   FInstances.Add(TSlimConsts.ScriptTableActor,Fixture);
-  Assert.AreEqual(1, FInstances.Count);
+  Assert.AreEqual(1, Integer(FInstances.Count));
   FActors.PushFixture;
-  Assert.AreEqual(0, FInstances.Count);
+  Assert.AreEqual(0, Integer(FInstances.Count));
 
   FActors.PopFixture;
-  Assert.AreEqual(1, FInstances.Count);
+  Assert.AreEqual(1, Integer(FInstances.Count));
 
   Assert.IsTrue(Fixture = FActors.GetFixture);
   Assert.AreEqual(Double(5), TSlimDivisionFixture(FActors.GetFixture).Quotient);

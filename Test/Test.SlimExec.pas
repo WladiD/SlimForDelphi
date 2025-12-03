@@ -176,7 +176,7 @@ begin
     Context.InitAllMembers;
     Assert.IsNotNull(Context.Instances);
     Assert.IsNotNull(Context.LibInstances);
-    Assert.AreEqual(1, Context.LibInstances.Count);
+    Assert.AreEqual(1, Integer(Context.LibInstances.Count));
     Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
     Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
 
@@ -199,7 +199,7 @@ begin
 
     Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
-    Assert.AreEqual(1, Context.LibInstances.Count);
+    Assert.AreEqual(1, Integer(Context.LibInstances.Count));
     Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
     Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
   finally
@@ -211,7 +211,7 @@ end;
 
 function TestSlimExecutor.CreateStmtsFromFile(const AFileName: String): TSlimList;
 begin
-  Result := SlimListUnserialize(TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt'));
+  Result := SlimListUnserialize(TFile.ReadAllText(TPath.Combine(TPath.GetDirectoryName(ParamStr(0)), '..\..\Data\TwoMinuteExample.txt')));
 end;
 
 procedure TestSlimExecutor.Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
@@ -243,7 +243,7 @@ begin
     var
       CallResponse: TSlimList;
     begin
-      Assert.AreEqual(4, AResponse.Count);
+      Assert.AreEqual(4, Integer(AResponse.Count));
 
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse));
       Assert.AreEqual('OK', CallResponse[1].ToString);
@@ -280,7 +280,7 @@ begin
             var
               CallResponse: TSlimList;
             begin
-              Assert.AreEqual(4, AResponse.Count);
+              Assert.AreEqual(4, Integer(AResponse.Count));
               Assert.IsTrue(TryGetSlimListById(AResponse, 'id_4', CallResponse));
               LQuotient:=CallResponse[1].ToString;
             end);
@@ -316,7 +316,7 @@ begin
     var
       CallResponse: TSlimList;
     begin
-      Assert.AreEqual(8, AResponse.Count);
+      Assert.AreEqual(8, Integer(AResponse.Count));
 
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
       Assert.Contains(CallResponse[1].ToString, 'TMySutFixture');
@@ -336,8 +336,8 @@ begin
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_8', CallResponse));
       Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
 
-      Assert.AreEqual(1, FContext.Instances.Count);
-      Assert.AreEqual(1, FContext.LibInstances.Count);
+      Assert.AreEqual(1, Integer(FContext.Instances.Count));
+      Assert.AreEqual(1, Integer(FContext.LibInstances.Count));
     end);
 end;
 
@@ -355,7 +355,7 @@ begin
     var
       CallResponse: TSlimList;
     begin
-      Assert.AreEqual(3, AResponse.Count);
+      Assert.AreEqual(3, Integer(AResponse.Count));
       Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
       Assert.Contains(CallResponse[1].ToString, TSlimConsts.ExceptionResponse);
       Assert.Contains(CallResponse[1].ToString, 'ABORT_SLIM_TEST');
@@ -365,7 +365,7 @@ end;
 
 procedure TestSlimExecutor.SutOnLibInstance;
 begin
-  Assert.AreEqual(1, FContext.LibInstances.Count);
+  Assert.AreEqual(1, Integer(FContext.LibInstances.Count));
 
   // Note: The method HelloWorld is not reachable through a fixture, but of a SystemUnderObject.
   Execute(
@@ -378,9 +378,9 @@ begin
     ])),
     procedure(AResponse: TSlimList)
     begin
-      Assert.AreEqual(5, AResponse.Count);
-      Assert.AreEqual(2, FContext.LibInstances.Count);
-      Assert.AreEqual(1, FContext.Instances.Count);
+      Assert.AreEqual(5, Integer(AResponse.Count));
+      Assert.AreEqual(2, Integer(FContext.LibInstances.Count));
+      Assert.AreEqual(1, Integer(FContext.Instances.Count));
       Assert.IsTrue(FContext.Symbols.ContainsKey('AnyObject'));
       Assert.AreEqual('What a wonderful world, hello!', TSlimList(AResponse[4])[1].ToString);
     end);
@@ -396,8 +396,8 @@ begin
     ])),
     procedure(AResponse: TSlimList)
     begin
-      Assert.AreEqual(3, AResponse.Count);
-      Assert.AreEqual(2, FContext.Symbols.Count);
+      Assert.AreEqual(3, Integer(AResponse.Count));
+      Assert.AreEqual(2, Integer(FContext.Symbols.Count));
       Assert.AreEqual('Value of first var was changed', FContext.Symbols['MyFirstVar'].ToString);
       Assert.AreEqual('Value of second var', FContext.Symbols['MySecondVar'].ToString);
     end);
@@ -409,7 +409,7 @@ begin
   Execute(Stmts,
     procedure(AResponse: TSlimList)
     begin
-      Assert.AreEqual(Stmts.Count, AResponse.Count);
+      Assert.AreEqual(Stmts.Count, Integer(AResponse.Count));
       var ResponseStr: String := SlimListSerialize(AResponse);
       Assert.IsNotEmpty(ResponseStr)
     end);
@@ -464,10 +464,10 @@ begin
   var MakeStmt: TSlimStmtMake := TSlimStmtMake.Create(
     FGarbage.Collect(SlimList(['id', 'make', 'library_instance', 'Division'])), FContext);
   try
-    Assert.AreEqual(1, FContext.LibInstances.Count);
+    Assert.AreEqual(1, Integer(FContext.LibInstances.Count));
     MakeStmt.Execute.Free;
-    Assert.AreEqual(0, FContext.Instances.Count);
-    Assert.AreEqual(2, FContext.LibInstances.Count);
+    Assert.AreEqual(0, Integer(FContext.Instances.Count));
+    Assert.AreEqual(2, Integer(FContext.LibInstances.Count));
   finally
     MakeStmt.Free;
   end;
@@ -515,7 +515,7 @@ begin
     FGarbage.Collect(SlimList(['id', 'make', 'valid_instance', 'MySutFixture'])), FContext);
   try
     MakeStmt.Execute.Free;
-    Assert.AreEqual(1, FContext.Instances.Count);
+    Assert.AreEqual(1, Integer(FContext.Instances.Count));
   finally
     MakeStmt.Free;
   end;

@@ -56,7 +56,7 @@ var
   Content     : String;
 begin
   SlimList := nil;
-  Content := TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt');
+  Content := TFile.ReadAllText(TPath.Combine(TPath.GetDirectoryName(ParamStr(0)), '..\..\Data\TwoMinuteExample.txt'));
   try
     SlimList := SlimListUnserialize(Content);
     Content := SlimListSerialize(SlimList);
@@ -70,7 +70,7 @@ end;
 
 procedure TestSlimListUnserializer.TwoMinuteExampleTest;
 begin
-  TwoMinuteExample(TFile.ReadAllText(ExtractFilePath(ParamStr(0)) + 'Data\TwoMinuteExample.txt'));
+  TwoMinuteExample(TFile.ReadAllText(TPath.Combine(TPath.GetDirectoryName(ParamStr(0)), '..\..\Data\TwoMinuteExample.txt')));
 end;
 
 class procedure TestSlimListUnserializer.TwoMinuteExample(const AContent: String);

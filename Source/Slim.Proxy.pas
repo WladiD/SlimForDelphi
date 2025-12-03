@@ -1,4 +1,4 @@
-unit Slim.Proxy;
+﻿unit Slim.Proxy;
 
 interface
 
