@@ -11,6 +11,8 @@ if "%~1"=="" (
 )
 
 set "PROJECT_FILE=%~1"
+set "BUILD_PLATFORM=Win32"
+if not "%~2"=="" set "BUILD_PLATFORM=%~2"
 
 REM Static path to Delphi 12!
 set "RSVARS_PATH=C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\rsvars.bat"
@@ -36,7 +38,7 @@ echo PRODUCTVERSION is: "%PRODUCTVERSION%"
 echo.
 
 echo Building %PROJECT_FILE%...
-msbuild "%PROJECT_FILE%" /t:Build /p:Configuration=Debug;Platform=Win32;PRODUCTVERSION=%PRODUCTVERSION%;DCC_Define=DEBUG
+msbuild "%PROJECT_FILE%" /t:Build /p:Configuration=Debug;Platform=%BUILD_PLATFORM%;PRODUCTVERSION=%PRODUCTVERSION%;DCC_Define=DEBUG
 
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to build the project.

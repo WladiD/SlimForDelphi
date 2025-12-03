@@ -8,7 +8,11 @@ taskkill /IM MultiFormExample.exe /F 2>nul
 rem Change to the script's directory
 pushd %~dp0
 
-call _SlimProxy.Build.bat
+set "PLATFORM=Win32"
+if /I "%~1"=="Win32" set "PLATFORM=Win32"
+if /I "%~1"=="Win64" set "PLATFORM=Win64"
+
+call _SlimProxy.Build.bat %PLATFORM%
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Proxy build failed. Aborting.
     popd

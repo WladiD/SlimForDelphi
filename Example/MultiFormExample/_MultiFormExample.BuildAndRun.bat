@@ -1,11 +1,23 @@
 @echo off
 setlocal
-
-rem Change to the script's directory (Example/MultiFormExample/)
 pushd %~dp0
 
+set "PLATFORM=Win32"
+set "SLIM_PORT="
+
+rem Check if first parameter is a platform
+if /I "%~1"=="Win32" (
+    set "PLATFORM=Win32"
+    set "SLIM_PORT=%~2"
+) else if /I "%~1"=="Win64" (
+    set "PLATFORM=Win64"
+    set "SLIM_PORT=%~2"
+) else (
+    set "SLIM_PORT=%~1"
+)
+
 set "EXE_NAME=MultiFormExample.exe"
-set "EXE_PATH=.\Win32\Debug\%EXE_NAME%"
+set "EXE_PATH=.\%PLATFORM%\Debug\%EXE_NAME%"
 
 rem Check if the application is already running
 tasklist /FI "IMAGENAME eq %EXE_NAME%" 2>NUL | find /I /N "%EXE_NAME%">NUL
@@ -18,8 +30,8 @@ if "%ERRORLEVEL%"=="0" (
 )
 
 rem 1. Call the build script
-echo Building MultiFormExample project...
-call _MultiFormExample.Build.bat
+echo Building MultiFormExample project for %PLATFORM%...
+call _MultiFormExample.Build.bat %PLATFORM%
 
 rem Check for build errors
 if %ERRORLEVEL% neq 0 (
@@ -32,8 +44,8 @@ if %ERRORLEVEL% neq 0 (
 
 rem Construct the optional port parameter
 set "SLIM_PORT_ARG="
-if not "%~1"=="" (
-    set "SLIM_PORT_ARG=--SlimPort=%~1"
+if not "%SLIM_PORT%"=="" (
+    set "SLIM_PORT_ARG=--SlimPort=%SLIM_PORT%"
 )
 
 echo.

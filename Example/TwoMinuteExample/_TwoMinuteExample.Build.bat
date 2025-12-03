@@ -2,7 +2,7 @@
 setlocal
 pushd %~dp0
 
-call ..\_BuildBase.bat "TwoMinuteExample.dproj"
+call ..\_BuildBase.bat "TwoMinuteExample.dproj" %1
 
 if %ERRORLEVEL% neq 0 (
     popd
