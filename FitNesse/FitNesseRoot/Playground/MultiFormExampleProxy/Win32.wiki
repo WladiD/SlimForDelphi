@@ -1,0 +1,12 @@
+---
+Help: Multi Form Example with Proxy (Win32)
+Test
+---
+!define TARGET_PLATFORM {Win32}
+!define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat ${TARGET_PLATFORM}}
+
+!include -c .Playground.MultiFormExampleProxy.MultiFormExampleProxyBase
+
+|script        |slim proxy                                         |
+|start process;|cmd.exe|!-/c taskkill /IM MultiFormExample.exe /F-!|
+|start process;|cmd.exe|!-/c taskkill /IM SlimProxy.exe /F-!       |

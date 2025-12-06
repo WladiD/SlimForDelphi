@@ -25,7 +25,7 @@ cd ..\..\FitNesse
 rem Execute FitNesse test
 rem The command path "Playground.MultiFormExampleProxy" is relative to FitNesseRoot.
 rem The FitNesse executable is expected to be in the current directory.
-java -jar fitnesse-standalone.jar -c "Playground.MultiFormExampleProxy?test&format=text"
+java -jar fitnesse-standalone.jar -c "Playground.MultiFormExampleProxy?suite&format=text"
 
 if %ERRORLEVEL% neq 0 (
     echo FitNesse test execution failed.

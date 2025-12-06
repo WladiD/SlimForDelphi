@@ -1,0 +1,10 @@
+!define TEST_SYSTEM {slim}
+!define slim.host {localhost}
+!define slim.port {0}
+!define APP_BASE_PORT {9000}
+
+!1 MultiFormExample Proxy Suite
+
+This suite tests the MultiFormExample via the SlimProxy for various platforms.
+
+!contents -R2 -g -p -f -h
