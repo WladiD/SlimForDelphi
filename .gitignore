@@ -4,6 +4,7 @@ Win??
 /Test/*.local
 /Test/*.identcache
 /Test/*.dsk
+/Test/*.dsv
 /Test/*.~dsk
 /Test/Test.Slim.exe
 /Test/dunitx-results.xml
