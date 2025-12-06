@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 > nul
 setlocal
 
 rem Change to the script's directory (Example/MultiFormExample/)

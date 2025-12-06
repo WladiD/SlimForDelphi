@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 > nul
 
 rem Kill any existing instances of SlimProxy.exe and MultiFormExample.exe
 rem taskkill /IM SlimProxy.exe /F 2>nul

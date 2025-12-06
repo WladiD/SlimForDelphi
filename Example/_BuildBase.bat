@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 > nul
 REM ==================================================================================
 REM Base build script for SlimForDelphi Example projects.
 REM Usage: call ..\_BuildBase.bat ProjectFile.dproj

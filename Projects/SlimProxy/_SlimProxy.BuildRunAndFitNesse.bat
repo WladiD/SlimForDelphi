@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 > nul
 setlocal
 
 rem Kill any existing instances of SlimProxy.exe and MultiFormExample.exe
