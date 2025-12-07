@@ -301,6 +301,14 @@ begin
           LClassName.StartsWith('SlimProxy.', True) and                    // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally
           FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
           LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
+      end
+      else if (LInstruction = siCall) and (LRawStmt.Count > 2) then
+      begin
+        LIsLocal := FContext.Instances.ContainsKey(LRawStmt[2].ToString); // Check if instance is local
+      end
+      else if (LInstruction = siCallAndAssign) and (LRawStmt.Count > 3) then
+      begin
+        LIsLocal := FContext.Instances.ContainsKey(LRawStmt[3].ToString); // Check if instance is local
       end;
 
       // --- 1. Local Execution ---
