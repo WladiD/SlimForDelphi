@@ -10,7 +10,11 @@ interface
 
 uses
 
+  Winapi.Windows,
+
   System.SysUtils,
+
+  Slim.Common,
   Slim.Fixture,
   Slim.Proxy.Interfaces;
 
@@ -29,11 +33,6 @@ type
   end;
 
 implementation
-
-uses
-
-  Winapi.Windows,
-  Slim.Common;
 
 { TSlimProxyFixture }
 

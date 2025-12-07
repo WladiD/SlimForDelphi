@@ -11,15 +11,21 @@ interface
 uses
 
   Winapi.Windows,
-  System.SysUtils,
+
   System.Classes,
   System.Generics.Collections,
   System.Rtti,
-  IdTCPClient,
+  System.SysUtils,
+  System.TypInfo,
+
   IdGlobal,
+  IdTCPClient,
+
+  Slim.Common,
   Slim.Exec,
-  Slim.List,
   Slim.Fixture,
+  Slim.List,
+  Slim.Proxy.Fixtures,
   Slim.Proxy.Interfaces;
 
 type
@@ -59,12 +65,6 @@ type
   end;
 
 implementation
-
-uses
-
-  System.TypInfo,
-  Slim.Common,
-  Slim.Proxy.Fixtures;
 
 { TSlimProxyTarget }
 
