@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -25,7 +25,6 @@ uses
   Slim.Exec,
   Slim.Fixture,
   Slim.List,
-  Slim.Proxy.Fixtures,
   Slim.Proxy.Interfaces;
 
 type
@@ -65,6 +64,9 @@ type
   end;
 
 implementation
+
+uses
+  Slim.Proxy.Base;
 
 { TSlimProxyTarget }
 
@@ -169,8 +171,8 @@ begin
   if FManageInstances and Assigned(FContext) and Assigned(FContext.Instances) then
   begin
     for LFixture in FContext.Instances.Values do
-      if LFixture is TSlimProxyFixture then
-        TSlimProxyFixture(LFixture).Executor := nil;
+      if LFixture is TSlimProxyBaseFixture then
+        TSlimProxyBaseFixture(LFixture).Executor := nil;
     FContext.Instances.Clear;
   end;
 
@@ -269,126 +271,132 @@ var
   LRawStmt     : TSlimList;
   LRawStmtEntry: TSlimEntry;
   LStmtResult  : TSlimList;
+  LEmptyImports: TStringList;
 begin
   Result := TSlimList.Create;
+  LEmptyImports := TStringList.Create;
   try
-    FStopExecute := False;
+    try
+      FStopExecute := False;
 
-    for var Loop: Integer := 0 to ARawStmts.Count - 1 do
-    begin
-      LStmtResult := nil;
-      LRawStmtEntry := ARawStmts[Loop];
-      if not (LRawStmtEntry is TSlimList) then
-        Continue;
-
-      LRawStmt := LRawStmtEntry as TSlimList;
-      if LRawStmt.Count > 1 then
-        LInstr := LRawStmt[1].ToString
-      else
-        LInstr := '';
-
-      LInstruction := StringToSlimInstruction(LInstr);
-
-      LIsLocal := False;
-
-      // --- Decision Logic: Local or Remote? ---
-
-      if LInstruction = siImport then
+      for var Loop: Integer := 0 to ARawStmts.Count - 1 do
       begin
-        // Import is always executed locally AND broadcasted
-        LIsLocal := True;
-      end
-      else if (LInstruction = siMake) and (LRawStmt.Count > 3) then
-      begin
-        // Check if the class exists locally and is a Proxy Fixture
-        if FContext.Resolver.TryGetSlimFixture(LRawStmt[3].ToString, FContext.ImportedNamespaces, LClass) then
+        LStmtResult := nil;
+        LRawStmtEntry := ARawStmts[Loop];
+        if not (LRawStmtEntry is TSlimList) then
+          Continue;
+
+        LRawStmt := LRawStmtEntry as TSlimList;
+        if LRawStmt.Count > 1 then
+          LInstr := LRawStmt[1].ToString
+        else
+          LInstr := '';
+
+        LInstruction := StringToSlimInstruction(LInstr);
+
+        LIsLocal := False;
+
+        // --- Decision Logic: Local or Remote? ---
+
+        if (LInstruction = siMake) and (LRawStmt.Count > 3) then
         begin
-          if LClass.MetaclassType.InheritsFrom(TSlimProxyFixture) then
-            LIsLocal := True;
-        end;
-      end
-      else if (LInstruction = siCall) and (LRawStmt.Count > 2) then
-      begin
-        // Check if instance is local
-        if FContext.Instances.TryGetValue(LRawStmt[2].ToString, LFixture) then
-           LIsLocal := True;
-      end
-      else if (LInstruction = siCallAndAssign) and (LRawStmt.Count > 3) then
-      begin
-        // Check if instance is local
-        if FContext.Instances.TryGetValue(LRawStmt[3].ToString, LFixture) then
-           LIsLocal := True;
-      end
-      else if LInstruction = siAssign then
-      begin
-         // Assign is usually a local operation (storing symbols)
-         LIsLocal := True;
-      end;
-
-      // --- 1. Local Execution ---
-      if LIsLocal then
-      begin
-        // Special case: Directly create TSlimProxyFixture to bypass problematic RTTI constructor invocation
-        if (LInstruction = siMake) and (LRawStmt.Count > 3) and SameText(LRawStmt[3].ToString, 'SlimProxy') then
-        begin
-          var LInstName := LRawStmt[2].ToString;
-          var LProxyFixture: TSlimProxyFixture := TSlimProxyFixture.Create; // Direct instantiation
-          FContext.Instances.AddOrSetValue(LInstName, LProxyFixture);
-          LProxyFixture.Executor := Self as ISlimProxyExecutor; // Inject executor
-          LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']); // Simulate successful make response
-        end
-        else // Normal local execution
-        begin
-          LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
-
-          if (LInstruction = siMake) and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
+          // Check if the class is in "SlimProxy" namespace.
+          // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally.
+          var LClassName := LRawStmt[3].ToString.Trim;
+          if LClassName.StartsWith('SlimProxy.', True) then
           begin
-             var LInstName := LRawStmt[2].ToString;
-             if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyFixture) then
+             // Try to resolve locally without imports
+             if FContext.Resolver.TryGetSlimFixture(LClassName, LEmptyImports, LClass) then
              begin
-               (LFixture as TSlimProxyFixture).Executor := Self as ISlimProxyExecutor;
+               // Check if it inherits from our base class (security/consistency check)
+               if LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture) then
+                 LIsLocal := True;
              end;
           end;
-        end;
-      end;
-
-      // --- 2. Remote Execution (Forwarding) ---
-      // Forward if NOT Local OR if it is 'import' (Broadcast)
-      if (not LIsLocal) or (LInstruction = siImport) then
-      begin
-        var LRemoteResult: TSlimList;
-        if TryForwardToTarget(LRawStmt, LRemoteResult) then
-        begin
-          if not LIsLocal then
-          begin
-            // If not local, the remote result is THE result
-            LStmtResult.Free;
-            LStmtResult := LRemoteResult;
-          end
-          else
-          begin
-            // If it was local (e.g. Import), we prioritize local success, but we must free the remote result
-            // Ideally, if remote fails, we might want to warn, but for 'import', usually OK is expected.
-            if Assigned(LRemoteResult) then LRemoteResult.Free;
-          end;
         end
-        else if not LIsLocal then
+        else if (LInstruction = siCall) and (LRawStmt.Count > 2) then
         begin
-           // Error: No active target and not handled locally
-           LStmtResult.Free;
-           LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
+          // Check if instance is local
+          if FContext.Instances.ContainsKey(LRawStmt[2].ToString) then
+             LIsLocal := True;
+        end
+        else if (LInstruction = siCallAndAssign) and (LRawStmt.Count > 3) then
+        begin
+          // Check if instance is local
+          if FContext.Instances.ContainsKey(LRawStmt[3].ToString) then
+             LIsLocal := True;
+        end
+        else if LInstruction = siAssign then
+        begin
+           // Assign is executed locally AND broadcasted
+           LIsLocal := True;
         end;
+        
+        // import -> LIsLocal = False (ignored locally)
+
+        // --- 1. Local Execution ---
+        if LIsLocal then
+        begin
+            LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
+
+            // Inject Executor if it's a make command on a Proxy Fixture
+            if (LInstruction = siMake) and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
+            begin
+               var LInstName := LRawStmt[2].ToString;
+               if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyBaseFixture) then
+               begin
+                 (LFixture as TSlimProxyBaseFixture).Executor := Self as ISlimProxyExecutor;
+               end;
+            end;
+        end;
+
+        // --- 2. Remote Execution (Forwarding) ---
+        // Forward if NOT Local OR if it is 'assign' (Broadcast) or 'import' (Forward always)
+        if (not LIsLocal) or (LInstruction = siAssign) or (LInstruction = siImport) then
+        begin
+          var LRemoteResult: TSlimList;
+          if TryForwardToTarget(LRawStmt, LRemoteResult) then
+          begin
+            if not LIsLocal then
+            begin
+              // If not local, the remote result is THE result
+              LStmtResult.Free;
+              LStmtResult := LRemoteResult;
+            end
+            else
+            begin
+              // If it was local (e.g. Assign), we prioritize local success, but we must free the remote result
+              // Ideally, if remote fails, we might want to warn, but for 'import', usually OK is expected.
+              if Assigned(LRemoteResult) then LRemoteResult.Free;
+            end;
+          end
+                  else if not LIsLocal then
+                  begin
+                     if (LInstruction = siImport) or (LInstruction = siAssign) then
+                     begin
+                       LStmtResult.Free;
+                       LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']);
+                     end
+                     else
+                     begin
+                       // Error: No active target and not handled locally
+                       LStmtResult.Free;
+                       LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
+                     end;
+                  end;        end;
+
+        if Assigned(LStmtResult) then
+          Result.Add(LStmtResult);
+
+        if FStopExecute then
+          Break;
       end;
-
-      if Assigned(LStmtResult) then
-        Result.Add(LStmtResult);
-
-      if FStopExecute then
-        Break;
+    except
+      Result.Free;
+      raise;
     end;
-  except
-    Result.Free;
-    raise;
+  finally
+    LEmptyImports.Free;
   end;
 end;
 

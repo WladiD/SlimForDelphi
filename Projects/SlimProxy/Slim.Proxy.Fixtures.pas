@@ -10,29 +10,28 @@ interface
 
 uses
 
-  Winapi.Windows,
-
   System.SysUtils,
-
-  Slim.Common,
   Slim.Fixture,
-  Slim.Proxy.Interfaces;
+  Slim.Proxy.Interfaces,
+  Slim.Proxy.Base;
 
 type
 
-  [SlimFixture('SlimProxy')]
-  TSlimProxyFixture = class(TSlimFixture)
-  private
-    FExecutor: ISlimProxyExecutor;
+  [SlimFixture('SlimProxy', 'SlimProxy')]
+  TSlimProxyFixture = class(TSlimProxyBaseFixture)
   public
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
     procedure DisconnectTarget(const AName: String);
     procedure StartProcess(const APath, AArgs: String);
     procedure SwitchToTarget(const AName: String);
-    property  Executor: ISlimProxyExecutor write FExecutor;
   end;
 
 implementation
+
+uses
+
+  Winapi.Windows,
+  Slim.Common;
 
 { TSlimProxyFixture }
 

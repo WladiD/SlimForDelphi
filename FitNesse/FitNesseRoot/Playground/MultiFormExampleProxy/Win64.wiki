@@ -7,6 +7,6 @@ Test
 
 !include -c .Playground.MultiFormExampleProxy.MultiFormExampleProxyBase
 
-|script        |slim proxy                                         |
+|script        |!-SlimProxy.SlimProxy-!                                |
 |start process;|cmd.exe|!-/c taskkill /IM MultiFormExample.exe /F-!|
 |start process;|cmd.exe|!-/c taskkill /IM SlimProxy.exe /F-!       |

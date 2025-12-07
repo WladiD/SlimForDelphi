@@ -56,7 +56,7 @@ procedure TestSlimProxy.MakeSlimProxy;
 begin
   Execute(
     FGarbage.Collect(SlimList([
-      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy'])
+      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.SlimProxy'])
     ])),
     procedure(AResponse: TSlimList)
     var
@@ -82,7 +82,7 @@ begin
 
   Execute(
     FGarbage.Collect(SlimList([
-      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy']),
+      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.SlimProxy']),
       SlimList(['id_2', 'call', 'proxy_instance', 'ConnectToTarget', 'Target1', 'localhost', '8080'])
     ])),
     procedure(AResponse: TSlimList)
@@ -102,7 +102,7 @@ end;
 
 procedure TestSlimProxy.IsProxyCommand_Import;
 begin
-  // Test that 'import' is handled by ProxyExecutor (it should return True in IsProxyCommand)
+  // Test that 'import' is forwarded. If no target is present, it should return OK (silently ignored).
   Execute(
     FGarbage.Collect(SlimList([
       SlimList(['id_1', 'import', 'Slim.Proxy.Fixtures'])

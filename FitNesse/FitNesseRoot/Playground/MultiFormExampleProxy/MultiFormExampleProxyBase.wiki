@@ -1,12 +1,12 @@
 !3 Start MultiFormExample on Port ${= ${APP_BASE_PORT}+1 =} and wait for connection (ensures build is done)
 
-|script            |slim proxy                                                           |
+|script            |!-SlimProxy.SlimProxy-!                                                  |
 |start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${TARGET_PLATFORM} ${= ${APP_BASE_PORT}+1 =}|
 |connect to target;|Target1|localhost                                               |${= ${APP_BASE_PORT}+1 =}|
 
 !4 Start more instances
 
-|script            |slim proxy                                                           |
+|script            |!-SlimProxy.SlimProxy-!                                                  |
 |start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${TARGET_PLATFORM} ${= ${APP_BASE_PORT}+2 =}|
 |start process;    |cmd.exe|/c ..\..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat ${TARGET_PLATFORM} ${= ${APP_BASE_PORT}+3 =}|
 |connect to target;|Target2|localhost                                               |${= ${APP_BASE_PORT}+2 =}|
@@ -14,7 +14,7 @@
 
 !3 Switch to Target 1 and add Alice (ID 1)
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target1   |
 
 |add entry                                                 |
@@ -23,7 +23,7 @@
 
 !3 Switch to Target 2 and add Bob (ID 1) and Bob2 (ID 2)
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target2   |
 
 |add entry                                               |
@@ -33,7 +33,7 @@
 
 !3 Switch to Target 3 and add Charlie (ID 1)
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target3   |
 
 |add entry                                                   |
@@ -44,7 +44,7 @@
 
 !4 On Target 1: ID 1 is Alice
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target1   |
 
 |select entry      |
@@ -53,7 +53,7 @@
 
 !4 On Target 2: ID 1 is Bob, ID 2 is Brenda
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target2   |
 
 |select entry       |
@@ -63,7 +63,7 @@
 
 !4 On Target 3: ID 1 is Charlie
 
-|script          |slim proxy|
+|script          |!-SlimProxy.SlimProxy-!|
 |switch to target|Target3   |
 
 |select entry       |
@@ -72,7 +72,7 @@
 
 !3 Cleanup (Disconnect)
 
-|script|slim proxy|
+|script|!-SlimProxy.SlimProxy-!|
 |disconnect target;|Target1|
 |disconnect target;|Target2|
 |disconnect target;|Target3|
