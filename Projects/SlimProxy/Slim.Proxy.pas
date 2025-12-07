@@ -370,20 +370,22 @@ begin
               if Assigned(LRemoteResult) then LRemoteResult.Free;
             end;
           end
-                  else if not LIsLocal then
-                  begin
-                     if (LInstruction = siImport) or (LInstruction = siAssign) then
-                     begin
-                       LStmtResult.Free;
-                       LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']);
-                     end
-                     else
-                     begin
-                       // Error: No active target and not handled locally
-                       LStmtResult.Free;
-                       LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
-                     end;
-                  end;        end;
+          else if not LIsLocal then
+          begin
+             // Error: No active target and not handled locally
+             // But for import/assign we can ignore/return OK if no target is there.
+             if (LInstruction = siImport) or (LInstruction = siAssign) then
+             begin
+               LStmtResult.Free;
+               LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']);
+             end
+             else
+             begin
+               LStmtResult.Free;
+               LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
+             end;
+          end;
+        end;
 
         if Assigned(LStmtResult) then
           Result.Add(LStmtResult);

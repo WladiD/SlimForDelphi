@@ -21,7 +21,7 @@ uses
 
 type
 
-  [SlimFixture('SlimProxy', 'SlimProxy')]
+  [SlimFixture('Core', 'SlimProxy')]
   TSlimProxyFixture = class(TSlimProxyBaseFixture)
   public
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);

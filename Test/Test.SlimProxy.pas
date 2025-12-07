@@ -56,7 +56,7 @@ procedure TestSlimProxy.MakeSlimProxy;
 begin
   Execute(
     FGarbage.Collect(SlimList([
-      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.SlimProxy'])
+      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.Core'])
     ])),
     procedure(AResponse: TSlimList)
     var
@@ -82,7 +82,7 @@ begin
 
   Execute(
     FGarbage.Collect(SlimList([
-      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.SlimProxy']),
+      SlimList(['id_1', 'make', 'proxy_instance', 'SlimProxy.Core']),
       SlimList(['id_2', 'call', 'proxy_instance', 'ConnectToTarget', 'Target1', 'localhost', '8080'])
     ])),
     procedure(AResponse: TSlimList)
