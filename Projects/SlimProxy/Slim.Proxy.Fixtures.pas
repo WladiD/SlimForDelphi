@@ -22,7 +22,7 @@ uses
 type
 
   [SlimFixture('Core', 'SlimProxy')]
-  TSlimProxyFixture = class(TSlimProxyBaseFixture)
+  TSlimProxyCoreFixture = class(TSlimProxyBaseFixture)
   public
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
     procedure DisconnectTarget(const AName: String);
@@ -32,9 +32,9 @@ type
 
 implementation
 
-{ TSlimProxyFixture }
+{ TSlimProxyCoreFixture }
 
-procedure TSlimProxyFixture.StartProcess(const APath, AArgs: String);
+procedure TSlimProxyCoreFixture.StartProcess(const APath, AArgs: String);
 var
   SI : TStartupInfo;
   PI : TProcessInformation;
@@ -53,21 +53,21 @@ begin
   CloseHandle(PI.hThread);
 end;
 
-procedure TSlimProxyFixture.ConnectToTarget(const AName, AHost: String; APort: Integer);
+procedure TSlimProxyCoreFixture.ConnectToTarget(const AName, AHost: String; APort: Integer);
 begin
   if not Assigned(FExecutor) then
     raise ESlim.Create('Executor not assigned');
   FExecutor.AddTarget(AName, AHost, APort);
 end;
 
-procedure TSlimProxyFixture.SwitchToTarget(const AName: String);
+procedure TSlimProxyCoreFixture.SwitchToTarget(const AName: String);
 begin
   if not Assigned(FExecutor) then
     raise ESlim.Create('Executor not assigned');
   FExecutor.SwitchToTarget(AName);
 end;
 
-procedure TSlimProxyFixture.DisconnectTarget(const AName: String);
+procedure TSlimProxyCoreFixture.DisconnectTarget(const AName: String);
 begin
   if not Assigned(FExecutor) then
     raise ESlim.Create('Executor not assigned');
@@ -76,6 +76,6 @@ end;
 
 initialization
 
-  RegisterSlimFixture(TSlimProxyFixture);
+  RegisterSlimFixture(TSlimProxyCoreFixture);
 
 end.

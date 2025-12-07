@@ -68,7 +68,7 @@ begin
 
       // Verify instance exists in context
       Assert.IsTrue(FContext.Instances.ContainsKey('proxy_instance'));
-      Assert.IsTrue(FContext.Instances['proxy_instance'] is TSlimProxyFixture);
+      Assert.IsTrue(FContext.Instances['proxy_instance'] is TSlimProxyCoreFixture);
     end);
 end;
 
