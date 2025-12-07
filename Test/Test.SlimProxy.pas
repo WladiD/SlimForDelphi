@@ -1,20 +1,32 @@
-﻿unit Test.SlimProxy;
+﻿// ======================================================================
+// Copyright (c) 2025 Waldemar Derr. All rights reserved.
+//
+// Licensed under the MIT license. See included LICENSE file for details.
+// ======================================================================
+
+unit Test.SlimProxy;
 
 interface
 
 uses
-  System.SysUtils,
+
   System.Generics.Collections,
+  System.Rtti,
+  System.SysUtils,
+
   DUnitX.TestFramework,
+
   Slim.Common,
-  Slim.List,
   Slim.Exec,
+  Slim.List,
   Slim.Proxy,
-  Slim.Proxy.Interfaces,
   Slim.Proxy.Fixtures,
+  Slim.Proxy.Interfaces,
+
   Test.SlimExec;
 
 type
+
   [TestFixture]
   TestSlimProxy = class(TestExecBase)
   private
@@ -29,9 +41,6 @@ type
   end;
 
 implementation
-
-uses
-  System.Rtti;
 
 { TestSlimProxy }
 
@@ -118,6 +127,7 @@ begin
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TestSlimProxy);
+
+TDUnitX.RegisterTestFixture(TestSlimProxy);
 
 end.
