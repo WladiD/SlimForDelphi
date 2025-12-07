@@ -177,7 +177,7 @@ begin
     Assert.IsNotNull(Context.Instances);
     Assert.IsNotNull(Context.LibInstances);
     Assert.AreEqual(1, Integer(Context.LibInstances.Count));
-    Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
+    Assert.AreEqual(TScriptTableActorStack, Context.LibInstances[0].ClassType);
     Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
 
     Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
@@ -200,7 +200,7 @@ begin
     Context.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
     Assert.AreEqual(1, Integer(Context.LibInstances.Count));
-    Assert.AreEqual(TScriptTableActorStack,Context.LibInstances[0].ClassType);
+    Assert.AreEqual(TScriptTableActorStack, Context.LibInstances[0].ClassType);
     Assert.IsTrue(TScriptTableActorStack(Context.LibInstances[0]).Instances = Context.Instances);
   finally
     Context.Free;
@@ -261,7 +261,7 @@ end;
 
 procedure TestSlimExecutor.FixtureWithPropertiesSyncModes;
 begin
-  var Done: TEvent:=TEvent.Create(nil, True, False, '');
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
   try
     var Task: IFuture<String> := TTask.Future<String>(
       function: String
@@ -282,7 +282,7 @@ begin
             begin
               Assert.AreEqual(4, Integer(AResponse.Count));
               Assert.IsTrue(TryGetSlimListById(AResponse, 'id_4', CallResponse));
-              LQuotient:=CallResponse[1].ToString;
+              LQuotient := CallResponse[1].ToString;
             end);
           Result := LQuotient;
         finally

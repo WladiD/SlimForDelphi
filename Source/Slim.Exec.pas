@@ -271,7 +271,7 @@ begin
   if Assigned(Instances) and Assigned(LibInstances) then
   begin
     if (LibInstances.Count > 0) and (LibInstances[0] is TScriptTableActorStack) then
-      TScriptTableActorStack(LibInstances[0]).Instances:=Instances
+      TScriptTableActorStack(LibInstances[0]).Instances := Instances
     else if LibInstances.Count = 0 then
       FLibInstances.Add(TScriptTableActorStack.Create(FInstances))
     else if (LibInstances.Count > 0) and not (LibInstances[0] is TScriptTableActorStack) then

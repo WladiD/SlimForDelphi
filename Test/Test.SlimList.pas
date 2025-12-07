@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -93,7 +93,7 @@ begin
     var Entry2: TSlimList := SlimList[1] as TSlimList;
     Assert.AreEqual(5, Entry2.Count);
     Assert.AreEqual('table', (Entry2[3] as TSlimString).ToString);
-    var SubEntry2: TSlimList:=Entry2[4] as TSlimList;
+    var SubEntry2: TSlimList := Entry2[4] as TSlimList;
     Assert.AreEqual(7, SubEntry2.Count);
     Assert.AreEqual('numerator', (SubEntry2[0] as TSlimList)[0].ToString); // First Sub-List
     Assert.AreEqual('denominator', (SubEntry2[0] as TSlimList)[1].ToString);

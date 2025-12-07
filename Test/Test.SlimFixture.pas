@@ -121,7 +121,7 @@ procedure TestSlimFixtureResolver.TryGetSlimFixture;
 var
   LClassType: TRttiInstanceType;
 begin
-  var Resolver: TSlimFixtureResolver:= TSlimFixtureResolver.Create;
+  var Resolver: TSlimFixtureResolver := TSlimFixtureResolver.Create;
   try
     Assert.IsTrue(Resolver.TryGetSlimFixture('TSlimDivisionFixture', nil, LClassType));
     Assert.AreEqual(TSlimDivisionFixture, LClassType.MetaclassType);
@@ -394,8 +394,8 @@ end;
 
 procedure TestScriptTableActorStack.Setup;
 begin
-  FInstances:=TSlimFixtureDictionary.Create([doOwnsValues]);
-  FActors:=TScriptTableActorStack.Create(FInstances);
+  FInstances := TSlimFixtureDictionary.Create([doOwnsValues]);
+  FActors := TScriptTableActorStack.Create(FInstances);
 end;
 
 procedure TestScriptTableActorStack.TearDown;
@@ -418,7 +418,7 @@ end;
 
 procedure TestScriptTableActorStack.MultipleFixtures;
 begin
-  var FirstFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  var FirstFixture: TSlimDivisionFixture := TSlimDivisionFixture.Create;
   FirstFixture.SetNumerator(77);
   FirstFixture.SetDenominator(7);
   FInstances.Add(TSlimConsts.ScriptTableActor, FirstFixture);
@@ -426,7 +426,7 @@ begin
 
   Assert.AreEqual(Double(11), TSlimDivisionFixture(FActors.GetFixture).Quotient);
 
-  var SecondFixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  var SecondFixture: TSlimDivisionFixture := TSlimDivisionFixture.Create;
   try
     SecondFixture.SetNumerator(60);
     SecondFixture.SetDenominator(6);
@@ -510,11 +510,11 @@ end;
 
 procedure TestScriptTableActorStack.FirstFixture;
 begin
-  var Fixture: TSlimDivisionFixture:=TSlimDivisionFixture.Create;
+  var Fixture: TSlimDivisionFixture := TSlimDivisionFixture.Create;
   Fixture.SetNumerator(10);
   Fixture.SetDenominator(2);
 
-  FInstances.Add(TSlimConsts.ScriptTableActor,Fixture);
+  FInstances.Add(TSlimConsts.ScriptTableActor, Fixture);
   Assert.AreEqual(1, Integer(FInstances.Count));
   FActors.PushFixture;
   Assert.AreEqual(0, Integer(FInstances.Count));
@@ -530,7 +530,7 @@ end;
 
 procedure TestSlimFixture.DelayedEvents;
 begin
-  var Fixture: TSlimFixture:=TSlimFixture.Create;
+  var Fixture: TSlimFixture := TSlimFixture.Create;
   try
     Fixture.InitDelayedEvent;
 
@@ -553,7 +553,7 @@ var
   LClassType  : TRttiInstanceType;
   SlimProperty: TRttiProperty;
 begin
-  var Resolver: TSlimFixtureResolver:=nil;
+  var Resolver: TSlimFixtureResolver := nil;
   var Fixture: TSlimFixture := TSlimDivisionWithPropsFixture.Create;
   try
     Resolver := TSlimFixtureResolver.Create;

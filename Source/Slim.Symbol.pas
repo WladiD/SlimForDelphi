@@ -50,7 +50,7 @@ begin
   if Found then
   begin
     SymbolName := AMatch.Groups[1].Value;
-    Found := TryGetValue(SymbolName,SymbolValue);
+    Found := TryGetValue(SymbolName, SymbolValue);
     if Found then
       Result := SymbolValue.ToString;
   end;
@@ -69,7 +69,7 @@ begin
   if not (Match.Success and (Match.Groups.Count > 0)) then
     Exit;
   SymbolName := Match.Groups[1].Value;
-  if TryGetValue(SymbolName,SymbolValue) and SymbolValue.IsObjectInstance then
+  if TryGetValue(SymbolName, SymbolValue) and SymbolValue.IsObjectInstance then
     Result := SymbolValue.AsObject;
 end;
 

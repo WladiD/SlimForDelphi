@@ -297,7 +297,7 @@ begin
       if (LInstruction = siMake) and (LRawStmt.Count > 3) then
       begin
         var LClassName: String := LRawStmt[3].ToString.Trim;
-        LIsLocal:=
+        LIsLocal :=
           LClassName.StartsWith('SlimProxy.', True) and                    // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally
           FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
           LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)

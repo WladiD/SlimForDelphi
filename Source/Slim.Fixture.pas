@@ -194,7 +194,7 @@ end;
 
 constructor SlimMemberSyncModeAttribute.Create(ASyncMode: TSyncMode);
 begin
-  FSyncMode:=ASyncMode;
+  FSyncMode := ASyncMode;
 end;
 
 { TSlimFixture }
@@ -343,7 +343,7 @@ procedure TScriptTableActorStack.PopFixture;
 begin
   if FList.Count = 0 then
     raise ESlim.Create('No fixture on stack');
-  var Fixture: TSlimFixture:=FList.Extract(FList[FList.Count - 1]) as TSlimFixture;
+  var Fixture: TSlimFixture := FList.Extract(FList[FList.Count - 1]) as TSlimFixture;
   FInstances.AddOrSetValue(TSlimConsts.ScriptTableActor, Fixture);
 end;
 
@@ -351,7 +351,7 @@ procedure TScriptTableActorStack.PushFixture;
 begin
   if not ((FInstances.Count > 0) and FInstances.ContainsKey(TSlimConsts.ScriptTableActor)) then
     RaiseNoScriptTableActorInstances;
-  var Pair:=FInstances.ExtractPair(TSlimConsts.ScriptTableActor);
+  var Pair := FInstances.ExtractPair(TSlimConsts.ScriptTableActor);
   FList.Add(Pair.Value);
 end;
 
