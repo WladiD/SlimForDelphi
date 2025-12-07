@@ -10,10 +10,14 @@ interface
 
 uses
 
+  Winapi.Windows,
+
   System.SysUtils,
+
+  Slim.Common,
   Slim.Fixture,
-  Slim.Proxy.Interfaces,
-  Slim.Proxy.Base;
+  Slim.Proxy.Base,
+  Slim.Proxy.Interfaces;
 
 type
 
@@ -27,11 +31,6 @@ type
   end;
 
 implementation
-
-uses
-
-  Winapi.Windows,
-  Slim.Common;
 
 { TSlimProxyFixture }
 
