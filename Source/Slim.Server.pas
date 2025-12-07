@@ -112,36 +112,35 @@ end;
 
 procedure TSlimServer.SlimServerExecute(AContext: TIdContext);
 var
-  Io: TIdIOHandler;
+  Io       : TIdIOHandler;
   LExecutor: TSlimExecutor;
+  Stream   : TStringStream;
 begin
   Io := AContext.Connection.IOHandler;
   Io.WriteLn('Slim -- V0.5');
 
+  Stream := nil;
   LExecutor := FExecutorClass.Create(FContext);
-  var Stream: TStringStream := TStringStream.Create;
   try
-    try
-      var LLength: Integer := ReadLength(Io);
-      while LLength > 0 do
-      begin
-        var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
-        if Assigned(FOnReadRequest) then
-          FOnReadRequest(LMessage);
-        if LMessage = 'bye' then
-          Break;
-        var Response: TSlimList := Execute(LExecutor, LMessage);
-        try
-          WriteString(Io, SlimListSerialize(Response));
-        finally
-          Response.Free;
-        end;
-        LLength := ReadLength(Io);
+    Stream := TStringStream.Create;
+    var LLength: Integer := ReadLength(Io);
+    while LLength > 0 do
+    begin
+      var LMessage: String := Io.ReadString(LLength, IndyTextEncoding_UTF8);
+      if Assigned(FOnReadRequest) then
+        FOnReadRequest(LMessage);
+      if LMessage = 'bye' then
+        Break;
+      var Response: TSlimList := Execute(LExecutor, LMessage);
+      try
+        WriteString(Io, SlimListSerialize(Response));
+      finally
+        Response.Free;
       end;
-    finally
-      Stream.Free;
+      LLength := ReadLength(Io);
     end;
   finally
+    Stream.Free;
     LExecutor.Free;
   end;
 end;

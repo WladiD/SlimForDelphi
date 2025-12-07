@@ -76,6 +76,6 @@ end;
 
 initialization
 
-  RegisterSlimFixture(TSlimProxyCoreFixture);
+RegisterSlimFixture(TSlimProxyCoreFixture);
 
 end.
