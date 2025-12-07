@@ -7,6 +7,7 @@ uses
   IdContext,
   Slim.Server,
   Slim.Proxy,
+  Slim.Proxy.Interfaces,
   Slim.Proxy.Fixtures,
   Slim.Common,
   Slim.Exec,

@@ -1,3 +1,9 @@
+﻿// ======================================================================
+// Copyright (c) 2025 Waldemar Derr. All rights reserved.
+//
+// Licensed under the MIT license. See included LICENSE file for details.
+// ======================================================================
+
 unit Slim.Proxy.Fixtures;
 
 interface
@@ -5,26 +11,20 @@ interface
 uses
 
   System.SysUtils,
-  Slim.Fixture;
+  Slim.Fixture,
+  Slim.Proxy.Interfaces;
 
 type
-
-  ISlimProxyExecutor = interface
-    ['{B4B384E2-2B8A-4A7B-9D3A-28B0D3B0E8D1}']
-    procedure AddTarget(const AName, AHost: String; APort: Integer);
-    procedure SwitchToTarget(const AName: String);
-    procedure DisconnectTarget(const AName: String);
-  end;
 
   [SlimFixture('SlimProxy')]
   TSlimProxyFixture = class(TSlimFixture)
   private
     FExecutor: ISlimProxyExecutor;
   public
-    procedure StartProcess(const APath, AArgs: String);
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
-    procedure SwitchToTarget(const AName: String);
     procedure DisconnectTarget(const AName: String);
+    procedure StartProcess(const APath, AArgs: String);
+    procedure SwitchToTarget(const AName: String);
     property  Executor: ISlimProxyExecutor write FExecutor;
   end;
 
@@ -33,15 +33,14 @@ implementation
 uses
 
   Winapi.Windows,
-  Slim.Proxy,
   Slim.Common;
 
 { TSlimProxyFixture }
 
 procedure TSlimProxyFixture.StartProcess(const APath, AArgs: String);
 var
-  SI: TStartupInfo;
-  PI: TProcessInformation;
+  SI : TStartupInfo;
+  PI : TProcessInformation;
   Cmd: String;
 begin
   ZeroMemory(@SI, SizeOf(SI));

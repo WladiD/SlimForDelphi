@@ -10,6 +10,7 @@ uses
   Slim.List,
   Slim.Exec,
   Slim.Proxy,
+  Slim.Proxy.Interfaces,
   Slim.Proxy.Fixtures,
   Test.SlimExec;
 

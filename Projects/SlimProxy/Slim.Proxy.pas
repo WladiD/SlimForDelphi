@@ -1,8 +1,15 @@
-﻿unit Slim.Proxy;
+﻿// ======================================================================
+// Copyright (c) 2025 Waldemar Derr. All rights reserved.
+//
+// Licensed under the MIT license. See included LICENSE file for details.
+// ======================================================================
+
+unit Slim.Proxy;
 
 interface
 
 uses
+
   Winapi.Windows,
   System.SysUtils,
   System.Classes,
@@ -13,32 +20,32 @@ uses
   Slim.Exec,
   Slim.List,
   Slim.Fixture,
-  Slim.Proxy.Fixtures;
+  Slim.Proxy.Interfaces;
 
 type
 
   TSlimProxyTarget = class
   private
-    FClient: TIdTCPClient;
-    FHost: String;
-    FName: String;
-    FPort: Integer;
+    FClient        : TIdTCPClient;
     FConnectTimeout: Integer;
+    FHost          : String;
+    FName          : String;
+    FPort          : Integer;
   public
     constructor Create(const AName, AHost: String; APort: Integer);
     destructor Destroy; override;
     procedure Connect;
     procedure Disconnect;
     function  SendCommand(ACommand: String): String;
-    property  Name: String read FName;
     property  ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout;
+    property  Name: String read FName;
   end;
 
   TSlimProxyExecutor = class(TSlimExecutor, ISlimProxyExecutor)
   private
-    FActiveTarget: TSlimProxyTarget;
-    FTargets: TObjectDictionary<string, TSlimProxyTarget>;
+    FActiveTarget  : TSlimProxyTarget;
     FConnectTimeout: Integer;
+    FTargets       : TObjectDictionary<string, TSlimProxyTarget>;
     function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
@@ -47,15 +54,17 @@ type
     property ConnectTimeout: Integer read FConnectTimeout write FConnectTimeout;
   public // Target Management
     procedure AddTarget(const AName, AHost: string; APort: Integer);
-    procedure SwitchToTarget(const AName: string);
     procedure DisconnectTarget(const AName: string);
+    procedure SwitchToTarget(const AName: string);
   end;
 
 implementation
 
 uses
+
   System.TypInfo,
-  Slim.Common;
+  Slim.Common,
+  Slim.Proxy.Fixtures;
 
 { TSlimProxyTarget }
 
@@ -79,7 +88,7 @@ end;
 procedure TSlimProxyTarget.Connect;
 var
   LGreeting: String;
-  LStart: Cardinal;
+  LStart   : Cardinal;
 begin
   if FClient.Connected then
     Exit;
@@ -117,8 +126,8 @@ end;
 
 function TSlimProxyTarget.SendCommand(ACommand: String): String;
 var
-  LRequestBytes: TBytes;
-  LLengthStr: String;
+  LLengthStr     : String;
+  LRequestBytes  : TBytes;
   LResponseLength: Integer;
 begin
   Connect;
@@ -203,10 +212,10 @@ end;
 
 function TSlimProxyExecutor.TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
 var
-  LCommandStr: String;
-  LResponseStr: String;
+  LCommandStr  : String;
+  LResponseStr : String;
   LResponseList: TSlimList;
-  LId: String;
+  LId          : String;
 begin
   Result := False;
   AResult := nil;
@@ -252,25 +261,25 @@ end;
 
 function TSlimProxyExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 var
-  LStmtResult: TSlimList;
-  LRawStmt: TSlimList;
-  LInstr: String;
+  LClass       : TRttiInstanceType;
+  LFixture     : TSlimFixture;
+  LInstr       : String;
+  LInstruction : TSlimInstruction;
+  LIsLocal     : Boolean;
+  LRawStmt     : TSlimList;
   LRawStmtEntry: TSlimEntry;
-  I: Integer;
-  LIsLocal: Boolean;
-  LClass: TRttiInstanceType;
-  LFixture: TSlimFixture;
+  LStmtResult  : TSlimList;
 begin
   Result := TSlimList.Create;
   try
     FStopExecute := False;
 
-    for I := 0 to ARawStmts.Count - 1 do
+    for var Loop: Integer := 0 to ARawStmts.Count - 1 do
     begin
       LStmtResult := nil;
-      LRawStmtEntry := ARawStmts[I];
+      LRawStmtEntry := ARawStmts[Loop];
       if not (LRawStmtEntry is TSlimList) then
-        continue;
+        Continue;
 
       LRawStmt := LRawStmtEntry as TSlimList;
       if LRawStmt.Count > 1 then
@@ -278,16 +287,18 @@ begin
       else
         LInstr := '';
 
+      LInstruction := StringToSlimInstruction(LInstr);
+
       LIsLocal := False;
 
       // --- Decision Logic: Local or Remote? ---
 
-      if SameText(LInstr, 'import') then
+      if LInstruction = siImport then
       begin
         // Import is always executed locally AND broadcasted
         LIsLocal := True;
       end
-      else if SameText(LInstr, 'make') and (LRawStmt.Count > 3) then
+      else if (LInstruction = siMake) and (LRawStmt.Count > 3) then
       begin
         // Check if the class exists locally and is a Proxy Fixture
         if FContext.Resolver.TryGetSlimFixture(LRawStmt[3].ToString, FContext.ImportedNamespaces, LClass) then
@@ -296,19 +307,19 @@ begin
             LIsLocal := True;
         end;
       end
-      else if SameText(LInstr, 'call') and (LRawStmt.Count > 2) then
+      else if (LInstruction = siCall) and (LRawStmt.Count > 2) then
       begin
         // Check if instance is local
         if FContext.Instances.TryGetValue(LRawStmt[2].ToString, LFixture) then
            LIsLocal := True;
       end
-      else if SameText(LInstr, 'callAndAssign') and (LRawStmt.Count > 3) then
+      else if (LInstruction = siCallAndAssign) and (LRawStmt.Count > 3) then
       begin
         // Check if instance is local
         if FContext.Instances.TryGetValue(LRawStmt[3].ToString, LFixture) then
            LIsLocal := True;
       end
-      else if SameText(LInstr, 'assign') then
+      else if LInstruction = siAssign then
       begin
          // Assign is usually a local operation (storing symbols)
          LIsLocal := True;
@@ -318,7 +329,7 @@ begin
       if LIsLocal then
       begin
         // Special case: Directly create TSlimProxyFixture to bypass problematic RTTI constructor invocation
-        if SameText(LInstr, 'make') and (LRawStmt.Count > 3) and SameText(LRawStmt[3].ToString, 'SlimProxy') then
+        if (LInstruction = siMake) and (LRawStmt.Count > 3) and SameText(LRawStmt[3].ToString, 'SlimProxy') then
         begin
           var LInstName := LRawStmt[2].ToString;
           var LProxyFixture: TSlimProxyFixture := TSlimProxyFixture.Create; // Direct instantiation
@@ -330,8 +341,7 @@ begin
         begin
           LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
 
-          // Special Post-Execution Logic for 'make' on ProxyFixtures
-          if SameText(LInstr, 'make') and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
+          if (LInstruction = siMake) and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
           begin
              var LInstName := LRawStmt[2].ToString;
              if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyFixture) then
@@ -344,7 +354,7 @@ begin
 
       // --- 2. Remote Execution (Forwarding) ---
       // Forward if NOT Local OR if it is 'import' (Broadcast)
-      if (not LIsLocal) or SameText(LInstr, 'import') then
+      if (not LIsLocal) or (LInstruction = siImport) then
       begin
         var LRemoteResult: TSlimList;
         if TryForwardToTarget(LRawStmt, LRemoteResult) then
