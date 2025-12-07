@@ -287,7 +287,7 @@ begin
       if LRawStmt.Count > 1 then
         LInstr := LRawStmt[1].ToString
       else
-        LInstr := '';
+        Continue;
 
       LInstruction := StringToSlimInstruction(LInstr);
 
