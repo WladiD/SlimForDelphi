@@ -303,8 +303,7 @@ begin
           LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
       end;
 
-      // --- 1. Local Execution ---
-      if LIsLocal then
+      if LIsLocal then // --- 1. Local Execution ---
       begin
         LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
 
