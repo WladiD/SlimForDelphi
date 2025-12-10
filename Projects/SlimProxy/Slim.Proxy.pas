@@ -97,6 +97,7 @@ begin
 
   FClient.Host := FHost;
   FClient.Port := FPort;
+  FClient.ConnectTimeout := FConnectTimeout;
 
   LStart := GetTickCount;
   while True do
