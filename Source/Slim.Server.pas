@@ -153,9 +153,9 @@ end;
 
 procedure TSlimServer.WriteString(AIo: TIdIOHandler; const AValue: String);
 var
+  Bytes      : TIdBytes;
   Value      : UTF8String;
   ValueLength: Integer;
-  Bytes      : TIdBytes;
 begin
   Value := UTF8Encode(AValue);
   ValueLength := Length(Value);

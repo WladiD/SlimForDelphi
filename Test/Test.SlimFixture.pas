@@ -110,10 +110,15 @@ type
     [Test]
     procedure DelayedEvents;
     [Test]
+    procedure DelayedEventsWithException;
+    [Test]
     procedure MemberSyncMode;
   end;
 
 implementation
+
+type
+  TSlimFixtureAccess = class(TSlimFixture);
 
 { TestSlimFixtureResolver }
 
@@ -542,6 +547,38 @@ begin
 
     Fixture.WaitForDelayedEvent;
     Assert.Pass;
+  finally
+    Fixture.Free;
+  end;
+end;
+
+procedure TestSlimFixture.DelayedEventsWithException;
+begin
+  var Fixture: TSlimFixture := TSlimFixture.Create;
+  try
+    Fixture.InitDelayedEvent;
+
+    TTask.Run(
+      procedure
+      begin
+        try
+          raise Exception.Create('Delayed Crash');
+        except
+          on E: Exception do
+          begin
+             TSlimFixtureAccess(Fixture).SetDelayedException(Exception(AcquireExceptionObject));
+             Fixture.TriggerDelayedEvent;
+          end;
+        end;
+      end);
+
+    Fixture.WaitForDelayedEvent;
+
+    Assert.WillRaise(
+      procedure
+      begin
+        TSlimFixtureAccess(Fixture).CheckAndRaiseDelayedException;
+      end, Exception, 'Delayed Crash');
   finally
     Fixture.Free;
   end;

@@ -5,6 +5,6 @@
 
 !1 MultiFormExample Proxy Suite
 
-This suite tests the MultiFormExample via the SlimProxy for various platforms.
+This suite tests the !-MultiFormExample-! via the !-SlimProxy-! for various platforms.
 
 !contents -R2 -g -p -f -h

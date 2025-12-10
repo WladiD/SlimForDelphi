@@ -148,9 +148,9 @@ type
     function _AddRef: Integer; stdcall;
     function _Release: Integer; stdcall;
   protected
-    FStopExecute: Boolean;
-    FContext: TSlimStatementContext;
+    FContext        : TSlimStatementContext;
     FManageInstances: Boolean;
+    FStopExecute    : Boolean;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create(AContext: TSlimStatementContext); virtual;
@@ -162,6 +162,9 @@ function StringToSlimInstruction(const AValue: String): TSlimInstruction;
 function SlimInstructionToStatementClass(AInstruction: TSlimInstruction): TSlimStatementClass;
 
 implementation
+
+type
+  TSlimFixtureAccess = class(TSlimFixture);
 
 function StringToSlimInstruction(const AValue: String): TSlimInstruction;
 begin
@@ -535,7 +538,16 @@ begin
                   end, Info.Owner);
               end;
 
-              SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
+              try
+                SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
+              except
+                on E: Exception do
+                begin
+                  TSlimFixtureAccess(AFixtureInstance).SetDelayedException(Exception(AcquireExceptionObject));
+                  if Info.ManualDelayedEvent then
+                    AFixtureInstance.TriggerDelayedEvent;
+                end;
+              end;
             end, Info.Owner);
         except
           on E: Exception do
@@ -555,6 +567,7 @@ begin
     end;
 
     AFixtureInstance.WaitForDelayedEvent;
+    TSlimFixtureAccess(AFixtureInstance).CheckAndRaiseDelayedException;
     Result := SyncResult;
   end;
 end;
@@ -776,10 +789,10 @@ end;
 
 function TSlimExecutor.ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
 var
-  Stmt     : TSlimStatement;
-  StmtClass: TSlimStatementClass;
   Instr    : TSlimInstruction;
   InstrStr : String;
+  Stmt     : TSlimStatement;
+  StmtClass: TSlimStatementClass;
 begin
   InstrStr := ARawStmt[1].ToString;
   Instr := StringToSlimInstruction(InstrStr);

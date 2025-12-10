@@ -80,10 +80,13 @@ type
   TSlimFixture = class
   protected
     FDelayedEvent: TEvent;
+    FDelayedException: Exception;
     procedure IgnoreAllTests(const AMessage: String = '');
     procedure IgnoreScriptTest(const AMessage: String = '');
     procedure StopSuite(const AMessage: String = '');
     procedure StopTest(const AMessage: String = '');
+    procedure SetDelayedException(AException: Exception);
+    procedure CheckAndRaiseDelayedException;
   public
     destructor Destroy; override;
     function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
@@ -201,6 +204,7 @@ end;
 
 destructor TSlimFixture.Destroy;
 begin
+  FDelayedException.Free;
   FDelayedEvent.Free;
   inherited;
 end;
@@ -213,8 +217,12 @@ end;
 
 procedure TSlimFixture.InitDelayedEvent;
 begin
+  FreeAndNil(FDelayedException);
+
   if not Assigned(FDelayedEvent) then
-    FDelayedEvent := TEvent.Create(nil, True, False, '');
+    FDelayedEvent := TEvent.Create(nil, True, False, '')
+  else
+    FDelayedEvent.ResetEvent;
 end;
 
 procedure TSlimFixture.IgnoreAllTests(const AMessage: String);
@@ -255,6 +263,25 @@ procedure TSlimFixture.TriggerDelayedEvent;
 begin
   if Assigned(FDelayedEvent) then
     FDelayedEvent.SetEvent;
+end;
+
+procedure TSlimFixture.SetDelayedException(AException: Exception);
+begin
+  FDelayedException.Free;
+  FDelayedException := AException;
+end;
+
+procedure TSlimFixture.CheckAndRaiseDelayedException;
+begin
+  if Assigned(FDelayedException) then
+  begin
+    try
+      raise FDelayedException;
+    except
+      FDelayedException := nil;
+      raise;
+    end;
+  end;
 end;
 
 procedure TSlimFixture.WaitForDelayedEvent;

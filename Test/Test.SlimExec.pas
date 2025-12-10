@@ -10,6 +10,9 @@ interface
 
 uses
 
+  Winapi.Messages,
+  Winapi.Windows,
+
   System.Classes,
   System.Contnrs,
   System.Generics.Collections,
@@ -73,6 +76,8 @@ type
     [Test]
     procedure FixtureWithPropertiesSyncModes;
     [Test]
+    procedure FixtureWithDelayedException;
+    [Test]
     procedure ImportTable;
   end;
 
@@ -102,6 +107,18 @@ type
   TMyAnyObject = class
   public
     function HelloWorld: String;
+  end;
+
+  [SlimFixture('DelayedExceptionFixture')]
+  TSlimDelayedExceptionFixture = class(TSlimFixture)
+  private
+    FDummyOwner: TComponent;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; override;
+    [SlimMemberSyncMode(smSynchronizedAndDelayed)]
+    procedure ThrowDelayed;
   end;
 
   [SlimFixture('MySutFixture')]
@@ -294,6 +311,54 @@ begin
       CheckSynchronize;
 
     Assert.AreEqual('5.0', Task.Value);
+  finally
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.FixtureWithDelayedException;
+begin
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Task: IFuture<String> := TTask.Future<String>(
+      function: String
+      var
+        LResponse: String;
+      begin
+        try
+          Execute(
+            FGarbage.Collect(SlimList([
+              SlimList(['id_1', 'make', 'instance_1', 'DelayedExceptionFixture']),
+              SlimList(['id_2', 'call', 'instance_1', 'ThrowDelayed'])
+            ])),
+            procedure(AResponse: TSlimList)
+            var
+              CallResponse: TSlimList;
+            begin
+              Assert.AreEqual(2, Integer(AResponse.Count));
+              Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+              LResponse := CallResponse[1].ToString;
+            end);
+          Result := LResponse;
+        finally
+          Done.SetEvent;
+        end;
+      end);
+
+    while Done.WaitFor(1) = wrTimeout do
+    begin
+      CheckSynchronize;
+      // Pump Messages for TDelayedMethod
+      var Msg: TMsg;
+      while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do
+      begin
+        TranslateMessage(Msg);
+        DispatchMessage(Msg);
+      end;
+    end;
+
+    Assert.Contains(Task.Value, TSlimConsts.ExceptionResponse);
+    Assert.Contains(Task.Value, 'This is a delayed crash!');
   finally
     Done.Free;
   end;
@@ -633,11 +698,43 @@ begin
   Result := FTarget;
 end;
 
+{ TSlimDelayedExceptionFixture }
+
+constructor TSlimDelayedExceptionFixture.Create;
+begin
+  inherited;
+  FDummyOwner := TComponent.Create(nil);
+end;
+
+destructor TSlimDelayedExceptionFixture.Destroy;
+begin
+  FDummyOwner.Free;
+  inherited;
+end;
+
+function TSlimDelayedExceptionFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
+begin
+  if AMember.Name = 'ThrowDelayed' then
+  begin
+    AInfo.Owner := FDummyOwner;
+    AInfo.ManualDelayedEvent := False;
+    Result := True;
+  end
+  else
+    Result := inherited HasDelayedInfo(AMember, AInfo);
+end;
+
+procedure TSlimDelayedExceptionFixture.ThrowDelayed;
+begin
+  raise Exception.Create('This is a delayed crash!');
+end;
+
 initialization
 
 RegisterSlimFixture(TMySutFixture);
 RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);
+RegisterSlimFixture(TSlimDelayedExceptionFixture);
 
 TDUnitX.RegisterTestFixture(TestContext);
 TDUnitX.RegisterTestFixture(TestSlimExecutor);
