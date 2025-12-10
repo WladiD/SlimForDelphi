@@ -79,6 +79,8 @@ type
     procedure FixtureWithDelayedException;
     [Test]
     procedure ImportTable;
+    [Test]
+    procedure IgnoreAllTestsPersistBug;
   end;
 
   [TestFixture]
@@ -131,6 +133,7 @@ type
     function AnswerOfLife: String;
     function AnyObject: TObject;
     procedure RaiseStopException;
+    procedure RaiseIgnoreAllTestsException;
     function SystemUnderTest: TObject; override;
   end;
 
@@ -480,6 +483,43 @@ begin
     end);
 end;
 
+procedure TestSlimExecutor.IgnoreAllTestsPersistBug;
+begin
+  var Stmts1: TSlimList := FGarbage.Collect(
+    SlimList([
+      SlimList(['id_1', 'make', 'instance_1', 'MySutFixture']),
+      SlimList(['id_2', 'call', 'instance_1', 'RaiseIgnoreAllTestsException'])
+    ]));
+
+  var Stmts2: TSlimList := FGarbage.Collect(
+    SlimList([
+      SlimList(['id_3', 'call', 'instance_1', 'AnswerOfLife']),
+      SlimList(['id_4', 'call', 'instance_1', 'AnswerOfLife'])
+    ]));
+
+  var Executor: TSlimExecutor := TSlimExecutor.Create(FContext);
+  try
+    var Response1: TSlimList := Executor.Execute(Stmts1);
+    try
+      Assert.AreEqual(2, Integer(Response1.Count));
+      Assert.Contains(TSlimList(Response1[1])[1].ToString, 'IGNORE_ALL_TESTS');
+    finally
+      Response1.Free;
+    end;
+
+    var Response2: TSlimList := Executor.Execute(Stmts2);
+    try
+      Assert.AreEqual(2, Integer(Response2.Count), 'Second request should execute both statements');
+      if Response2.Count > 0 then
+        Assert.AreEqual('~42', TSlimList(Response2[0])[1].ToString);
+    finally
+      Response2.Free;
+    end;
+  finally
+    Executor.Free;
+  end;
+end;
+
 procedure TestSlimExecutor.ImportTable;
 begin
   // 1. Test with wrong namespace -> should fail
@@ -663,6 +703,11 @@ end;
 procedure TMySutFixture.RaiseStopException;
 begin
   StopTest;
+end;
+
+procedure TMySutFixture.RaiseIgnoreAllTestsException;
+begin
+  IgnoreAllTests;
 end;
 
 function TMySutFixture.SystemUnderTest: TObject;

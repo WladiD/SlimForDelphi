@@ -819,6 +819,7 @@ function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 begin
   Result := TSlimList.Create;
   try
+    FStopExecute := False;
     if FManageInstances and not Assigned(FContext.Instances) then
       FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
