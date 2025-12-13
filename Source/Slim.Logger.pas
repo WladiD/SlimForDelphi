@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,15 +9,17 @@ unit Slim.Logger;
 interface
 
 uses
+
   System.Classes,
   System.IOUtils,
   System.SysUtils,
+
   Slim.List;
 
 type
 
   ISlimLogger = interface
-    ['{8A4B6C2D-1E3F-4058-9201-C1C2C3C4C5C6}']
+    ['{E4633017-B8DB-46D7-9C5D-0B8A5BCC3CCE}']
     procedure EnterList(const AList: TSlimList);
     procedure ExitList(const AList: TSlimList);
     procedure LogInstruction(const AInstruction: TSlimList);
@@ -67,8 +69,6 @@ end;
 
 procedure TSlimFileLogger.LogInstruction(const AInstruction: TSlimList);
 begin
-  // Log the instruction immediately before execution
-  // We use the serializer to get a clean string representation of the instruction
   WriteLine(Format('  >> Executing: %s', [SlimListSerialize(AInstruction)]));
 end;
 
