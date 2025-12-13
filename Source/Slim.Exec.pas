@@ -23,6 +23,7 @@ uses
   Slim.Common,
   Slim.Fixture,
   Slim.List,
+  Slim.Logger,
   Slim.Symbol;
 
 type
@@ -149,12 +150,14 @@ type
     function _Release: Integer; stdcall;
   protected
     FContext        : TSlimStatementContext;
+    FLogger         : ISlimLogger;
     FManageInstances: Boolean;
     FStopExecute    : Boolean;
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create(AContext: TSlimStatementContext); virtual;
     function Execute(ARawStmts: TSlimList): TSlimList; virtual;
+    property Logger: ISlimLogger read FLogger write FLogger;
     property ManageInstances: Boolean read FManageInstances write FManageInstances;
   end;
 
@@ -819,21 +822,32 @@ function TSlimExecutor.Execute(ARawStmts: TSlimList): TSlimList;
 begin
   Result := TSlimList.Create;
   try
+    if Assigned(FLogger) then
+      FLogger.EnterList(ARawStmts);
+
     FStopExecute := False;
     if FManageInstances and not Assigned(FContext.Instances) then
       FContext.SetInstances(TSlimFixtureDictionary.Create([doOwnsValues]), True);
 
-    for var Loop := 0 to ARawStmts.Count - 1 do
-    begin
-      var LRawStmt: TSlimEntry := ARawStmts[Loop];
-      if LRawStmt is TSlimList then
+    try
+      for var Loop := 0 to ARawStmts.Count - 1 do
       begin
-        var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), FContext);
-        if Assigned(LStmtResult) then
-          Result.Add(LStmtResult);
+        var LRawStmt: TSlimEntry := ARawStmts[Loop];
+        if LRawStmt is TSlimList then
+        begin
+          if Assigned(FLogger) then
+            FLogger.LogInstruction(TSlimList(LRawStmt));
+            
+          var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), FContext);
+          if Assigned(LStmtResult) then
+            Result.Add(LStmtResult);
+        end;
+        if FStopExecute then
+          Break;
       end;
-      if FStopExecute then
-        Break;
+    finally
+      if Assigned(FLogger) then
+        FLogger.ExitList(ARawStmts);
     end;
   except
     Result.Free;

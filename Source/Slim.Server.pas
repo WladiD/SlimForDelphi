@@ -25,6 +25,7 @@ uses
 
   Slim.Exec,
   Slim.List,
+  Slim.Logger,
   Slim.Symbol;
 
 {$IFNDEF DEBUG}
@@ -41,6 +42,7 @@ type
   private
     FContext        : TSlimStatementContext;
     FExecutorClass  : TSlimExecutorClass;
+    FLogger         : ISlimLogger;
     FOnReadRequest  : TStringEvent;
     FOnWriteResponse: TStringEvent;
   protected
@@ -53,6 +55,7 @@ type
     procedure AfterConstruction; override;
     destructor Destroy; override;
     property ExecutorClass: TSlimExecutorClass read FExecutorClass write FExecutorClass;
+    property Logger: ISlimLogger read FLogger write FLogger;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
     property OnWriteResponse: TStringEvent read FOnWriteResponse write FOnWriteResponse;
   end;
@@ -88,6 +91,8 @@ begin
   Stmts := nil;
   try
     Stmts := SlimListUnserialize(ARequest);
+    if Assigned(FLogger) then
+      AExecutor.Logger := FLogger;
     Result := AExecutor.Execute(Stmts);
   finally
     Stmts.Free;
