@@ -140,7 +140,6 @@ begin
     List.Free;
   end;
 
-  // Execute valid commands, no try-except needed
   ResultList := FServer.ExecutePublic(FExecutor, Request);
   try
     // Verify that execution was actually successful
@@ -151,8 +150,6 @@ begin
     ResultList.Free;
   end;
 
-  // Assert Log Content
-  // Expect: ENTER -> INSTR 1 -> INSTR 2 -> EXIT
   Assert.AreEqual(4, FMockLogger.LogContent.Count, 'Should have 4 log entries');
   Assert.AreEqual('ENTER:2', FMockLogger.LogContent[0]);
   Assert.AreEqual(ExpectedInstr1, FMockLogger.LogContent[1]);
@@ -165,3 +162,4 @@ initialization
 TDUnitX.RegisterTestFixture(TestSlimLogger);
 
 end.
+
