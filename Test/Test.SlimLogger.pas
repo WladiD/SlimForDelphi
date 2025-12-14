@@ -125,9 +125,9 @@ var
 begin
   FServer.Logger := FMockLogger;
 
-  // Create a request with 2 instructions
-  var Instr1: TSlimList := SlimList(['id1', 'call', 'instance', 'method1']);
-  var Instr2: TSlimList := SlimList(['id2', 'call', 'instance', 'method2']);
+  // Create a request with 2 valid instructions using MySutFixture (defined in Test.SlimExec)
+  var Instr1: TSlimList := SlimList(['id1', 'make', 'inst1', 'MySutFixture']);
+  var Instr2: TSlimList := SlimList(['id2', 'call', 'inst1', 'AnswerOfLife']);
 
   // Calculate expected strings BEFORE adding to list (ownership transfer) or freeing list
   ExpectedInstr1 := 'INSTR:' + SlimListSerialize(Instr1);
@@ -140,21 +140,23 @@ begin
     List.Free;
   end;
 
+  // Execute valid commands, no try-except needed
+  ResultList := FServer.ExecutePublic(FExecutor, Request);
   try
-    ResultList := FServer.ExecutePublic(FExecutor, Request);
+    // Verify that execution was actually successful
+    Assert.AreEqual(2, ResultList.Count, 'Should return results for 2 instructions');
+    Assert.AreEqual('OK', TSlimList(ResultList[0])[1].ToString, 'Make should return OK');
+    Assert.AreEqual('~42', TSlimList(ResultList[1])[1].ToString, 'AnswerOfLife should return ~42');
+  finally
     ResultList.Free;
-  except
-    // Ignore execution errors
   end;
 
-  // Assert
+  // Assert Log Content
   // Expect: ENTER -> INSTR 1 -> INSTR 2 -> EXIT
   Assert.AreEqual(4, FMockLogger.LogContent.Count, 'Should have 4 log entries');
   Assert.AreEqual('ENTER:2', FMockLogger.LogContent[0]);
-
   Assert.AreEqual(ExpectedInstr1, FMockLogger.LogContent[1]);
   Assert.AreEqual(ExpectedInstr2, FMockLogger.LogContent[2]);
-
   Assert.AreEqual('EXIT', FMockLogger.LogContent[3]);
 end;
 
