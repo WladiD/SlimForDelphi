@@ -45,6 +45,7 @@ begin
   inherited Create;
   FFileName := AFileName;
   TDirectory.CreateDirectory(TPath.GetDirectoryName(FFileName));
+  WriteLine(Format('Logger started at %s', [DateTimeToStr(Now)]));
 end;
 
 procedure TSlimFileLogger.WriteLine(const AText: String);

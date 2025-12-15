@@ -1,19 +1,30 @@
-﻿program SlimProxy;
+﻿// ======================================================================
+// Copyright (c) 2025 Waldemar Derr. All rights reserved.
+//
+// Licensed under the MIT license. See included LICENSE file for details.
+// ======================================================================
+
+program SlimProxy;
 
 {$APPTYPE CONSOLE}
 
 uses
+
   System.SysUtils,
+
   IdContext,
-  Slim.Server,
-  Slim.Proxy,
-  Slim.Proxy.Interfaces,
-  Slim.Proxy.Fixtures,
+
+  Slim.CmdUtils,
   Slim.Common,
   Slim.Exec,
-  Slim.CmdUtils;
+  Slim.Logger,
+  Slim.Proxy,
+  Slim.Proxy.Fixtures,
+  Slim.Proxy.Interfaces,
+  Slim.Server;
 
 type
+
   TLogger = class
     class procedure OnConnect(AContext: TIdContext);
     class procedure OnException(AContext: TIdContext; AException: Exception);
@@ -49,6 +60,7 @@ begin
     LServer := TSlimServer.Create;
     try
       LServer.DefaultPort := LPort;
+      LServer.Logger := TSlimFileLogger.Create(Format('Logs\SlimProxy_%s.log', [FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]));
       LServer.OnConnect := TLogger.OnConnect;
       LServer.OnException := TLogger.OnException;
       LServer.ExecutorClass := TSlimProxyExecutor;

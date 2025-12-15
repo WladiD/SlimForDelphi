@@ -275,80 +275,92 @@ var
 begin
   Result := TSlimList.Create;
   try
-    FStopExecute := False;
-    LIsLocal := False;
+    if Assigned(FLogger) then
+      FLogger.EnterList(ARawStmts);
 
-    for var Loop: Integer := 0 to ARawStmts.Count - 1 do
-    begin
-      LStmtResult := nil;
-      LRawStmtEntry := ARawStmts[Loop];
-      if not (LRawStmtEntry is TSlimList) then
-        Continue;
+    try
+      FStopExecute := False;
+      LIsLocal := False;
 
-      LRawStmt := LRawStmtEntry as TSlimList;
-      if LRawStmt.Count > 1 then
-        LInstr := LRawStmt[1].ToString
-      else
-        Continue;
-
-      LInstruction := StringToSlimInstruction(LInstr);
-
-      // --- Decision Logic: Local or Remote? ---
-
-      if (LInstruction = siMake) and (LRawStmt.Count > 3) then
+      for var Loop: Integer := 0 to ARawStmts.Count - 1 do
       begin
-        var LClassName: String := LRawStmt[3].ToString.Trim;
-        LIsLocal :=
-          LClassName.StartsWith('SlimProxy.', True) and                    // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally
-          FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
-          LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
-      end;
+        LStmtResult := nil;
+        LRawStmtEntry := ARawStmts[Loop];
+        if not (LRawStmtEntry is TSlimList) then
+          Continue;
 
-      if LIsLocal then // --- 1. Local Execution ---
-      begin
-        LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
+        LRawStmt := LRawStmtEntry as TSlimList;
 
-        // Inject Executor if it's a make command on a Proxy Fixture
-        if (LInstruction = siMake) and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
-        begin
-           var LInstName := LRawStmt[2].ToString;
-           if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyBaseFixture) then
-           begin
-             (LFixture as TSlimProxyBaseFixture).Executor := Self as ISlimProxyExecutor;
-           end;
-        end;
-      end
-      else // --- 2. Remote Execution (Forwarding) ---
-      begin
-        var LRemoteResult: TSlimList;
-        if TryForwardToTarget(LRawStmt, LRemoteResult) then
-        begin
-          // If not local, the remote result is THE result
-          LStmtResult.Free;
-          LStmtResult := LRemoteResult;
-        end
+        if Assigned(FLogger) then
+          FLogger.LogInstruction(LRawStmt);
+
+        if LRawStmt.Count > 1 then
+          LInstr := LRawStmt[1].ToString
         else
+          Continue;
+
+        LInstruction := StringToSlimInstruction(LInstr);
+
+        // --- Decision Logic: Local or Remote? ---
+
+        if (LInstruction = siMake) and (LRawStmt.Count > 3) then
         begin
-           // Error: No active target and not handled locally
-           // But for import/assign we can ignore/return OK if no target is there.
-           if (LInstruction = siImport) or (LInstruction = siAssign) then
-           begin
-             LStmtResult.Free;
-             LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']);
-           end
-           else
-           begin
-             LStmtResult.Free;
-             LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
-           end;
+          var LClassName: String := LRawStmt[3].ToString.Trim;
+          LIsLocal :=
+            LClassName.StartsWith('SlimProxy.', True) and                    // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally
+            FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
+            LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
         end;
+
+        if LIsLocal then // --- 1. Local Execution ---
+        begin
+          LStmtResult := inherited ExecuteStmt(LRawStmt, FContext);
+
+          // Inject Executor if it's a make command on a Proxy Fixture
+          if (LInstruction = siMake) and Assigned(LStmtResult) and (LStmtResult.Count > 1) and (LStmtResult[1].ToString = 'OK') then
+          begin
+             var LInstName := LRawStmt[2].ToString;
+             if FContext.Instances.TryGetValue(LInstName, LFixture) and (LFixture is TSlimProxyBaseFixture) then
+             begin
+               (LFixture as TSlimProxyBaseFixture).Executor := Self as ISlimProxyExecutor;
+             end;
+          end;
+        end
+        else // --- 2. Remote Execution (Forwarding) ---
+        begin
+          var LRemoteResult: TSlimList;
+          if TryForwardToTarget(LRawStmt, LRemoteResult) then
+          begin
+            // If not local, the remote result is THE result
+            LStmtResult.Free;
+            LStmtResult := LRemoteResult;
+          end
+          else
+          begin
+             // Error: No active target and not handled locally
+             // But for import/assign we can ignore/return OK if no target is there.
+             if (LInstruction = siImport) or (LInstruction = siAssign) then
+             begin
+               LStmtResult.Free;
+               LStmtResult := SlimList([LRawStmt[0].ToString, 'OK']);
+             end
+             else
+             begin
+               LStmtResult.Free;
+               LStmtResult := SlimList([LRawStmt[0].ToString, TSlimConsts.ExceptionResponse + 'No active target selected and not a local proxy command.']);
+             end;
+          end;
+        end;
+
+        if Assigned(LStmtResult) then
+          Result.Add(LStmtResult);
+
+        if FStopExecute then
+          Break;
       end;
-
-      if Assigned(LStmtResult) then
-        Result.Add(LStmtResult);
-
-      if FStopExecute then
-        Break;
+    finally
+      if Assigned(FLogger) then
+        FLogger.ExitList(ARawStmts);
     end;
   except
     Result.Free;
