@@ -120,8 +120,8 @@ procedure TestSlimLogger.TestLoggingHook;
 var
   ExpectedInstr1: String;
   ExpectedInstr2: String;
+  List          : TSlimList;
   Request       : String;
-  ResultList    : TSlimList;
 begin
   FServer.Logger := FMockLogger;
 
@@ -133,21 +133,20 @@ begin
   ExpectedInstr1 := 'INSTR:' + SlimListSerialize(Instr1);
   ExpectedInstr2 := 'INSTR:' + SlimListSerialize(Instr2);
 
-  var List: TSlimList := SlimList([Instr1, Instr2]);
+  List := SlimList([Instr1, Instr2]);
   try
     Request := SlimListSerialize(List);
   finally
     List.Free;
   end;
 
-  ResultList := FServer.ExecutePublic(FExecutor, Request);
+  List := FServer.ExecutePublic(FExecutor, Request);
   try
-    // Verify that execution was actually successful
-    Assert.AreEqual(2, ResultList.Count, 'Should return results for 2 instructions');
-    Assert.AreEqual('OK', TSlimList(ResultList[0])[1].ToString, 'Make should return OK');
-    Assert.AreEqual('~42', TSlimList(ResultList[1])[1].ToString, 'AnswerOfLife should return ~42');
+    Assert.AreEqual(2, List.Count, 'Should return results for 2 instructions');
+    Assert.AreEqual('OK', TSlimList(List[0])[1].ToString, 'Make should return OK');
+    Assert.AreEqual('~42', TSlimList(List[1])[1].ToString, 'AnswerOfLife should return ~42');
   finally
-    ResultList.Free;
+    List.Free;
   end;
 
   Assert.AreEqual(4, FMockLogger.LogContent.Count, 'Should have 4 log entries');
