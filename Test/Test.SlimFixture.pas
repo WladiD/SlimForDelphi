@@ -63,6 +63,14 @@ type
   [SlimFixture('GlobalFixture', 'ns1')]
   TGlobalNsFixture = class(TSlimFixture);
 
+  [SlimFixture('DelayedOwner', 'test')]
+  TSlimDelayedOwnerFixture = class(TSlimFixture)
+  public
+    [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
+    procedure ManualMethod;
+    procedure AutoMethod;
+  end;
+
   [TestFixture]
   TestSlimFixtureResolver = class
   public
@@ -113,6 +121,8 @@ type
     procedure DelayedEventsWithException;
     [Test]
     procedure MemberSyncMode;
+    [Test]
+    procedure DelayedOwnerAndAttribute;
   end;
 
 implementation
@@ -395,6 +405,16 @@ begin
     Result := smUnsynchronized;
 end;
 
+{ TSlimDelayedOwnerFixture }
+
+procedure TSlimDelayedOwnerFixture.AutoMethod;
+begin
+end;
+
+procedure TSlimDelayedOwnerFixture.ManualMethod;
+begin
+end;
+
 { TestScriptTableActorStack }
 
 procedure TestScriptTableActorStack.Setup;
@@ -606,6 +626,50 @@ begin
   end;
 end;
 
+procedure TestSlimFixture.DelayedOwnerAndAttribute;
+var
+  Comp        : TComponent;
+  Ctx         : TRttiContext;
+  Fixture     : TSlimDelayedOwnerFixture;
+  Info        : TDelayedInfo;
+  MethodAuto  : TRttiMethod;
+  MethodManual: TRttiMethod;
+  SyncAttr    : TCustomAttribute;
+  Typ         : TRttiType;
+begin
+  Fixture := TSlimDelayedOwnerFixture.Create;
+  Comp := TComponent.Create(nil);
+  try
+    // 1. Without Owner -> False
+    Typ := Ctx.GetType(TSlimDelayedOwnerFixture);
+    MethodManual := Typ.GetMethod('ManualMethod');
+    MethodAuto := Typ.GetMethod('AutoMethod');
+
+    Assert.IsFalse(Fixture.HasDelayedInfo(MethodManual, Info));
+
+    // 2. With Owner
+    Fixture.DelayedOwner := Comp;
+
+    // Manual Method
+    Assert.IsTrue(Fixture.HasDelayedInfo(MethodManual, Info));
+    Assert.AreEqual(Comp, Info.Owner);
+    Assert.IsTrue(Info.ManualDelayedEvent, 'ManualDelayedEvent should be true due to smSynchronizedAndDelayedManual');
+
+    // Auto Method
+    Assert.IsTrue(Fixture.HasDelayedInfo(MethodAuto, Info));
+    Assert.AreEqual(Comp, Info.Owner);
+    Assert.IsFalse(Info.ManualDelayedEvent, 'ManualDelayedEvent should be false by default');
+    
+    // Check if the attribute is accessible via standard RTTI logic
+    SyncAttr := MethodManual.GetAttribute(SlimMemberSyncModeAttribute);
+    Assert.IsNotNull(SyncAttr, 'SlimMemberSyncModeAttribute should be present');
+    Assert.IsTrue(SlimMemberSyncModeAttribute(SyncAttr).SyncMode = smSynchronizedAndDelayedManual);
+  finally
+    Comp.Free;
+    Fixture.Free;
+  end;
+end;
+
 initialization
 
 RegisterSlimFixture(TSlimDivisionFixture);
@@ -615,6 +679,7 @@ RegisterSlimFixture(TAmbigFixture1);
 RegisterSlimFixture(TAmbigFixture2);
 RegisterSlimFixture(TGlobalFixture);
 RegisterSlimFixture(TGlobalNsFixture);
+RegisterSlimFixture(TSlimDelayedOwnerFixture);
 
 TDUnitX.RegisterTestFixture(TestSlimFixtureResolver);
 TDUnitX.RegisterTestFixture(TestScriptTableActorStack);

@@ -516,7 +516,7 @@ begin
     else
       Result := SyncResult;
   end
-  else if SyncMode = smSynchronizedAndDelayed then
+  else if SyncMode in [smSynchronizedAndDelayed, smSynchronizedAndDelayedManual] then
   begin
     TThread.Synchronize(TThread.Current,
       procedure

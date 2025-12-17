@@ -41,7 +41,11 @@ type
     /// <summary>
     ///   The method call is synchronized from a inner delayed method.
     /// </summary>
-    smSynchronizedAndDelayed);
+    smSynchronizedAndDelayed,
+    /// <summary>
+    ///   Same as smSynchronizedAndDelayed, but the event must be triggered manually.
+    /// </summary>
+    smSynchronizedAndDelayedManual);
 
   TDelayedInfo = record
     Owner: TComponent;
@@ -81,6 +85,7 @@ type
   protected
     FDelayedEvent: TEvent;
     FDelayedException: Exception;
+    FDelayedOwner: TComponent;
     procedure IgnoreAllTests(const AMessage: String = '');
     procedure IgnoreScriptTest(const AMessage: String = '');
     procedure StopSuite(const AMessage: String = '');
@@ -95,6 +100,7 @@ type
     function  SystemUnderTest: TObject; virtual;
     procedure TriggerDelayedEvent; virtual;
     procedure WaitForDelayedEvent;
+    property DelayedOwner: TComponent read FDelayedOwner write FDelayedOwner;
   end;
 
   /// <summary>
@@ -212,7 +218,17 @@ end;
 function TSlimFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
 begin
   AInfo := Default(TDelayedInfo);
-  Result := False;
+  if Assigned(FDelayedOwner) then
+  begin
+    AInfo.Owner := FDelayedOwner;
+    var Attr := AMember.GetAttribute(SlimMemberSyncModeAttribute);
+    AInfo.ManualDelayedEvent := Assigned(Attr) and (SlimMemberSyncModeAttribute(Attr).SyncMode = smSynchronizedAndDelayedManual);
+    Result := True;
+  end
+  else
+  begin
+    Result := False;
+  end;
 end;
 
 procedure TSlimFixture.InitDelayedEvent;

@@ -23,8 +23,8 @@ type
   private
     function TryGetEntryForm(out AForm: TEntryForm): Boolean;
   public
+    procedure AfterConstruction; override;
     function  Add: Boolean;
-    function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; override;
     function  Id: Integer;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure Reset; override;
@@ -45,6 +45,12 @@ implementation
 
 { TSlimAddEntryFixture }
 
+procedure TSlimAddEntryFixture.AfterConstruction;
+begin
+  inherited;
+  DelayedOwner := MainForm;
+end;
+
 function TSlimAddEntryFixture.Add: Boolean;
 begin
   var EntryForm: TEntryForm := Screen.FocusedForm as TEntryForm;
@@ -55,15 +61,6 @@ end;
 function TSlimAddEntryFixture.Id: Integer;
 begin
   Result := MainForm.Entries.Last.Id;
-end;
-
-function TSlimAddEntryFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
-begin
-  Result := true;
-  if SameText(AMember.Name, 'Reset') then
-    AInfo.Owner := MainForm
-  else
-    Result := false;
 end;
 
 procedure TSlimAddEntryFixture.Reset;
