@@ -58,6 +58,8 @@ type
   TestSlimExecutor = class(TestExecBase)
   private
     procedure Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
+    procedure PumpMessages;
+    procedure WaitForDone(AEvent: TEvent);
   protected
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
   public
@@ -262,6 +264,26 @@ begin
   end;
 end;
 
+procedure TestSlimExecutor.PumpMessages;
+var
+  Msg: TMsg;
+begin
+  while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do
+  begin
+    TranslateMessage(Msg);
+    DispatchMessage(Msg);
+  end;
+end;
+
+procedure TestSlimExecutor.WaitForDone(AEvent: TEvent);
+begin
+  while AEvent.WaitFor(1) = wrTimeout do
+  begin
+    CheckSynchronize;
+    PumpMessages;
+  end;
+end;
+
 procedure TestSlimExecutor.FixtureWithProperties;
 begin
   Execute(
@@ -322,8 +344,7 @@ begin
         end;
       end);
 
-    while Done.WaitFor(1) = wrTimeout do
-      CheckSynchronize;
+    WaitForDone(Done);
 
     Assert.AreEqual('5.0', Task.Value);
   finally
@@ -360,17 +381,7 @@ begin
         end;
       end);
 
-    while Done.WaitFor(1) = wrTimeout do
-    begin
-      CheckSynchronize;
-      // Pump Messages for TDelayedMethod
-      var Msg: TMsg;
-      while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do
-      begin
-        TranslateMessage(Msg);
-        DispatchMessage(Msg);
-      end;
-    end;
+    WaitForDone(Done);
 
     Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
   finally
@@ -407,17 +418,7 @@ begin
         end;
       end);
 
-    while Done.WaitFor(1) = wrTimeout do
-    begin
-      CheckSynchronize;
-      // Pump Messages for TDelayedMethod
-      var Msg: TMsg;
-      while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do
-      begin
-        TranslateMessage(Msg);
-        DispatchMessage(Msg);
-      end;
-    end;
+    WaitForDone(Done);
 
     Assert.Contains(Task.Value, TSlimConsts.ExceptionResponse);
     Assert.Contains(Task.Value, 'This is a delayed crash!');
