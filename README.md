@@ -20,7 +20,7 @@ SlimForDelphi is a [Slim](https://fitnesse.org/FitNesse/UserGuide/WritingAccepta
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/WDerr/SlimForDelphi.git
+    git clone https://github.com/WladiD/SlimForDelphi.git
     ```
 2.  Initialize submodules (required for dependencies like `WDDelphiTools`):
     ```bash
@@ -77,4 +77,5 @@ type
 initialization
   RegisterSlimFixture(TSlimDivisionFixture);
 end.
+
 ```
