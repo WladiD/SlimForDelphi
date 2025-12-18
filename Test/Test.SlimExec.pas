@@ -99,6 +99,7 @@ type
   TGarbage = class
   private
     FGarbage: TObjectList;
+    FLock: TCriticalSection;
   public
     constructor Create;
     destructor Destroy; override;
@@ -680,17 +681,24 @@ end;
 constructor TGarbage.Create;
 begin
   FGarbage := TObjectList.Create(True);
+  FLock := TCriticalSection.Create;
 end;
 
 destructor TGarbage.Destroy;
 begin
   FGarbage.Free;
+  FLock.Free;
   inherited;
 end;
 
 function TGarbage.Collect(AList: TSlimList): TSlimList;
 begin
-  FGarbage.Add(AList);
+  FLock.Enter;
+  try
+    FGarbage.Add(AList);
+  finally
+    FLock.Leave;
+  end;
   Result := AList;
 end;
 
