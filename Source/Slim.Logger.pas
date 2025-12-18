@@ -28,9 +28,11 @@ type
   TSlimFileLogger = class(TInterfacedObject, ISlimLogger)
   private
     FFileName: String;
+    FWriter: TStreamWriter;
     procedure WriteLine(const AText: String);
   public
     constructor Create(const AFileName: String);
+    destructor Destroy; override;
     procedure EnterList(const AList: TSlimList);
     procedure ExitList(const AList: TSlimList);
     procedure LogInstruction(const AInstruction: TSlimList);
@@ -45,12 +47,20 @@ begin
   inherited Create;
   FFileName := AFileName;
   TDirectory.CreateDirectory(TPath.GetDirectoryName(FFileName));
+  FWriter := TStreamWriter.Create(FFileName, True, TEncoding.UTF8);
+  FWriter.AutoFlush := True;
   WriteLine(Format('Logger started at %s', [DateTimeToStr(Now)]));
+end;
+
+destructor TSlimFileLogger.Destroy;
+begin
+  FWriter.Free;
+  inherited;
 end;
 
 procedure TSlimFileLogger.WriteLine(const AText: String);
 begin
-  TFile.AppendAllText(FFileName, AText + sLineBreak, TEncoding.UTF8);
+  FWriter.WriteLine(AText);
 end;
 
 procedure TSlimFileLogger.EnterList(const AList: TSlimList);
