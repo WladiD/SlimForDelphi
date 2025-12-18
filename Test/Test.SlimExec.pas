@@ -77,12 +77,10 @@ type
     procedure FixtureWithProperties;
     [Test]
     procedure FixtureWithPropertiesSyncModes;
-    [Test]
-    procedure FixtureWithDelayedMethodManual;
-    [Test]
-    procedure FixtureWithDelayedMethod;
-    [Test]
-    procedure FixtureWithDelayedException;
+    [TestCase('Manual', 'RunDelayedManual,Void,False')]
+    [TestCase('Method', 'RunDelayed,Void,False')]
+    [TestCase('Exception', 'ThrowDelayed,Exception,True')]
+    procedure FixtureWithDelayedExecution(const AMethodName, AExpectedResult: String; AExpectException: Boolean);
     [Test]
     procedure ImportTable;
     [Test]
@@ -347,7 +345,7 @@ begin
   end;
 end;
 
-procedure TestSlimExecutor.FixtureWithDelayedMethodManual;
+procedure TestSlimExecutor.FixtureWithDelayedExecution(const AMethodName, AExpectedResult: String; AExpectException: Boolean);
 begin
   var Done: TEvent := TEvent.Create(nil, True, False, '');
   try
@@ -360,7 +358,7 @@ begin
           Execute(
             FGarbage.Collect(SlimList([
               SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
-              SlimList(['id_2', 'call', 'instance_1', 'RunDelayedManual'])
+              SlimList(['id_2', 'call', 'instance_1', AMethodName])
             ])),
             procedure(AResponse: TSlimList)
             var
@@ -378,82 +376,14 @@ begin
 
     WaitForDone(Done);
 
-    Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
-  finally
-    Done.Free;
-  end;
-end;
-
-procedure TestSlimExecutor.FixtureWithDelayedMethod;
-begin
-  var Done: TEvent := TEvent.Create(nil, True, False, '');
-  try
-    var Task: IFuture<String> := TTask.Future<String>(
-      function: String
-      var
-        LResponse: String;
-      begin
-        try
-          Execute(
-            FGarbage.Collect(SlimList([
-              SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
-              SlimList(['id_2', 'call', 'instance_1', 'RunDelayed'])
-            ])),
-            procedure(AResponse: TSlimList)
-            var
-              CallResponse: TSlimList;
-            begin
-              Assert.AreEqual(2, Integer(AResponse.Count));
-              Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
-              LResponse := CallResponse[1].ToString;
-            end);
-          Result := LResponse;
-        finally
-          Done.SetEvent;
-        end;
-      end);
-
-    WaitForDone(Done);
-
-    Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
-  finally
-    Done.Free;
-  end;
-end;
-
-procedure TestSlimExecutor.FixtureWithDelayedException;
-begin
-  var Done: TEvent := TEvent.Create(nil, True, False, '');
-  try
-    var Task: IFuture<String> := TTask.Future<String>(
-      function: String
-      var
-        LResponse: String;
-      begin
-        try
-          Execute(
-            FGarbage.Collect(SlimList([
-              SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
-              SlimList(['id_2', 'call', 'instance_1', 'ThrowDelayed'])
-            ])),
-            procedure(AResponse: TSlimList)
-            var
-              CallResponse: TSlimList;
-            begin
-              Assert.AreEqual(2, Integer(AResponse.Count));
-              Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
-              LResponse := CallResponse[1].ToString;
-            end);
-          Result := LResponse;
-        finally
-          Done.SetEvent;
-        end;
-      end);
-
-    WaitForDone(Done);
-
-    Assert.Contains(Task.Value, TSlimConsts.ExceptionResponse);
-    Assert.Contains(Task.Value, 'This is a delayed crash!');
+    if AExpectException then
+    begin
+      Assert.Contains(Task.Value, TSlimConsts.ExceptionResponse);
+      if AExpectedResult <> 'Exception' then
+         Assert.Contains(Task.Value, 'This is a delayed crash!');
+    end
+    else
+      Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
   finally
     Done.Free;
   end;
