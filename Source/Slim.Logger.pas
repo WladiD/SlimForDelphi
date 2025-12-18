@@ -12,6 +12,7 @@ uses
 
   System.Classes,
   System.IOUtils,
+  System.SyncObjs,
   System.SysUtils,
 
   Slim.List;
@@ -28,6 +29,7 @@ type
   TSlimFileLogger = class(TInterfacedObject, ISlimLogger)
   private
     FFileName: String;
+    FLock    : TCriticalSection;
     FStream  : TFileStream;
     FWriter  : TStreamWriter;
     procedure WriteLine(const AText: String);
@@ -47,13 +49,14 @@ constructor TSlimFileLogger.Create(const AFileName: String);
 begin
   inherited Create;
   FFileName := AFileName;
+  FLock := TCriticalSection.Create;
   TDirectory.CreateDirectory(TPath.GetDirectoryName(FFileName));
 
   if FileExists(FFileName) then
     FStream := TFileStream.Create(FFileName, fmOpenWrite or fmShareDenyNone)
   else
     FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyNone);
-    
+
   FStream.Seek(0, soEnd);
   FWriter := TStreamWriter.Create(FStream, TEncoding.UTF8);
   FWriter.AutoFlush := True;
@@ -65,27 +68,32 @@ destructor TSlimFileLogger.Destroy;
 begin
   FWriter.Free;
   FStream.Free;
+  FLock.Free;
   inherited;
 end;
 
 procedure TSlimFileLogger.WriteLine(const AText: String);
 begin
-  FWriter.WriteLine(AText);
+  FLock.Enter;
+  try
+    FWriter.WriteLine(AText);
+  finally
+    FLock.Leave;
+  end;
 end;
 
 procedure TSlimFileLogger.EnterList(const AList: TSlimList);
 begin
-  WriteLine('======================================================================');
-  WriteLine(Format('Timestamp: %s', [DateTimeToStr(Now)]));
-  WriteLine(Format('ENTER Slim List (Count: %d)', [AList.Count]));
-  WriteLine('----------------------------------------------------------------------');
+  WriteLine('======================================================================' + sLineBreak +
+    Format('Timestamp: %s', [DateTimeToStr(Now)]) + sLineBreak +
+    Format('ENTER Slim List (Count: %d)', [AList.Count]) + sLineBreak +
+    '----------------------------------------------------------------------');
 end;
 
 procedure TSlimFileLogger.ExitList(const AList: TSlimList);
 begin
-  WriteLine('EXIT Slim List');
-  WriteLine('======================================================================');
-  WriteLine(''); 
+  WriteLine('EXIT Slim List' + sLineBreak +
+    '======================================================================' + sLineBreak);
 end;
 
 procedure TSlimFileLogger.LogInstruction(const AInstruction: TSlimList);
