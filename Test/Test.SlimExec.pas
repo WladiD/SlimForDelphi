@@ -115,8 +115,8 @@ type
     function HelloWorld: String;
   end;
 
-  [SlimFixture('DelayedExceptionFixture')]
-  TSlimDelayedExceptionFixture = class(TSlimFixture)
+  [SlimFixture('DelayedFixture')]
+  TSlimDelayedFixture = class(TSlimFixture)
   private
     FDummyOwner: TComponent;
   public
@@ -124,15 +124,6 @@ type
     destructor Destroy; override;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure ThrowDelayed;
-  end;
-
-  [SlimFixture('ManualDelayedFixture')]
-  TSlimManualDelayedFixture = class(TSlimFixture)
-  private
-    FDummyOwner: TComponent;
-  public
-    constructor Create;
-    destructor Destroy; override;
     [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
     procedure RunManual;
   end;
@@ -364,7 +355,7 @@ begin
         try
           Execute(
             FGarbage.Collect(SlimList([
-              SlimList(['id_1', 'make', 'instance_1', 'ManualDelayedFixture']),
+              SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
               SlimList(['id_2', 'call', 'instance_1', 'RunManual'])
             ])),
             procedure(AResponse: TSlimList)
@@ -401,7 +392,7 @@ begin
         try
           Execute(
             FGarbage.Collect(SlimList([
-              SlimList(['id_1', 'make', 'instance_1', 'DelayedExceptionFixture']),
+              SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
               SlimList(['id_2', 'call', 'instance_1', 'ThrowDelayed'])
             ])),
             procedure(AResponse: TSlimList)
@@ -803,42 +794,27 @@ begin
   Result := FTarget;
 end;
 
-{ TSlimDelayedExceptionFixture }
+{ TSlimDelayedFixture }
 
-constructor TSlimDelayedExceptionFixture.Create;
+constructor TSlimDelayedFixture.Create;
 begin
   inherited;
   FDummyOwner := TComponent.Create(nil);
   DelayedOwner := FDummyOwner;
 end;
 
-destructor TSlimDelayedExceptionFixture.Destroy;
+destructor TSlimDelayedFixture.Destroy;
 begin
   FDummyOwner.Free;
   inherited;
 end;
 
-procedure TSlimDelayedExceptionFixture.ThrowDelayed;
+procedure TSlimDelayedFixture.ThrowDelayed;
 begin
   raise Exception.Create('This is a delayed crash!');
 end;
 
-{ TSlimManualDelayedFixture }
-
-constructor TSlimManualDelayedFixture.Create;
-begin
-  inherited;
-  FDummyOwner := TComponent.Create(nil);
-  DelayedOwner := FDummyOwner;
-end;
-
-destructor TSlimManualDelayedFixture.Destroy;
-begin
-  FDummyOwner.Free;
-  inherited;
-end;
-
-procedure TSlimManualDelayedFixture.RunManual;
+procedure TSlimDelayedFixture.RunManual;
 begin
   TriggerDelayedEvent;
 end;
@@ -848,8 +824,7 @@ initialization
 RegisterSlimFixture(TMySutFixture);
 RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);
-RegisterSlimFixture(TSlimDelayedExceptionFixture);
-RegisterSlimFixture(TSlimManualDelayedFixture);
+RegisterSlimFixture(TSlimDelayedFixture);
 
 TDUnitX.RegisterTestFixture(TestContext);
 TDUnitX.RegisterTestFixture(TestSlimExecutor);
