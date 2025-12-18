@@ -40,9 +40,3 @@ echo.
 
 popd
 endlocal
-
-rem pause 
-
-rem Kill any existing instances of SlimProxy.exe and MultiFormExample.exe
-taskkill /IM SlimProxy.exe /F 2>nul
-taskkill /IM MultiFormExample.exe /F 2>nul
