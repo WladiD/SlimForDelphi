@@ -65,6 +65,18 @@ type
   public
     [Test]
     procedure AssignSymbol;
+    [TestCase('Manual', 'RunDelayedManual,Void,False')]
+    [TestCase('Method', 'RunDelayed,Void,False')]
+    [TestCase('Exception', 'ThrowDelayed,Exception,True')]
+    procedure FixtureWithDelayedExecution(const AMethodName, AExpectedResult: String; AExpectException: Boolean);
+    [Test]
+    procedure FixtureWithProperties;
+    [Test]
+    procedure FixtureWithPropertiesSyncModes;
+    [Test]
+    procedure IgnoreAllTestsPersistBug;
+    [Test]
+    procedure ImportTable;
     [Test]
     procedure ScriptTableActor;
     [Test]
@@ -73,18 +85,6 @@ type
     procedure SutOnLibInstance;
     [Test]
     procedure TwoMinuteExample;
-    [Test]
-    procedure FixtureWithProperties;
-    [Test]
-    procedure FixtureWithPropertiesSyncModes;
-    [TestCase('Manual', 'RunDelayedManual,Void,False')]
-    [TestCase('Method', 'RunDelayed,Void,False')]
-    [TestCase('Exception', 'ThrowDelayed,Exception,True')]
-    procedure FixtureWithDelayedExecution(const AMethodName, AExpectedResult: String; AExpectException: Boolean);
-    [Test]
-    procedure ImportTable;
-    [Test]
-    procedure IgnoreAllTestsPersistBug;
   end;
 
   [TestFixture]
@@ -99,7 +99,7 @@ type
   TGarbage = class
   private
     FGarbage: TObjectList;
-    FLock: TCriticalSection;
+    FLock   : TCriticalSection;
   public
     constructor Create;
     destructor Destroy; override;
