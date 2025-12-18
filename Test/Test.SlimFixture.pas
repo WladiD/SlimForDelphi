@@ -75,17 +75,17 @@ type
   TestSlimFixtureResolver = class
   public
     [Test]
-    procedure TryGetSlimFixture;
+    procedure AmbiguousWithImport;
     [Test]
     procedure AmbiguousWithoutImport;
     [Test]
-    procedure AmbiguousWithImport;
+    procedure CaseInsensitivity;
     [Test]
     procedure GlobalAndImported;
     [Test]
-    procedure CaseInsensitivity;
-    [Test]
     procedure NotFound;
+    [Test]
+    procedure TryGetSlimFixture;
     [Test]
     procedure TryGetSlimMethod;
     [Test]
