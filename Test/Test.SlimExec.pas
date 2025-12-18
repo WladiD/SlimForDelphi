@@ -78,7 +78,9 @@ type
     [Test]
     procedure FixtureWithPropertiesSyncModes;
     [Test]
-    procedure FixtureWithPropertiesSyncModesManual;
+    procedure FixtureWithDelayedMethodManual;
+    [Test]
+    procedure FixtureWithDelayedMethod;
     [Test]
     procedure FixtureWithDelayedException;
     [Test]
@@ -125,7 +127,9 @@ type
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure ThrowDelayed;
     [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
-    procedure RunManual;
+    procedure RunDelayedManual;
+    [SlimMemberSyncMode(smSynchronizedAndDelayed)]
+    procedure RunDelayed;
   end;
 
   [SlimFixture('MySutFixture')]
@@ -343,7 +347,7 @@ begin
   end;
 end;
 
-procedure TestSlimExecutor.FixtureWithPropertiesSyncModesManual;
+procedure TestSlimExecutor.FixtureWithDelayedMethodManual;
 begin
   var Done: TEvent := TEvent.Create(nil, True, False, '');
   try
@@ -356,7 +360,44 @@ begin
           Execute(
             FGarbage.Collect(SlimList([
               SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
-              SlimList(['id_2', 'call', 'instance_1', 'RunManual'])
+              SlimList(['id_2', 'call', 'instance_1', 'RunDelayedManual'])
+            ])),
+            procedure(AResponse: TSlimList)
+            var
+              CallResponse: TSlimList;
+            begin
+              Assert.AreEqual(2, Integer(AResponse.Count));
+              Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+              LResponse := CallResponse[1].ToString;
+            end);
+          Result := LResponse;
+        finally
+          Done.SetEvent;
+        end;
+      end);
+
+    WaitForDone(Done);
+
+    Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
+  finally
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.FixtureWithDelayedMethod;
+begin
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Task: IFuture<String> := TTask.Future<String>(
+      function: String
+      var
+        LResponse: String;
+      begin
+        try
+          Execute(
+            FGarbage.Collect(SlimList([
+              SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
+              SlimList(['id_2', 'call', 'instance_1', 'RunDelayed'])
             ])),
             procedure(AResponse: TSlimList)
             var
@@ -814,9 +855,13 @@ begin
   raise Exception.Create('This is a delayed crash!');
 end;
 
-procedure TSlimDelayedFixture.RunManual;
+procedure TSlimDelayedFixture.RunDelayedManual;
 begin
   TriggerDelayedEvent;
+end;
+
+procedure TSlimDelayedFixture.RunDelayed;
+begin
 end;
 
 initialization
