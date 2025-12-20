@@ -97,7 +97,7 @@ begin
 
     // CSS
     SB.AppendLine('<style>');
-    SB.AppendLine('body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; }');
+    SB.AppendLine('body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 80px; }'); // Added padding-top for sticky header
     SB.AppendLine('h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }');
     SB.AppendLine('h2 { color: #0078d7; margin-top: 30px; }');
     SB.AppendLine('table { border-collapse: collapse; width: 100%; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }');
@@ -110,6 +110,13 @@ begin
     SB.AppendLine('.class-name { font-family: Consolas, monospace; color: #d63384; }');
     SB.AppendLine('.toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }');
 
+    // Search Bar Styles
+    SB.AppendLine('.search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; align-items: center; }');
+    SB.AppendLine('#searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }');
+    SB.AppendLine('#searchInput:focus { border-color: #0078d7; }');
+    SB.AppendLine('.search-label { margin-right: 15px; font-weight: bold; color: #555; }');
+    SB.AppendLine('.hidden-by-search { display: none !important; }');
+
     // Styles for inherited members
     SB.AppendLine('.inherited-member { display: none; color: #777; font-style: italic; background-color: #f8f8f8 !important; }');
     SB.AppendLine('.inherited-toggle { font-size: 0.6em; font-weight: normal; margin-left: 20px; cursor: pointer; user-select: none; }');
@@ -117,6 +124,8 @@ begin
 
     // JavaScript
     SB.AppendLine('<script>');
+
+    // Toggle Inherited
     SB.AppendLine('function toggleInherited(checkbox, fixtureId) {');
     SB.AppendLine('  var container = document.getElementById(fixtureId);');
     SB.AppendLine('  var rows = container.querySelectorAll(".inherited-member");');
@@ -124,9 +133,61 @@ begin
     SB.AppendLine('    rows[i].style.display = checkbox.checked ? "table-row" : "none";');
     SB.AppendLine('  }');
     SB.AppendLine('}');
+
+    // Search Function
+    SB.AppendLine('function filterFixtures() {');
+    SB.AppendLine('  var input = document.getElementById("searchInput");');
+    SB.AppendLine('  var filter = input.value.toUpperCase();');
+    SB.AppendLine('  var fixtures = document.getElementsByClassName("fixture");');
+    SB.AppendLine('  var tocLinks = document.querySelectorAll(".toc li");'); // Also filter TOC
+
+    // Filter Fixtures
+    SB.AppendLine('  for (var i = 0; i < fixtures.length; i++) {');
+    SB.AppendLine('    var fixture = fixtures[i];');
+    SB.AppendLine('    var header = fixture.querySelector(".fixture-header");');
+    SB.AppendLine('    var headerText = header.textContent || header.innerText;');
+    SB.AppendLine('    var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;');
+    
+    SB.AppendLine('    var rows = fixture.querySelectorAll("tbody tr");');
+    SB.AppendLine('    var hasVisibleRow = false;');
+
+    SB.AppendLine('    for (var j = 0; j < rows.length; j++) {');
+    SB.AppendLine('      var row = rows[j];');
+    SB.AppendLine('      var rowText = row.textContent || row.innerText;');
+    SB.AppendLine('      if (rowText.toUpperCase().indexOf(filter) > -1 || headerMatches) {');
+    SB.AppendLine('        row.classList.remove("hidden-by-search");');
+    SB.AppendLine('        hasVisibleRow = true;');
+    SB.AppendLine('      } else {');
+    SB.AppendLine('        row.classList.add("hidden-by-search");');
+    SB.AppendLine('      }');
+    SB.AppendLine('    }');
+
+    SB.AppendLine('    if (hasVisibleRow || headerMatches) {');
+    SB.AppendLine('      fixture.style.display = "";');
+    SB.AppendLine('    } else {');
+    SB.AppendLine('      fixture.style.display = "none";');
+    SB.AppendLine('    }');
+    SB.AppendLine('  }');
+
+    // Filter TOC
+    SB.AppendLine('  for (var k = 0; k < tocLinks.length; k++) {');
+    SB.AppendLine('    var link = tocLinks[k];');
+    SB.AppendLine('    if (link.textContent.toUpperCase().indexOf(filter) > -1) {');
+    SB.AppendLine('      link.style.display = "";');
+    SB.AppendLine('    } else {');
+    SB.AppendLine('      link.style.display = "none";');
+    SB.AppendLine('    }');
+    SB.AppendLine('  }');
+    SB.AppendLine('}');
     SB.AppendLine('</script>');
 
     SB.AppendLine('</head><body>');
+
+    // Sticky Search Bar
+    SB.AppendLine('<div class="search-container">');
+    SB.AppendLine('<span class="search-label">Slim Docs</span>');
+    SB.AppendLine('<input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">');
+    SB.AppendLine('</div>');
 
     SB.AppendLine('<h1>Registered Slim Fixtures</h1>');
 
