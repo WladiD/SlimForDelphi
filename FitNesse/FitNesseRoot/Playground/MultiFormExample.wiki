@@ -7,27 +7,27 @@ Help: Multi Form Example
 
 The veterans...
 
-| add entry |
-| name | entry date | add? | id? | working years for company? |
-| Alice | 1990-01-01 | true | $AliceId= | >35 |
+|add entry                                                 |
+|name |entry date|add?|id?      |working years for company?|
+|Alice|1990-01-01|true|$AliceId=|>35                       |
 
 Here are the employees at !-OurCompany-! who all came together from !-OtherCompany-!:
 
-| add entry |
-| name | entry date | add? | id? | working years for company? |
-| Bob | 2016-09-21 | true | $BobId= | >8 |
-| Charlie | 2017-09-25 | true | $CharlieId= | >7 |
-| David | 2023-01-01 | true | $DavidId= | >2 |
-| prev ids: $BobId, $CharlieId, $DavidId | 2025-05-01 | true | $LastId= | >0 |
+|add entry                                                                                    |
+|name                                  |entry date|add?|id?        |working years for company?|
+|Bob                                   |2016-09-21|true|$BobId=    |>8                        |
+|Charlie                               |2017-09-25|true|$CharlieId=|>7                        |
+|David                                 |2023-01-01|true|$DavidId=  |>2                        |
+|prev ids: $BobId, $CharlieId, $DavidId|2025-05-01|true|$LastId=   |>0                        |
 
-| select entry |
-| sel id | cur name? |
-| $CharlieId | Charlie |
-| $AliceId | Alice |
-| $LastId | prev ids: $BobId, $CharlieId, $DavidId |
-| $BobId | Bob |
-| $DavidId | David |
+|select entry                                     |
+|sel id    |cur name?                             |
+|$CharlieId|Charlie                               |
+|$AliceId  |Alice                                 |
+|$LastId   |prev ids: $BobId, $CharlieId, $DavidId|
+|$BobId    |Bob                                   |
+|$DavidId  |David                                 |
 
 !3 Documentation
-| script : documentation |
-| check | generate documentation | !-..\..\FitNesse\FitNesseRoot\files\SlimFixtureDocs.html-! | <a href="files/SlimFixtureDocs.html" target="_blank">Open Documentation</a> |
+|script|documentation                                                                                                                                                |
+|check |generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixtureDocs.html-!|<a href="files/SlimFixtureDocs.html" target="_blank">Open Documentation</a>|

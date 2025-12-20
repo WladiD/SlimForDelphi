@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -32,6 +32,7 @@ type
 implementation
 
 type
+
   TSlimFixtureResolverAccess = class(TSlimFixtureResolver)
   public
     class function GetFixtures: TClassList;
@@ -48,21 +49,25 @@ end;
 
 function TSlimDocumentationFixture.GenerateDocumentation(const AFilePath: String): String;
 var
-  SB: TStringBuilder;
-  Ctx: TRttiContext;
-  Fixtures: TClassList;
-  FixtureList: TList<TSlimFixtureClass>;
-  C: TClass;
-  FixtureClass: TSlimFixtureClass;
-  RType: TRttiType;
-  Method: TRttiMethod;
-  Prop: TRttiProperty;
-  Attr: TCustomAttribute;
-  FixtureName, FixtureNamespace, LinkName: String;
-  Methods: TArray<TRttiMethod>;
-  Properties: TArray<TRttiProperty>;
-  Params, RetType, Access: String;
-  
+  Access          : String;
+  Attr            : TCustomAttribute;
+  C               : TClass;
+  Ctx             : TRttiContext;
+  FixtureClass    : TSlimFixtureClass;
+  FixtureList     : TList<TSlimFixtureClass>;
+  FixtureName     : String;
+  FixtureNamespace: String;
+  Fixtures        : TClassList;
+  LinkName        : String;
+  Method          : TRttiMethod;
+  Methods         : TArray<TRttiMethod>;
+  Params          : String;
+  Prop            : TRttiProperty;
+  Properties      : TArray<TRttiProperty>;
+  RetType         : String;
+  RType           : TRttiType;
+  SB              : TStringBuilder;
+
   function GetSyncModeStr(AMember: TRttiMember): String;
   var
     LAttr: TCustomAttribute;
@@ -152,7 +157,7 @@ begin
       RType := Ctx.GetType(FixtureClass);
       FixtureName := RType.Name;
       FixtureNamespace := 'global';
-      
+
       for Attr in RType.GetAttributes do
         if Attr is SlimFixtureAttribute then
         begin
@@ -161,7 +166,7 @@ begin
               FixtureNamespace := SlimFixtureAttribute(Attr).Namespace;
            Break;
         end;
-      SB.AppendFormat('<li><a href="#%s.%s">%s</a> <span style="color:#888">(%s)</span></li>', 
+      SB.AppendFormat('<li><a href="#%s.%s">%s</a> <span style="color:#888">(%s)</span></li>',
         [FixtureNamespace, FixtureName, FixtureName, FixtureNamespace]);
     end;
     SB.AppendLine('</ul></div>');
@@ -190,7 +195,7 @@ begin
       // Methods
       SB.AppendLine('<h3>Methods</h3>');
       SB.AppendLine('<table><thead><tr><th>Name</th><th>Parameters</th><th>Return Type</th><th>Sync Mode</th></tr></thead><tbody>');
-      
+
       Methods := RType.GetMethods;
       TArray.Sort<TRttiMethod>(Methods, TComparer<TRttiMethod>.Construct(
         function(const L, R: TRttiMethod): Integer
@@ -204,7 +209,7 @@ begin
         if Method.Visibility < mvPublic then Continue;
         if Method.IsConstructor or Method.IsDestructor then Continue;
         if (Method.Name = 'BeforeDestruction') or (Method.Name = 'AfterConstruction') or
-           (Method.Name = 'Free') or (Method.Name = 'DisposeOf') or 
+           (Method.Name = 'Free') or (Method.Name = 'DisposeOf') or
            (Method.Name = 'Dispatch') or (Method.Name = 'DefaultHandler') or
            (Method.Name = 'NewInstance') or (Method.Name = 'FreeInstance') or
            (Method.Name = 'InheritsFrom') or (Method.Name = 'ClassType') or
@@ -234,7 +239,7 @@ begin
       // Properties
       SB.AppendLine('<h3>Properties</h3>');
       SB.AppendLine('<table><thead><tr><th>Name</th><th>Type</th><th>Access</th></tr></thead><tbody>');
-      
+
       Properties := RType.GetProperties;
       TArray.Sort<TRttiProperty>(Properties, TComparer<TRttiProperty>.Construct(
         function(const L, R: TRttiProperty): Integer
@@ -242,7 +247,7 @@ begin
           Result := CompareText(L.Name, R.Name);
         end
       ));
-      
+
       for Prop in Properties do
       begin
         if Prop.Visibility < mvPublic then Continue;
@@ -262,7 +267,7 @@ begin
     SB.AppendLine('</body></html>');
 
     TFile.WriteAllText(AFilePath, SB.ToString, TEncoding.UTF8);
-    
+
     LinkName := ExtractFileName(AFilePath);
     Result := Format('<a href="files/%s" target="_blank">Open Documentation</a>', [LinkName]);
 
@@ -274,6 +279,7 @@ begin
 end;
 
 initialization
+
   RegisterSlimFixture(TSlimDocumentationFixture);
 
 end.
