@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -54,10 +54,13 @@ var
   C               : TClass;
   Ctx             : TRttiContext;
   FixtureClass    : TSlimFixtureClass;
+  FixtureId       : String;
   FixtureList     : TList<TSlimFixtureClass>;
   FixtureName     : String;
   FixtureNamespace: String;
   Fixtures        : TClassList;
+  InheritedLabel  : String;
+  IsInherited     : Boolean;
   LinkName        : String;
   Method          : TRttiMethod;
   Methods         : TArray<TRttiMethod>;
@@ -65,6 +68,7 @@ var
   Prop            : TRttiProperty;
   Properties      : TArray<TRttiProperty>;
   RetType         : String;
+  RowClass        : String;
   RType           : TRttiType;
   SB              : TStringBuilder;
 
@@ -90,6 +94,8 @@ begin
   try
     SB.AppendLine('<!DOCTYPE html>');
     SB.AppendLine('<html><head><meta charset="utf-8"><title>Slim Fixture Documentation</title>');
+
+    // CSS
     SB.AppendLine('<style>');
     SB.AppendLine('body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; }');
     SB.AppendLine('h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }');
@@ -99,11 +105,28 @@ begin
     SB.AppendLine('th { background-color: #f2f2f2; color: #333; }');
     SB.AppendLine('tr:nth-child(even) { background-color: #fcfcfc; }');
     SB.AppendLine('.fixture { background-color: white; border: 1px solid #ccc; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }');
-    SB.AppendLine('.fixture-header { background-color: #e6f2ff; padding: 10px; font-weight: bold; font-size: 1.4em; border-radius: 5px; margin-bottom: 15px; border-left: 5px solid #0078d7; }');
+    SB.AppendLine('.fixture-header { background-color: #e6f2ff; padding: 10px; font-weight: bold; font-size: 1.4em; border-radius: 5px; margin-bottom: 15px; border-left: 5px solid #0078d7; display: flex; justify-content: space-between; align-items: center; }');
     SB.AppendLine('.namespace { color: #555; font-size: 0.7em; font-weight: normal; margin-left: 10px; }');
     SB.AppendLine('.class-name { font-family: Consolas, monospace; color: #d63384; }');
     SB.AppendLine('.toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }');
-    SB.AppendLine('</style></head><body>');
+
+    // Styles for inherited members
+    SB.AppendLine('.inherited-member { display: none; color: #777; font-style: italic; background-color: #f8f8f8 !important; }');
+    SB.AppendLine('.inherited-toggle { font-size: 0.6em; font-weight: normal; margin-left: 20px; cursor: pointer; user-select: none; }');
+    SB.AppendLine('</style>');
+
+    // JavaScript
+    SB.AppendLine('<script>');
+    SB.AppendLine('function toggleInherited(checkbox, fixtureId) {');
+    SB.AppendLine('  var container = document.getElementById(fixtureId);');
+    SB.AppendLine('  var rows = container.querySelectorAll(".inherited-member");');
+    SB.AppendLine('  for (var i = 0; i < rows.length; i++) {');
+    SB.AppendLine('    rows[i].style.display = checkbox.checked ? "table-row" : "none";');
+    SB.AppendLine('  }');
+    SB.AppendLine('}');
+    SB.AppendLine('</script>');
+
+    SB.AppendLine('</head><body>');
 
     SB.AppendLine('<h1>Registered Slim Fixtures</h1>');
 
@@ -187,14 +210,22 @@ begin
            Break;
         end;
 
-      SB.AppendFormat('<div class="fixture" id="%s.%s">', [FixtureNamespace, FixtureName]);
-      SB.AppendFormat('<div class="fixture-header">%s <span class="namespace">%s</span></div>', [FixtureName, FixtureNamespace]);
+      FixtureId := Format('%s.%s', [FixtureNamespace, FixtureName]);
+
+      SB.AppendFormat('<div class="fixture" id="%s">', [FixtureId]);
+
+      // Header with Checkbox
+      SB.Append('<div class="fixture-header">');
+      SB.AppendFormat('<span>%s <span class="namespace">%s</span></span>', [FixtureName, FixtureNamespace]);
+      SB.AppendFormat('<label class="inherited-toggle"><input type="checkbox" onclick="toggleInherited(this, ''%s'')"> Show inherited members</label>', [FixtureId]);
+      SB.Append('</div>');
+
       SB.AppendFormat('<p><strong>Delphi Class:</strong> <span class="class-name">%s</span></p>', [RType.Name]);
       SB.AppendFormat('<p><strong>Unit:</strong> %s</p>', [FixtureClass.UnitName]);
 
       // Methods
       SB.AppendLine('<h3>Methods</h3>');
-      SB.AppendLine('<table><thead><tr><th>Name</th><th>Parameters</th><th>Return Type</th><th>Sync Mode</th></tr></thead><tbody>');
+      SB.AppendLine('<table><thead><tr><th>Name</th><th>Parameters</th><th>Return Type</th><th>Sync Mode</th><th>Origin</th></tr></thead><tbody>');
 
       Methods := RType.GetMethods;
       TArray.Sort<TRttiMethod>(Methods, TComparer<TRttiMethod>.Construct(
@@ -208,8 +239,10 @@ begin
       begin
         if Method.Visibility < mvPublic then Continue;
         if Method.IsConstructor or Method.IsDestructor then Continue;
+
+        // Filter standard noise
         if (Method.Name = 'BeforeDestruction') or (Method.Name = 'AfterConstruction') or
-           (Method.Name = 'Free') or (Method.Name = 'DisposeOf') or
+           (Method.Name = 'Free') or (Method.Name = 'DisposeOf') or 
            (Method.Name = 'Dispatch') or (Method.Name = 'DefaultHandler') or
            (Method.Name = 'NewInstance') or (Method.Name = 'FreeInstance') or
            (Method.Name = 'InheritsFrom') or (Method.Name = 'ClassType') or
@@ -221,6 +254,19 @@ begin
            (Method.Name = 'SafeCallException') or (Method.Name = 'ToString') or
            (Method.Name = 'GetHashCode') or (Method.Name = 'Equals') then Continue;
 
+        // Determine if inherited
+        // Note: Comparing RTTI objects directly usually works for checking definition context.
+        IsInherited := Method.Parent <> RType;
+
+        RowClass := '';
+        InheritedLabel := 'Self';
+
+        if IsInherited then
+        begin
+          RowClass := ' class="inherited-member"';
+          InheritedLabel := Method.Parent.Name;
+        end;
+
         Params := '';
         for var P in Method.GetParameters do
         begin
@@ -231,14 +277,14 @@ begin
         RetType := 'void';
         if Assigned(Method.ReturnType) then RetType := Method.ReturnType.Name;
 
-        SB.AppendFormat('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
-          [Method.Name, Params, RetType, GetSyncModeStr(Method)]);
+        SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
+          [RowClass, Method.Name, Params, RetType, GetSyncModeStr(Method), InheritedLabel]);
       end;
       SB.AppendLine('</tbody></table>');
 
       // Properties
       SB.AppendLine('<h3>Properties</h3>');
-      SB.AppendLine('<table><thead><tr><th>Name</th><th>Type</th><th>Access</th></tr></thead><tbody>');
+      SB.AppendLine('<table><thead><tr><th>Name</th><th>Type</th><th>Access</th><th>Origin</th></tr></thead><tbody>');
 
       Properties := RType.GetProperties;
       TArray.Sort<TRttiProperty>(Properties, TComparer<TRttiProperty>.Construct(
@@ -251,13 +297,25 @@ begin
       for Prop in Properties do
       begin
         if Prop.Visibility < mvPublic then Continue;
+
+        IsInherited := Prop.Parent <> RType;
+
+        RowClass := '';
+        InheritedLabel := 'Self';
+
+        if IsInherited then
+        begin
+          RowClass := ' class="inherited-member"';
+          InheritedLabel := Prop.Parent.Name;
+        end;
+
         Access := '';
         if Prop.IsReadable then Access := 'Read';
         if Prop.IsWritable then
           if Access <> '' then Access := Access + '/Write' else Access := 'Write';
 
-        SB.AppendFormat('<tr><td>%s</td><td>%s</td><td>%s</td></tr>',
-          [Prop.Name, Prop.PropertyType.Name, Access]);
+        SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
+          [RowClass, Prop.Name, Prop.PropertyType.Name, Access, InheritedLabel]);
       end;
       SB.AppendLine('</tbody></table>');
 
@@ -279,7 +337,6 @@ begin
 end;
 
 initialization
-
   RegisterSlimFixture(TSlimDocumentationFixture);
 
 end.
