@@ -27,3 +27,7 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 | $LastId | prev ids: $BobId, $CharlieId, $DavidId |
 | $BobId | Bob |
 | $DavidId | David |
+
+!3 Documentation
+| script : documentation |
+| check | generate documentation | !-..\..\FitNesse\FitNesseRoot\files\SlimFixtureDocs.html-! | <a href="files/SlimFixtureDocs.html" target="_blank">Open Documentation</a> |

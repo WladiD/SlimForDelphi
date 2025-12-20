@@ -43,6 +43,9 @@ type
 
 implementation
 
+uses
+  Common.SlimDocumentationFixture;
+
 { TSlimAddEntryFixture }
 
 procedure TSlimAddEntryFixture.AfterConstruction;
