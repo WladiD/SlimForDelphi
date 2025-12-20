@@ -92,104 +92,98 @@ begin
   Ctx := TRttiContext.Create;
   FixtureList := TList<TSlimFixtureClass>.Create;
   try
-    SB.AppendLine('<!DOCTYPE html>');
-    SB.AppendLine('<html><head><meta charset="utf-8"><title>Slim Fixture Documentation</title>');
+    // Header, CSS, JS, and Search Bar using Delphi Multi-Line String
+    SB.Append('''
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Slim Fixture Documentation</title>
+        <style>
+          body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 80px; }
+          h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+          h2 { color: #0078d7; margin-top: 30px; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background-color: #f2f2f2; color: #333; }
+          tr:nth-child(even) { background-color: #fcfcfc; }
+          .fixture { background-color: white; border: 1px solid #ccc; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+          .fixture-header { background-color: #e6f2ff; padding: 10px; font-weight: bold; font-size: 1.4em; border-radius: 5px; margin-bottom: 15px; border-left: 5px solid #0078d7; display: flex; justify-content: space-between; align-items: center; }
+          .namespace { color: #555; font-size: 0.7em; font-weight: normal; margin-left: 10px; }
+          .class-name { font-family: Consolas, monospace; color: #d63384; }
+          .toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }
+          
+          /* Search Bar Styles */
+          .search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; align-items: center; }
+          #searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+          #searchInput:focus { border-color: #0078d7; }
+          .search-label { margin-right: 15px; font-weight: bold; color: #555; }
+          .hidden-by-search { display: none !important; }
 
-    // CSS
-    SB.AppendLine('<style>');
-    SB.AppendLine('body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 80px; }'); // Added padding-top for sticky header
-    SB.AppendLine('h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }');
-    SB.AppendLine('h2 { color: #0078d7; margin-top: 30px; }');
-    SB.AppendLine('table { border-collapse: collapse; width: 100%; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }');
-    SB.AppendLine('th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }');
-    SB.AppendLine('th { background-color: #f2f2f2; color: #333; }');
-    SB.AppendLine('tr:nth-child(even) { background-color: #fcfcfc; }');
-    SB.AppendLine('.fixture { background-color: white; border: 1px solid #ccc; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }');
-    SB.AppendLine('.fixture-header { background-color: #e6f2ff; padding: 10px; font-weight: bold; font-size: 1.4em; border-radius: 5px; margin-bottom: 15px; border-left: 5px solid #0078d7; display: flex; justify-content: space-between; align-items: center; }');
-    SB.AppendLine('.namespace { color: #555; font-size: 0.7em; font-weight: normal; margin-left: 10px; }');
-    SB.AppendLine('.class-name { font-family: Consolas, monospace; color: #d63384; }');
-    SB.AppendLine('.toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }');
+          /* Styles for inherited members */
+          .inherited-member { display: none; color: #777; font-style: italic; background-color: #f8f8f8 !important; }
+          .inherited-toggle { font-size: 0.6em; font-weight: normal; margin-left: 20px; cursor: pointer; user-select: none; }
+        </style>
+        <script>
+          function toggleInherited(checkbox, fixtureId) {
+            var container = document.getElementById(fixtureId);
+            var rows = container.querySelectorAll(".inherited-member");
+            for (var i = 0; i < rows.length; i++) {
+              rows[i].style.display = checkbox.checked ? "table-row" : "none";
+            }
+          }
 
-    // Search Bar Styles
-    SB.AppendLine('.search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; align-items: center; }');
-    SB.AppendLine('#searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }');
-    SB.AppendLine('#searchInput:focus { border-color: #0078d7; }');
-    SB.AppendLine('.search-label { margin-right: 15px; font-weight: bold; color: #555; }');
-    SB.AppendLine('.hidden-by-search { display: none !important; }');
+          function filterFixtures() {
+            var input = document.getElementById("searchInput");
+            var filter = input.value.toUpperCase();
+            var fixtures = document.getElementsByClassName("fixture");
+            var tocLinks = document.querySelectorAll(".toc li");
 
-    // Styles for inherited members
-    SB.AppendLine('.inherited-member { display: none; color: #777; font-style: italic; background-color: #f8f8f8 !important; }');
-    SB.AppendLine('.inherited-toggle { font-size: 0.6em; font-weight: normal; margin-left: 20px; cursor: pointer; user-select: none; }');
-    SB.AppendLine('</style>');
+            for (var i = 0; i < fixtures.length; i++) {
+              var fixture = fixtures[i];
+              var header = fixture.querySelector(".fixture-header");
+              var headerText = header.textContent || header.innerText;
+              var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;
+              
+              var rows = fixture.querySelectorAll("tbody tr");
+              var hasVisibleRow = false;
 
-    // JavaScript
-    SB.AppendLine('<script>');
+              for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var rowText = row.textContent || row.innerText;
+                if (rowText.toUpperCase().indexOf(filter) > -1 || headerMatches) {
+                  row.classList.remove("hidden-by-search");
+                  hasVisibleRow = true;
+                } else {
+                  row.classList.add("hidden-by-search");
+                }
+              }
 
-    // Toggle Inherited
-    SB.AppendLine('function toggleInherited(checkbox, fixtureId) {');
-    SB.AppendLine('  var container = document.getElementById(fixtureId);');
-    SB.AppendLine('  var rows = container.querySelectorAll(".inherited-member");');
-    SB.AppendLine('  for (var i = 0; i < rows.length; i++) {');
-    SB.AppendLine('    rows[i].style.display = checkbox.checked ? "table-row" : "none";');
-    SB.AppendLine('  }');
-    SB.AppendLine('}');
+              if (hasVisibleRow || headerMatches) {
+                fixture.style.display = "";
+              } else {
+                fixture.style.display = "none";
+              }
+            }
 
-    // Search Function
-    SB.AppendLine('function filterFixtures() {');
-    SB.AppendLine('  var input = document.getElementById("searchInput");');
-    SB.AppendLine('  var filter = input.value.toUpperCase();');
-    SB.AppendLine('  var fixtures = document.getElementsByClassName("fixture");');
-    SB.AppendLine('  var tocLinks = document.querySelectorAll(".toc li");'); // Also filter TOC
-
-    // Filter Fixtures
-    SB.AppendLine('  for (var i = 0; i < fixtures.length; i++) {');
-    SB.AppendLine('    var fixture = fixtures[i];');
-    SB.AppendLine('    var header = fixture.querySelector(".fixture-header");');
-    SB.AppendLine('    var headerText = header.textContent || header.innerText;');
-    SB.AppendLine('    var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;');
-    
-    SB.AppendLine('    var rows = fixture.querySelectorAll("tbody tr");');
-    SB.AppendLine('    var hasVisibleRow = false;');
-
-    SB.AppendLine('    for (var j = 0; j < rows.length; j++) {');
-    SB.AppendLine('      var row = rows[j];');
-    SB.AppendLine('      var rowText = row.textContent || row.innerText;');
-    SB.AppendLine('      if (rowText.toUpperCase().indexOf(filter) > -1 || headerMatches) {');
-    SB.AppendLine('        row.classList.remove("hidden-by-search");');
-    SB.AppendLine('        hasVisibleRow = true;');
-    SB.AppendLine('      } else {');
-    SB.AppendLine('        row.classList.add("hidden-by-search");');
-    SB.AppendLine('      }');
-    SB.AppendLine('    }');
-
-    SB.AppendLine('    if (hasVisibleRow || headerMatches) {');
-    SB.AppendLine('      fixture.style.display = "";');
-    SB.AppendLine('    } else {');
-    SB.AppendLine('      fixture.style.display = "none";');
-    SB.AppendLine('    }');
-    SB.AppendLine('  }');
-
-    // Filter TOC
-    SB.AppendLine('  for (var k = 0; k < tocLinks.length; k++) {');
-    SB.AppendLine('    var link = tocLinks[k];');
-    SB.AppendLine('    if (link.textContent.toUpperCase().indexOf(filter) > -1) {');
-    SB.AppendLine('      link.style.display = "";');
-    SB.AppendLine('    } else {');
-    SB.AppendLine('      link.style.display = "none";');
-    SB.AppendLine('    }');
-    SB.AppendLine('  }');
-    SB.AppendLine('}');
-    SB.AppendLine('</script>');
-
-    SB.AppendLine('</head><body>');
-
-    // Sticky Search Bar
-    SB.AppendLine('<div class="search-container">');
-    SB.AppendLine('<span class="search-label">Slim Docs</span>');
-    SB.AppendLine('<input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">');
-    SB.AppendLine('</div>');
-
-    SB.AppendLine('<h1>Registered Slim Fixtures</h1>');
+            for (var k = 0; k < tocLinks.length; k++) {
+              var link = tocLinks[k];
+              if (link.textContent.toUpperCase().indexOf(filter) > -1) {
+                link.style.display = "";
+              } else {
+                link.style.display = "none";
+              }
+            }
+          }
+        </script>
+      </head>
+      <body>
+        <div class="search-container">
+          <span class="search-label">Slim Docs</span>
+          <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
+        </div>
+        <h1>Registered Slim Fixtures</h1>
+    ''');
 
     Fixtures := TSlimFixtureResolverAccess.GetFixtures;
     for C in Fixtures do
@@ -200,16 +194,22 @@ begin
     FixtureList.Sort(TComparer<TSlimFixtureClass>.Construct(
       function(const Left, Right: TSlimFixtureClass): Integer
       var
-        LType, RType: TRttiType;
-        LName, RName, LNs, RNs: String;
-        LAttr, RAttr: SlimFixtureAttribute;
-        Attr: TCustomAttribute;
+        Attr : TCustomAttribute;
+        LAttr: SlimFixtureAttribute;
+        LName: String;
+        LNs  : String;
+        LType: TRttiType;
+        RAttr: SlimFixtureAttribute;
+        RName: String;
+        RNs  : String;
+        RType: TRttiType;
       begin
         LType := Ctx.GetType(Left);
         RType := Ctx.GetType(Right);
-
-        LName := LType.Name; LNs := '';
-        RName := RType.Name; RNs := '';
+        LNs := '';
+        RNs := '';
+        LName := LType.Name;
+        RName := RType.Name;
 
         for Attr in LType.GetAttributes do
           if Attr is SlimFixtureAttribute then
@@ -285,8 +285,20 @@ begin
       SB.AppendFormat('<p><strong>Unit:</strong> %s</p>', [FixtureClass.UnitName]);
 
       // Methods
-      SB.AppendLine('<h3>Methods</h3>');
-      SB.AppendLine('<table><thead><tr><th>Name</th><th>Parameters</th><th>Return Type</th><th>Sync Mode</th><th>Origin</th></tr></thead><tbody>');
+      SB.Append('''
+        <h3>Methods</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Parameters</th>
+              <th>Return Type</th>
+              <th>Sync Mode</th>
+              <th>Origin</th>
+            </tr>
+          </thead>
+          <tbody>
+      ''');
 
       Methods := RType.GetMethods;
       TArray.Sort<TRttiMethod>(Methods, TComparer<TRttiMethod>.Construct(
@@ -298,8 +310,10 @@ begin
 
       for Method in Methods do
       begin
-        if Method.Visibility < mvPublic then Continue;
-        if Method.IsConstructor or Method.IsDestructor then Continue;
+        if Method.Visibility < mvPublic then
+          Continue;
+        if Method.IsConstructor or Method.IsDestructor then
+          Continue;
 
         // Filter standard noise
         if (Method.Name = 'BeforeDestruction') or (Method.Name = 'AfterConstruction') or
@@ -313,10 +327,10 @@ begin
            (Method.Name = 'InstanceSize') or (Method.Name = 'GetInterface') or
            (Method.Name = 'GetInterfaceEntry') or (Method.Name = 'GetInterfaceTable') or
            (Method.Name = 'SafeCallException') or (Method.Name = 'ToString') or
-           (Method.Name = 'GetHashCode') or (Method.Name = 'Equals') then Continue;
+           (Method.Name = 'GetHashCode') or (Method.Name = 'Equals') then
+          Continue;
 
         // Determine if inherited
-        // Note: Comparing RTTI objects directly usually works for checking definition context.
         IsInherited := Method.Parent <> RType;
 
         RowClass := '';
@@ -344,8 +358,19 @@ begin
       SB.AppendLine('</tbody></table>');
 
       // Properties
-      SB.AppendLine('<h3>Properties</h3>');
-      SB.AppendLine('<table><thead><tr><th>Name</th><th>Type</th><th>Access</th><th>Origin</th></tr></thead><tbody>');
+      SB.Append('''
+        <h3>Properties</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Access</th>
+              <th>Origin</th>
+            </tr>
+          </thead>
+          <tbody>
+      ''');
 
       Properties := RType.GetProperties;
       TArray.Sort<TRttiProperty>(Properties, TComparer<TRttiProperty>.Construct(
@@ -357,7 +382,8 @@ begin
 
       for Prop in Properties do
       begin
-        if Prop.Visibility < mvPublic then Continue;
+        if Prop.Visibility < mvPublic then
+          Continue;
 
         IsInherited := Prop.Parent <> RType;
 
@@ -371,9 +397,15 @@ begin
         end;
 
         Access := '';
-        if Prop.IsReadable then Access := 'Read';
+        if Prop.IsReadable then
+          Access := 'Read';
         if Prop.IsWritable then
-          if Access <> '' then Access := Access + '/Write' else Access := 'Write';
+        begin
+          if Access <> '' then
+            Access := Access + '/Write'
+          else
+            Access := 'Write';
+        end;
 
         SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
           [RowClass, Prop.Name, Prop.PropertyType.Name, Access, InheritedLabel]);
@@ -389,7 +421,6 @@ begin
 
     LinkName := ExtractFileName(AFilePath);
     Result := Format('<a href="files/%s" target="_blank">Open Documentation</a>', [LinkName]);
-
   finally
     FixtureList.Free;
     Ctx.Free;
