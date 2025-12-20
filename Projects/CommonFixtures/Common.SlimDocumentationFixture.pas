@@ -93,7 +93,8 @@ begin
   FixtureList := TList<TSlimFixtureClass>.Create;
   try
     // Header, CSS, JS, and Search Bar using Delphi Multi-Line String
-    SB.Append('''
+    SB.Append(
+      '''
       <!DOCTYPE html>
       <html>
       <head>
@@ -112,7 +113,7 @@ begin
           .namespace { color: #555; font-size: 0.7em; font-weight: normal; margin-left: 10px; }
           .class-name { font-family: Consolas, monospace; color: #d63384; }
           .toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }
-          
+
           /* Search Bar Styles */
           .search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; align-items: center; }
           #searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
@@ -144,7 +145,7 @@ begin
               var header = fixture.querySelector(".fixture-header");
               var headerText = header.textContent || header.innerText;
               var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;
-              
+
               var rows = fixture.querySelectorAll("tbody tr");
               var hasVisibleRow = false;
 
@@ -183,7 +184,7 @@ begin
           <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
         </div>
         <h1>Registered Slim Fixtures</h1>
-    ''');
+      ''');
 
     Fixtures := TSlimFixtureResolverAccess.GetFixtures;
     for C in Fixtures do
