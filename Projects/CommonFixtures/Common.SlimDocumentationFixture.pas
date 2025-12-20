@@ -25,6 +25,8 @@ type
 
   [SlimFixture('Documentation', 'common')]
   TSlimDocumentationFixture = class(TSlimFixture)
+  private
+    function IsStandardNoise(const AMethodName: String): Boolean;
   public
     function GenerateDocumentation(const AFilePath: String): String;
   end;
@@ -46,6 +48,35 @@ begin
 end;
 
 { TSlimDocumentationFixture }
+
+function TSlimDocumentationFixture.IsStandardNoise(const AMethodName: String): Boolean;
+begin
+  Result :=
+    (AMethodName = 'BeforeDestruction') or
+    (AMethodName = 'AfterConstruction') or
+    (AMethodName = 'Free') or
+    (AMethodName = 'DisposeOf') or
+    (AMethodName = 'Dispatch') or
+    (AMethodName = 'DefaultHandler') or
+    (AMethodName = 'NewInstance') or
+    (AMethodName = 'FreeInstance') or
+    (AMethodName = 'InheritsFrom') or
+    (AMethodName = 'ClassType') or
+    (AMethodName = 'ClassName') or
+    (AMethodName = 'ClassInfo') or
+    (AMethodName = 'ClassParent') or
+    (AMethodName = 'FieldAddress') or
+    (AMethodName = 'MethodAddress') or
+    (AMethodName = 'MethodName') or
+    (AMethodName = 'InstanceSize') or
+    (AMethodName = 'GetInterface') or
+    (AMethodName = 'GetInterfaceEntry') or
+    (AMethodName = 'GetInterfaceTable') or
+    (AMethodName = 'SafeCallException') or
+    (AMethodName = 'ToString') or
+    (AMethodName = 'GetHashCode') or
+    (AMethodName = 'Equals');
+end;
 
 function TSlimDocumentationFixture.GenerateDocumentation(const AFilePath: String): String;
 var
@@ -317,18 +348,7 @@ begin
           Continue;
 
         // Filter standard noise
-        if (Method.Name = 'BeforeDestruction') or (Method.Name = 'AfterConstruction') or
-           (Method.Name = 'Free') or (Method.Name = 'DisposeOf') or 
-           (Method.Name = 'Dispatch') or (Method.Name = 'DefaultHandler') or
-           (Method.Name = 'NewInstance') or (Method.Name = 'FreeInstance') or
-           (Method.Name = 'InheritsFrom') or (Method.Name = 'ClassType') or
-           (Method.Name = 'ClassName') or (Method.Name = 'ClassInfo') or
-           (Method.Name = 'ClassParent') or (Method.Name = 'FieldAddress') or
-           (Method.Name = 'MethodAddress') or (Method.Name = 'MethodName') or
-           (Method.Name = 'InstanceSize') or (Method.Name = 'GetInterface') or
-           (Method.Name = 'GetInterfaceEntry') or (Method.Name = 'GetInterfaceTable') or
-           (Method.Name = 'SafeCallException') or (Method.Name = 'ToString') or
-           (Method.Name = 'GetHashCode') or (Method.Name = 'Equals') then
+        if IsStandardNoise(Method.Name) then
           Continue;
 
         // Determine if inherited
