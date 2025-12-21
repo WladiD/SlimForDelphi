@@ -25,11 +25,13 @@ type
   [SlimFixture('Generator', 'SlimDoc')]
   TSlimDocGeneratorFixture = class(TSlimFixture)
   private
-    FUsageMap: TUsageMap;
+    FGeneratedLink: String;
+    FUsageMap     : TUsageMap;
   public
     destructor Destroy; override;
     function GenerateDocumentation(const AFilePath: String): String;
     function AnalyzeUsage(const AFitNesseRoot: String): String;
+    property GeneratedLink: String read FGeneratedLink;
   end;
 
 implementation
@@ -76,7 +78,8 @@ begin
   try
     Fixtures := Extractor.ExtractAll;
     try
-      Result := Generator.Generate(Fixtures, FUsageMap, AFilePath);
+      FGeneratedLink := Generator.Generate(Fixtures, FUsageMap, AFilePath);
+      Result := FGeneratedLink;
     finally
       Fixtures.Free;
     end;

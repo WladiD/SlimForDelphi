@@ -218,7 +218,25 @@ begin
       SB.AppendFormat('<div class="fixture" id="%s">', [Fixture.Id]);
       SB.Append('<div class="fixture-header">');
       SB.AppendFormat('<span>%s <span class="namespace">%s</span></span>', [Fixture.Name, Fixture.Namespace]);
-      SB.AppendFormat('<label class="inherited-toggle"><input type="checkbox" onclick="toggleInherited(this, ''%s'')"> Show inherited members</label>', [Fixture.Id]);
+
+      var HasInherited := False;
+      for Method in Fixture.Methods do
+        if Method.IsInherited then
+        begin
+          HasInherited := True;
+          Break;
+        end;
+      if not HasInherited then
+        for Prop in Fixture.Properties do
+          if Prop.IsInherited then
+          begin
+            HasInherited := True;
+            Break;
+          end;
+
+      if HasInherited then
+        SB.AppendFormat('<label class="inherited-toggle"><input type="checkbox" onclick="toggleInherited(this, ''%s'')"> Show inherited members</label>', [Fixture.Id]);
+
       SB.Append('</div>');
 
       SB.AppendFormat('<p><strong>Delphi Class:</strong> <span class="class-name">%s</span></p>', [Fixture.DelphiClass]);
@@ -274,30 +292,35 @@ begin
       SB.AppendLine('</tbody></table>');
 
       // Properties
-      SB.Append('''
-        <h3>Properties</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Access</th>
-              <th>Origin</th>
-            </tr>
-          </thead>
-          <tbody>
-      ''');
-
-      for Prop in Fixture.Properties do
+      if Fixture.Properties.Count > 0 then
       begin
-        RowClass := '';
-        if Prop.IsInherited then RowClass := 'inherited-member';
-        if RowClass <> '' then RowClass := ' class="' + RowClass + '"';
+        SB.Append('''
+          <h3>Properties</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Access</th>
+                <th>Origin</th>
+              </tr>
+            </thead>
+            <tbody>
+        ''');
 
-        SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
-          [RowClass, Prop.Name, Prop.PropertyType, Prop.Access, Prop.Origin]);
+        for Prop in Fixture.Properties do
+        begin
+          RowClass := '';
+          if Prop.IsInherited then RowClass := 'inherited-member';
+          if RowClass <> '' then RowClass := ' class="' + RowClass + '"';
+
+          SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
+            [RowClass, Prop.Name, Prop.PropertyType, Prop.Access, Prop.Origin]);
+        end;
+        SB.AppendLine('</tbody></table>');
       end;
-      SB.AppendLine('</tbody></table></div>');
+
+      SB.AppendLine('</div>');
     end;
 
     SB.AppendLine('</body></html>');
