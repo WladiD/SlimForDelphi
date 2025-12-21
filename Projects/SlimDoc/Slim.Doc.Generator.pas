@@ -266,7 +266,8 @@ begin
 
       for Method in Fixture.Methods do
       begin
-        HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(Method.Name.ToLower, UsageList);
+        var LookupKey := Format('%s.%s', [Fixture.Name, Method.Name]).ToLower;
+        HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
         UsageRowId := Format('usage-%s-%s', [Fixture.Id, Method.Name]).Replace('.', '-');
         
         ToggleCell := '';
