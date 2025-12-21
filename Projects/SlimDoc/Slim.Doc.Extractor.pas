@@ -34,6 +34,7 @@ type
 implementation
 
 type
+
   TSlimFixtureResolverAccess = class(TSlimFixtureResolver)
   public
     class function GetFixtures: TClassList;
@@ -49,44 +50,44 @@ end;
 function TSlimDocExtractor.IsStandardNoise(const AMethodName: String): Boolean;
 begin
   Result :=
-    (AMethodName = 'BeforeDestruction') or
-    (AMethodName = 'AfterConstruction') or
-    (AMethodName = 'Free') or
-    (AMethodName = 'DisposeOf') or
-    (AMethodName = 'Dispatch') or
-    (AMethodName = 'DefaultHandler') or
-    (AMethodName = 'NewInstance') or
-    (AMethodName = 'FreeInstance') or
-    (AMethodName = 'InheritsFrom') or
-    (AMethodName = 'ClassType') or
-    (AMethodName = 'ClassName') or
-    (AMethodName = 'ClassInfo') or
-    (AMethodName = 'ClassParent') or
-    (AMethodName = 'FieldAddress') or
-    (AMethodName = 'MethodAddress') or
-    (AMethodName = 'MethodName') or
-    (AMethodName = 'InstanceSize') or
-    (AMethodName = 'GetInterface') or
-    (AMethodName = 'GetInterfaceEntry') or
-    (AMethodName = 'GetInterfaceTable') or
-    (AMethodName = 'SafeCallException') or
-    (AMethodName = 'ToString') or
-    (AMethodName = 'GetHashCode') or
-    (AMethodName = 'Equals') or
-    (AMethodName = 'CleanupInstance') or
-    (AMethodName = 'InitInstance') or
-    (AMethodName = 'ClassNameIs') or
-    (AMethodName = 'QualifiedClassName') or
-    (AMethodName = 'UnitName') or
-    (AMethodName = 'UnitScope') or
+    SameText(AMethodName, 'BeforeDestruction') or
+    SameText(AMethodName, 'AfterConstruction') or
+    SameText(AMethodName, 'Free') or
+    SameText(AMethodName, 'DisposeOf') or
+    SameText(AMethodName, 'Dispatch') or
+    SameText(AMethodName, 'DefaultHandler') or
+    SameText(AMethodName, 'NewInstance') or
+    SameText(AMethodName, 'FreeInstance') or
+    SameText(AMethodName, 'InheritsFrom') or
+    SameText(AMethodName, 'ClassType') or
+    SameText(AMethodName, 'ClassName') or
+    SameText(AMethodName, 'ClassInfo') or
+    SameText(AMethodName, 'ClassParent') or
+    SameText(AMethodName, 'FieldAddress') or
+    SameText(AMethodName, 'MethodAddress') or
+    SameText(AMethodName, 'MethodName') or
+    SameText(AMethodName, 'InstanceSize') or
+    SameText(AMethodName, 'GetInterface') or
+    SameText(AMethodName, 'GetInterfaceEntry') or
+    SameText(AMethodName, 'GetInterfaceTable') or
+    SameText(AMethodName, 'SafeCallException') or
+    SameText(AMethodName, 'ToString') or
+    SameText(AMethodName, 'GetHashCode') or
+    SameText(AMethodName, 'Equals') or
+    SameText(AMethodName, 'CleanupInstance') or
+    SameText(AMethodName, 'InitInstance') or
+    SameText(AMethodName, 'ClassNameIs') or
+    SameText(AMethodName, 'QualifiedClassName') or
+    SameText(AMethodName, 'UnitName') or
+    SameText(AMethodName, 'UnitScope') or
     // TSlimFixture methods
-    (AMethodName = 'HasDelayedInfo') or
-    (AMethodName = 'InitDelayedEvent') or
-    (AMethodName = 'SyncMode') or
-    (AMethodName = 'SystemUnderTest') or
-    (AMethodName = 'TriggerDelayedEvent') or
-    (AMethodName = 'WaitForDelayedEvent') or
-    (AMethodName = 'DelayedOwner');
+    SameText(AMethodName, 'HasDelayedInfo') or
+    SameText(AMethodName, 'InitDelayedEvent') or
+    SameText(AMethodName, 'SyncMode') or
+    SameText(AMethodName, 'SystemUnderTest') or
+    SameText(AMethodName, 'TriggerDelayedEvent') or
+    SameText(AMethodName, 'WaitForDelayedEvent') or
+    SameText(AMethodName, 'DelayedOwner');
 end;
 
 function TSlimDocExtractor.GetSyncModeStr(AMember: TRttiMember): String;
