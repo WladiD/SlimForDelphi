@@ -35,11 +35,19 @@ type
     property MyProp: Integer read FProp write FProp;
   end;
 
+  TSimpleBaseFixture = class(TSlimFixture)
+  end;
+
+  TSimpleChildFixture = class(TSimpleBaseFixture)
+  end;
+
   [TestFixture]
   TTestSlimDocExtractor = class
   public
     [Test]
     procedure TestExtraction;
+    [Test]
+    procedure TestInheritanceChain;
   end;
 
 implementation
@@ -64,6 +72,30 @@ begin
 end;
 
 { TTestSlimDocExtractor }
+
+procedure TTestSlimDocExtractor.TestInheritanceChain;
+var
+  Doc      : TSlimFixtureDoc;
+  Extractor: TSlimDocExtractor;
+begin
+  Doc := nil;
+  Extractor := TSlimDocExtractor.Create;
+  try
+    Doc := Extractor.ExtractClass(TSimpleChildFixture);
+    Assert.AreEqual('TSimpleChildFixture', Doc.DelphiClass);
+    
+    // Chain: TSimpleBaseFixture -> TSlimFixture -> TObject
+    Assert.IsTrue(Doc.InheritanceChain.Count >= 3, 'Inheritance chain should have at least 3 items');
+    Assert.AreEqual('TSimpleBaseFixture', Doc.InheritanceChain[0]);
+    Assert.AreEqual('TSlimFixture', Doc.InheritanceChain[1]);
+    // Note: Intermediate ancestors might vary depending on TObject/interfaced object implementation details, 
+    // but TObject is usually at the end.
+    Assert.AreEqual('TObject', Doc.InheritanceChain[Doc.InheritanceChain.Count - 1]);
+  finally
+    Doc.Free;
+    Extractor.Free;
+  end;
+end;
 
 procedure TTestSlimDocExtractor.TestExtraction;
 var
