@@ -44,7 +44,7 @@ type
 implementation
 
 uses
-  Common.SlimDocumentationFixture;
+  Slim.Doc.Fixtures;
 
 { TSlimAddEntryFixture }
 
