@@ -243,8 +243,8 @@ begin
       end;
 
       SB.Append('<table style="width: auto; border: none; margin-bottom: 15px; background-color: transparent; box-shadow: none;">');
-      SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td><td style="border: none; padding: 2px 0;"><span class="class-name">%s</span></td></tr>', [ClassDecl]);
       SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Unit:</td><td style="border: none; padding: 2px 0;">%s</td></tr>', [Fixture.UnitName]);
+      SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td><td style="border: none; padding: 2px 0;"><span class="class-name">%s</span></td></tr>', [ClassDecl]);
       SB.Append('</table>');
 
       // Methods
