@@ -47,12 +47,13 @@ type
 
   TSlimFixtureDoc = class
   public
-    DelphiClass: String;
-    Methods    : TObjectList<TSlimMethodDoc>;
-    Name       : String;
-    Namespace  : String;
-    Properties : TObjectList<TSlimPropertyDoc>;
-    UnitName   : String;
+    DelphiClass     : String;
+    InheritanceChain: TStringList;
+    Methods         : TObjectList<TSlimMethodDoc>;
+    Name            : String;
+    Namespace       : String;
+    Properties      : TObjectList<TSlimPropertyDoc>;
+    UnitName        : String;
     constructor Create;
     destructor Destroy; override;
     function Id: String;
@@ -100,12 +101,14 @@ end;
 constructor TSlimFixtureDoc.Create;
 begin
   inherited Create;
+  InheritanceChain := TStringList.Create;
   Methods := TObjectList<TSlimMethodDoc>.Create;
   Properties := TObjectList<TSlimPropertyDoc>.Create;
 end;
 
 destructor TSlimFixtureDoc.Destroy;
 begin
+  InheritanceChain.Free;
   Methods.Free;
   Properties.Free;
   inherited;

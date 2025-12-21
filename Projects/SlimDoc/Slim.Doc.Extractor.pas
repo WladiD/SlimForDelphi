@@ -121,20 +121,29 @@ end;
 
 function TSlimDocExtractor.ExtractClass(AClass: TClass): TSlimFixtureDoc;
 var
-  Attr     : TCustomAttribute;
-  Ctx      : TRttiContext;
-  DocMethod: TSlimMethodDoc;
-  DocProp  : TSlimPropertyDoc;
-  Method   : TRttiMethod;
-  Param    : TRttiParameter;
-  Prop     : TRttiProperty;
-  RType    : TRttiType;
+  Attr          : TCustomAttribute;
+  Ctx           : TRttiContext;
+  DocMethod     : TSlimMethodDoc;
+  DocProp       : TSlimPropertyDoc;
+  Method        : TRttiMethod;
+  Param         : TRttiParameter;
+  ParentClassRef: TClass;
+  Prop          : TRttiProperty;
+  RType         : TRttiType;
 begin
   Result := TSlimFixtureDoc.Create;
   Ctx := TRttiContext.Create;
   try
     RType := Ctx.GetType(AClass);
     Result.DelphiClass := RType.Name;
+
+    ParentClassRef := AClass.ClassParent;
+    while Assigned(ParentClassRef) do
+    begin
+      Result.InheritanceChain.Add(ParentClassRef.ClassName);
+      ParentClassRef := ParentClassRef.ClassParent;
+    end;
+
     Result.UnitName := AClass.UnitName;
     Result.Name := RType.Name;
     Result.Namespace := 'global';

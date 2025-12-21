@@ -239,7 +239,15 @@ begin
 
       SB.Append('</div>');
 
-      SB.AppendFormat('<p><strong>Delphi Class:</strong> <span class="class-name">%s</span></p>', [Fixture.DelphiClass]);
+      var ClassDecl := Fixture.DelphiClass;
+      if (Fixture.InheritanceChain.Count > 0) then
+      begin
+        ClassDecl := ClassDecl + ' &lt; ' + Fixture.InheritanceChain[0];
+        for var I := 1 to Fixture.InheritanceChain.Count - 1 do
+          ClassDecl := ClassDecl + ' &lt; ' + Fixture.InheritanceChain[I];
+      end;
+
+      SB.AppendFormat('<p><strong>Delphi Class:</strong> <span class="class-name">%s</span></p>', [ClassDecl]);
       SB.AppendFormat('<p><strong>Unit:</strong> %s</p>', [Fixture.UnitName]);
 
       // Methods
