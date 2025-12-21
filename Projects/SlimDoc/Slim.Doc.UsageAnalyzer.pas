@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -25,8 +25,9 @@ type
 
   TSlimUsageAnalyzer = class
   private
-    function CamelCaseToSpaced(const S: String): String;
-    function GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
+    function  CamelCaseToSpaced(const S: String): String;
+    function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
+    procedure ProcessFile(const AFitNesseRoot, AFilePath: String; ASearchPatterns: TDictionary<String, TArray<String>>; AUsageMap: TUsageMap);
   public
     function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
   end;
@@ -85,6 +86,47 @@ begin
   Result := RelPath.Replace(PathDelim, '.');
 end;
 
+procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; ASearchPatterns: TDictionary<String, TArray<String>>; AUsageMap: TUsageMap);
+var
+  FileContent : String;
+  MethodName  : String;
+  Pat         : String;
+  UsageList   : TStringList;
+  WikiPageName: String;
+begin
+  if ExtractFileName(AFilePath).StartsWith('RerunLastFailures', True) then
+    Exit;
+
+  try
+    FileContent := TFile.ReadAllText(AFilePath, TEncoding.UTF8);
+  except
+    on E: EInOutError do
+      Exit;
+  end;
+
+  WikiPageName := GetWikiPageName(AFitNesseRoot, AFilePath);
+
+  for var Pair in ASearchPatterns do
+  begin
+    MethodName := Pair.Key;
+    for Pat in Pair.Value do
+    begin
+      if ContainsText(FileContent, Pat) then
+      begin
+        if not AUsageMap.TryGetValue(MethodName.ToLower, UsageList) then
+        begin
+          UsageList := TStringList.Create;
+          UsageList.Sorted := True;
+          UsageList.Duplicates := dupIgnore;
+          AUsageMap.Add(MethodName.ToLower, UsageList);
+        end;
+        UsageList.Add(WikiPageName);
+        Break;
+      end;
+    end;
+  end;
+end;
+
 function TSlimUsageAnalyzer.Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
 var
   FileName      : String;
@@ -94,48 +136,6 @@ var
   Patterns      : TArray<String>;
   SearchPatterns: TDictionary<String, TArray<String>>;
   Spaced        : String;
-
-  procedure ProcessFile(const AFilePath: String);
-  var
-    FileContent : String;
-    MethodName  : String;
-    Pat         : String;
-    UsageList   : TStringList;
-    WikiPageName: String;
-  begin
-    if ExtractFileName(AFilePath).StartsWith('RerunLastFailures', True) then
-      Exit;
-
-    try
-      FileContent := TFile.ReadAllText(AFilePath, TEncoding.UTF8);
-    except
-      on E: EInOutError do
-        Exit;
-    end;
-
-    WikiPageName := GetWikiPageName(AFitNesseRoot, AFilePath);
-
-    for var Pair in SearchPatterns do
-    begin
-      MethodName := Pair.Key;
-      for Pat in Pair.Value do
-      begin
-        if ContainsText(FileContent, Pat) then
-        begin
-          if not Result.TryGetValue(MethodName.ToLower, UsageList) then
-          begin
-            UsageList := TStringList.Create;
-            UsageList.Sorted := True;
-            UsageList.Duplicates := dupIgnore;
-            Result.Add(MethodName.ToLower, UsageList);
-          end;
-          UsageList.Add(WikiPageName);
-          Break;
-        end;
-      end;
-    end;
-  end;
-
 begin
   Result := TObjectDictionary<String, TStringList>.Create([doOwnsValues]);
   SearchPatterns := TDictionary<String, TArray<String>>.Create;
@@ -163,12 +163,13 @@ begin
     if TDirectory.Exists(AFitNesseRoot) then
     begin
       Files := TDirectory.GetFiles(AFitNesseRoot, '*.wiki', TSearchOption.soAllDirectories);
-      for FileName in Files do ProcessFile(FileName);
+      for FileName in Files do
+        ProcessFile(AFitNesseRoot, FileName, SearchPatterns, Result);
 
       Files := TDirectory.GetFiles(AFitNesseRoot, 'content.txt', TSearchOption.soAllDirectories);
-      for FileName in Files do ProcessFile(FileName);
+      for FileName in Files do
+        ProcessFile(AFitNesseRoot, FileName, SearchPatterns, Result);
     end;
-
   finally
     SearchPatterns.Free;
   end;
