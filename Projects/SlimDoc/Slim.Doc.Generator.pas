@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,11 +9,13 @@ unit Slim.Doc.Generator;
 interface
 
 uses
+
   System.Classes,
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
   System.SysUtils,
+
   Slim.Doc.Model,
   Slim.Doc.UsageAnalyzer;
 
@@ -59,18 +61,18 @@ end;
 
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimFixtureDoc>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
 var
-  SB: TStringBuilder;
-  Fixture: TSlimFixtureDoc;
-  Method: TSlimMethodDoc;
-  Prop: TSlimPropertyDoc;
-  UsageList: TStringList;
-  U: String;
-  HasUsage: Boolean;
-  UsageRowId: String;
-  UsageStr: String;
+  Fixture   : TSlimFixtureDoc;
+  HasUsage  : Boolean;
+  LinkName  : String;
+  Method    : TSlimMethodDoc;
+  Prop      : TSlimPropertyDoc;
+  RowClass  : String;
+  SB        : TStringBuilder;
   ToggleCell: String;
-  RowClass: String;
-  LinkName: String;
+  U         : String;
+  UsageList : TStringList;
+  UsageRowId: String;
+  UsageStr  : String;
 begin
   SortFixtures(AFixtures);
   SB := TStringBuilder.Create;

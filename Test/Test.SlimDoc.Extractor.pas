@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,12 +9,15 @@ unit Test.SlimDoc.Extractor;
 interface
 
 uses
-  DUnitX.TestFramework,
+
   System.Classes,
   System.Generics.Collections,
-  Slim.Fixture,
+
+  DUnitX.TestFramework,
+
+  Slim.Doc.Extractor,
   Slim.Doc.Model,
-  Slim.Doc.Extractor;
+  Slim.Fixture;
 
 type
 

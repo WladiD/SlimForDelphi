@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,14 +9,16 @@ unit Slim.Doc.Extractor;
 interface
 
 uses
+
   System.Classes,
   System.Contnrs,
   System.Generics.Collections,
   System.Rtti,
   System.SysUtils,
   System.TypInfo,
-  Slim.Fixture,
-  Slim.Doc.Model;
+
+  Slim.Doc.Model,
+  Slim.Fixture;
 
 type
 
@@ -71,7 +73,6 @@ begin
     (AMethodName = 'ToString') or
     (AMethodName = 'GetHashCode') or
     (AMethodName = 'Equals') or
-    // More TObject methods
     (AMethodName = 'CleanupInstance') or
     (AMethodName = 'InitInstance') or
     (AMethodName = 'ClassNameIs') or
@@ -109,28 +110,24 @@ var
   Fixtures: TClassList;
 begin
   Result := TObjectList<TSlimFixtureDoc>.Create(True);
-  try
-    Fixtures := TSlimFixtureResolverAccess.GetFixtures;
-    for C in Fixtures do
-    begin
-      if C.InheritsFrom(TSlimFixture) then
-        Result.Add(ExtractClass(C));
-    end;
-  finally
-    // Sorting could be done here or in the Generator
+  Fixtures := TSlimFixtureResolverAccess.GetFixtures;
+  for C in Fixtures do
+  begin
+    if C.InheritsFrom(TSlimFixture) then
+      Result.Add(ExtractClass(C));
   end;
 end;
 
 function TSlimDocExtractor.ExtractClass(AClass: TClass): TSlimFixtureDoc;
 var
-  Ctx: TRttiContext;
-  RType: TRttiType;
-  Attr: TCustomAttribute;
-  Method: TRttiMethod;
-  Prop: TRttiProperty;
-  Param: TRttiParameter;
+  Attr     : TCustomAttribute;
+  Ctx      : TRttiContext;
   DocMethod: TSlimMethodDoc;
-  DocProp: TSlimPropertyDoc;
+  DocProp  : TSlimPropertyDoc;
+  Method   : TRttiMethod;
+  Param    : TRttiParameter;
+  Prop     : TRttiProperty;
+  RType    : TRttiType;
 begin
   Result := TSlimFixtureDoc.Create;
   Ctx := TRttiContext.Create;

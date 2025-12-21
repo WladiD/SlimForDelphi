@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,11 +9,14 @@ unit Test.SlimDoc.UsageAnalyzer;
 interface
 
 uses
-  DUnitX.TestFramework,
+
   System.Classes,
   System.Generics.Collections,
   System.IOUtils,
   System.SysUtils,
+
+  DUnitX.TestFramework,
+
   Slim.Doc.Model,
   Slim.Doc.UsageAnalyzer;
 
@@ -22,9 +25,9 @@ type
   [TestFixture]
   TTestSlimUsageAnalyzer = class
   private
-    FTempDir: String;
     FAnalyzer: TSlimUsageAnalyzer;
     FFixtures: TObjectList<TSlimFixtureDoc>;
+    FTempDir : String;
     procedure CreateWikiFile(const AFileName, AContent: String);
   public
     [Setup]
@@ -46,22 +49,22 @@ implementation
 procedure TTestSlimUsageAnalyzer.Setup;
 var
   Fixture: TSlimFixtureDoc;
-  Method: TSlimMethodDoc;
+  Method : TSlimMethodDoc;
 begin
   FTempDir := TPath.Combine(TPath.GetTempPath, 'SlimUsageTest_' + TGUID.NewGuid.ToString);
   // Ensure no trailing delimiter
   if FTempDir.EndsWith(PathDelim) then
     FTempDir := FTempDir.Substring(0, FTempDir.Length - 1);
-    
+
   TDirectory.CreateDirectory(FTempDir);
-  
+
   FAnalyzer := TSlimUsageAnalyzer.Create;
   FFixtures := TObjectList<TSlimFixtureDoc>.Create;
 
   // Create a dummy fixture model for testing
   Fixture := TSlimFixtureDoc.Create;
   Fixture.Name := 'MyFixture';
-  
+
   Method := TSlimMethodDoc.Create;
   Method.Name := 'DoSomething';
   Fixture.Methods.Add(Method);
@@ -92,8 +95,8 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestAnalysis;
 var
+  List    : TStringList;
   UsageMap: TUsageMap;
-  List: TStringList;
 begin
   CreateWikiFile('PageOne.wiki', '| script | MyFixture |'#13#10'| do something |');
   CreateWikiFile('SubDir\PageTwo.wiki', '| script |'#13#10'| check | calculate value | 5 |');
@@ -117,8 +120,8 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestCamelCaseSplitting;
 var
+  List    : TStringList;
   UsageMap: TUsageMap;
-  List: TStringList;
 begin
   // "CalculateValue" should be found as "CalculateValue" AND "calculate value"
   CreateWikiFile('Camel.wiki', '| check | CalculateValue |');

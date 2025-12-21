@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,14 +9,16 @@ unit Slim.Doc.Fixtures;
 interface
 
 uses
+
   System.Classes,
   System.Generics.Collections,
   System.SysUtils,
-  Slim.Fixture,
-  Slim.Doc.Model,
+
   Slim.Doc.Extractor,
+  Slim.Doc.Generator,
+  Slim.Doc.Model,
   Slim.Doc.UsageAnalyzer,
-  Slim.Doc.Generator;
+  Slim.Fixture;
 
 type
 
@@ -52,9 +54,7 @@ var
   Analyzer: TSlimUsageAnalyzer;
   Fixtures: TObjectList<TSlimFixtureDoc>;
 begin
-  FUsageMap.Free;
-  FUsageMap := nil;
-
+  FreeAndNil(FUsageMap);
   Extractor := TSlimDocExtractor.Create;
   Analyzer := TSlimUsageAnalyzer.Create;
   try
@@ -93,6 +93,7 @@ begin
 end;
 
 initialization
-  RegisterSlimFixture(TSlimDocumentationFixture);
+
+RegisterSlimFixture(TSlimDocumentationFixture);
 
 end.

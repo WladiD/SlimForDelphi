@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,12 +9,14 @@ unit Slim.Doc.UsageAnalyzer;
 interface
 
 uses
+
   System.Classes,
   System.Generics.Collections,
   System.IOUtils,
   System.StrUtils,
   System.SysUtils,
   System.Types,
+
   Slim.Doc.Model;
 
 type
@@ -35,8 +37,8 @@ implementation
 
 function TSlimUsageAnalyzer.CamelCaseToSpaced(const S: String): String;
 var
+  I : Integer;
   SB: TStringBuilder;
-  I: Integer;
 begin
   if S.IsEmpty then Exit('');
   SB := TStringBuilder.Create;
@@ -85,20 +87,20 @@ end;
 
 function TSlimUsageAnalyzer.Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
 var
+  FileName      : String;
+  Files         : TStringDynArray;
+  Fixture       : TSlimFixtureDoc;
+  Method        : TSlimMethodDoc;
+  Patterns      : TArray<String>;
   SearchPatterns: TDictionary<String, TArray<String>>;
-  Files: TStringDynArray;
-  FileName: String;
-  Fixture: TSlimFixtureDoc;
-  Method: TSlimMethodDoc;
-  Patterns: TArray<String>;
-  Spaced: String;
+  Spaced        : String;
 
   procedure ProcessFile(const AFilePath: String);
   var
-    FileContent: String;
-    MethodName: String;
-    Pat: String;
-    UsageList: TStringList;
+    FileContent : String;
+    MethodName  : String;
+    Pat         : String;
+    UsageList   : TStringList;
     WikiPageName: String;
   begin
     if ExtractFileName(AFilePath).StartsWith('RerunLastFailures', True) then

@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -9,6 +9,7 @@ unit Slim.Doc.Model;
 interface
 
 uses
+
   System.Classes,
   System.Generics.Collections,
   System.SysUtils;
@@ -17,19 +18,19 @@ type
 
   TSlimParameterDoc = class
   public
-    Name: String;
+    Name     : String;
     ParamType: String;
     constructor Create(const AName, AParamType: String);
   end;
 
   TSlimMethodDoc = class
   public
-    Name: String;
-    Parameters: TObjectList<TSlimParameterDoc>;
-    ReturnType: String;
-    SyncMode: String;
-    Origin: String;
     IsInherited: Boolean;
+    Name       : String;
+    Origin     : String;
+    Parameters : TObjectList<TSlimParameterDoc>;
+    ReturnType : String;
+    SyncMode   : String;
     constructor Create;
     destructor Destroy; override;
     function GetParamsString: String;
@@ -37,22 +38,21 @@ type
 
   TSlimPropertyDoc = class
   public
-    Name: String;
+    Access      : String;
+    IsInherited : Boolean;
+    Name        : String;
+    Origin      : String;
     PropertyType: String;
-    Access: String;
-    Origin: String;
-    IsInherited: Boolean;
-    constructor Create;
   end;
 
   TSlimFixtureDoc = class
   public
-    Name: String;
-    Namespace: String;
     DelphiClass: String;
-    UnitName: String;
-    Methods: TObjectList<TSlimMethodDoc>;
-    Properties: TObjectList<TSlimPropertyDoc>;
+    Methods    : TObjectList<TSlimMethodDoc>;
+    Name       : String;
+    Namespace  : String;
+    Properties : TObjectList<TSlimPropertyDoc>;
+    UnitName   : String;
     constructor Create;
     destructor Destroy; override;
     function Id: String;
@@ -93,13 +93,6 @@ begin
     if Result <> '' then Result := Result + ', ';
     Result := Result + P.Name + ': ' + P.ParamType;
   end;
-end;
-
-{ TSlimPropertyDoc }
-
-constructor TSlimPropertyDoc.Create;
-begin
-  inherited Create;
 end;
 
 { TSlimFixtureDoc }
