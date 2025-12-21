@@ -40,6 +40,8 @@ type
     procedure TestCamelCaseSplitting;
     [Test]
     procedure TestIgnoreRerunFiles;
+    [Test]
+    procedure TestSetterUsageWithoutSetPrefix;
   end;
 
 implementation
@@ -71,6 +73,10 @@ begin
 
   Method := TSlimMethodDoc.Create;
   Method.Name := 'CalculateValue';
+  Fixture.Methods.Add(Method);
+
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'SetSelId';
   Fixture.Methods.Add(Method);
 
   FFixtures.Add(Fixture);
@@ -150,6 +156,25 @@ begin
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
     Assert.IsFalse(UsageMap.ContainsKey('dosomething'), 'Should ignore RerunLastFailures files');
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestSetterUsageWithoutSetPrefix;
+var
+  List    : TStringList;
+  UsageMap: TUsageMap;
+begin
+  // "SetSelId" should be found when used as "Sel Id" or "sel id"
+  CreateWikiFile('DecisionTable.wiki', '| sel id |'#13#10'| 1 |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('setselid'), 'Should find usage for setselid');
+    List := UsageMap['setselid'];
+    Assert.AreEqual(1, List.Count, 'Should find 1 usage');
+    Assert.AreEqual('DecisionTable', List[0]);
   finally
     UsageMap.Free;
   end;

@@ -155,6 +155,22 @@ begin
             SetLength(Patterns, 2);
             Patterns[1] := Spaced;
           end;
+
+          if (Method.Name.Length > 3) and Method.Name.StartsWith('Set', True) then
+          begin
+            var PropName := Method.Name.Substring(3);
+            var BaseIdx := Length(Patterns);
+            SetLength(Patterns, BaseIdx + 1);
+            Patterns[BaseIdx] := PropName;
+            
+            Spaced := CamelCaseToSpaced(PropName);
+            if not SameText(Spaced, PropName) then
+            begin
+              SetLength(Patterns, Length(Patterns) + 1);
+              Patterns[High(Patterns)] := Spaced;
+            end;
+          end;
+
           SearchPatterns.Add(Method.Name, Patterns);
         end;
       end;
