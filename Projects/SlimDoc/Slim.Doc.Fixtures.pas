@@ -569,7 +569,12 @@ begin
       begin
         if Method.Visibility < mvPublic then
           Continue;
-        if Method.IsConstructor or Method.IsDestructor then
+
+        if Method.IsDestructor then
+          Continue;
+
+        // Skip parameterless constructors
+        if Method.IsConstructor and (Length(Method.GetParameters) = 0) then
           Continue;
 
         // Filter standard noise
