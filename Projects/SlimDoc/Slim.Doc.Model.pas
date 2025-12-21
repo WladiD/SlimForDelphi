@@ -23,11 +23,15 @@ type
     constructor Create(const AName, AParamType: String);
   end;
 
-  TSlimMethodDoc = class
+  TSlimMemberDoc = class
   public
     IsInherited: Boolean;
     Name       : String;
     Origin     : String;
+  end;
+
+  TSlimMethodDoc = class(TSlimMemberDoc)
+  public
     Parameters : TObjectList<TSlimParameterDoc>;
     ReturnType : String;
     SyncMode   : String;
@@ -36,12 +40,9 @@ type
     function GetParamsString: String;
   end;
 
-  TSlimPropertyDoc = class
+  TSlimPropertyDoc = class(TSlimMemberDoc)
   public
     Access      : String;
-    IsInherited : Boolean;
-    Name        : String;
-    Origin      : String;
     PropertyType: String;
   end;
 

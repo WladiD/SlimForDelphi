@@ -24,7 +24,7 @@ type
   TSlimDocGenerator = class
   private
     procedure SortFixtures(AFixtures: TList<TSlimFixtureDoc>);
-    procedure SortMembers(AFixture: TSlimFixtureDoc);
+    procedure SortMemberList(AList: TList<TSlimMemberDoc>);
   public
     function Generate(AFixtures: TList<TSlimFixtureDoc>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
   end;
@@ -44,16 +44,10 @@ begin
     end));
 end;
 
-procedure TSlimDocGenerator.SortMembers(AFixture: TSlimFixtureDoc);
+procedure TSlimDocGenerator.SortMemberList(AList: TList<TSlimMemberDoc>);
 begin
-  AFixture.Methods.Sort(TComparer<TSlimMethodDoc>.Construct(
-    function(const L, R: TSlimMethodDoc): Integer
-    begin
-      Result := CompareText(L.Name, R.Name);
-    end));
-
-  AFixture.Properties.Sort(TComparer<TSlimPropertyDoc>.Construct(
-    function(const L, R: TSlimPropertyDoc): Integer
+  AList.Sort(TComparer<TSlimMemberDoc>.Construct(
+    function(const L, R: TSlimMemberDoc): Integer
     begin
       Result := CompareText(L.Name, R.Name);
     end));
@@ -214,7 +208,8 @@ begin
     // Fixtures
     for Fixture in AFixtures do
     begin
-      SortMembers(Fixture);
+      SortMemberList(TList<TSlimMemberDoc>(Fixture.Methods));
+      SortMemberList(TList<TSlimMemberDoc>(Fixture.Properties));
       SB.AppendFormat('<div class="fixture" id="%s">', [Fixture.Id]);
       SB.Append('<div class="fixture-header">');
       SB.AppendFormat('<span>%s <span class="namespace">%s</span></span>', [Fixture.Name, Fixture.Namespace]);
