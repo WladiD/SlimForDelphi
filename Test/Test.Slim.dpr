@@ -18,7 +18,9 @@ uses
   Test.SlimExec in 'Test.SlimExec.pas',
   Test.SlimSymbol in 'Test.SlimSymbol.pas',
   Test.SlimProxy in 'Test.SlimProxy.pas',
-  Test.SlimLogger in 'Test.SlimLogger.pas';
+  Test.SlimLogger in 'Test.SlimLogger.pas',
+  Test.SlimDoc.Extractor in 'Test.SlimDoc.Extractor.pas',
+  Test.SlimDoc.UsageAnalyzer in 'Test.SlimDoc.UsageAnalyzer.pas';
 
 {$IFNDEF TESTINSIGHT}
 var
