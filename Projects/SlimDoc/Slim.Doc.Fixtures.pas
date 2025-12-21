@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -22,12 +22,11 @@ uses
 
 type
 
-  [SlimFixture('Documentation', 'common')]
-  TSlimDocumentationFixture = class(TSlimFixture)
+  [SlimFixture('Generator', 'SlimDoc')]
+  TSlimDocGeneratorFixture = class(TSlimFixture)
   private
     FUsageMap: TUsageMap;
   public
-    procedure AfterConstruction; override;
     destructor Destroy; override;
     function GenerateDocumentation(const AFilePath: String): String;
     function AnalyzeUsage(const AFitNesseRoot: String): String;
@@ -35,24 +34,19 @@ type
 
 implementation
 
-{ TSlimDocumentationFixture }
+{ TSlimDocGeneratorFixture }
 
-procedure TSlimDocumentationFixture.AfterConstruction;
-begin
-  inherited;
-end;
-
-destructor TSlimDocumentationFixture.Destroy;
+destructor TSlimDocGeneratorFixture.Destroy;
 begin
   FUsageMap.Free;
   inherited;
 end;
 
-function TSlimDocumentationFixture.AnalyzeUsage(const AFitNesseRoot: String): String;
+function TSlimDocGeneratorFixture.AnalyzeUsage(const AFitNesseRoot: String): String;
 var
+  Analyzer : TSlimUsageAnalyzer;
   Extractor: TSlimDocExtractor;
-  Analyzer: TSlimUsageAnalyzer;
-  Fixtures: TObjectList<TSlimFixtureDoc>;
+  Fixtures : TObjectList<TSlimFixtureDoc>;
 begin
   FreeAndNil(FUsageMap);
   Extractor := TSlimDocExtractor.Create;
@@ -71,11 +65,11 @@ begin
   end;
 end;
 
-function TSlimDocumentationFixture.GenerateDocumentation(const AFilePath: String): String;
+function TSlimDocGeneratorFixture.GenerateDocumentation(const AFilePath: String): String;
 var
   Extractor: TSlimDocExtractor;
+  Fixtures : TObjectList<TSlimFixtureDoc>;
   Generator: TSlimDocGenerator;
-  Fixtures: TObjectList<TSlimFixtureDoc>;
 begin
   Extractor := TSlimDocExtractor.Create;
   Generator := TSlimDocGenerator.Create;
@@ -94,6 +88,6 @@ end;
 
 initialization
 
-RegisterSlimFixture(TSlimDocumentationFixture);
+RegisterSlimFixture(TSlimDocGeneratorFixture);
 
 end.

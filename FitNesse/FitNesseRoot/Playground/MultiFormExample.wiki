@@ -29,6 +29,6 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 |$DavidId  |David                                 |
 
 !3 Documentation
-|script|documentation                                                                                                                                                |
+|script|!-SlimDoc.Generator-!                                                                                                                                        |
 |show  |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                                                                                               |
 |check |generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixtureDocs.html-!|<a href="files/SlimFixtureDocs.html" target="_blank">Open Documentation</a>|

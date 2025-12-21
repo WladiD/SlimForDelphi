@@ -11,6 +11,7 @@ uses
   Vcl.Forms,
 
   Slim.Fixture,
+  Slim.Doc.Fixtures,
 
   Data,
   Entry,
@@ -42,9 +43,6 @@ type
   end;
 
 implementation
-
-uses
-  Slim.Doc.Fixtures;
 
 { TSlimAddEntryFixture }
 
