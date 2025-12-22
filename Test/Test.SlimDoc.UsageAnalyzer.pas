@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -159,7 +159,7 @@ var
 begin
   CreateWikiFile('RerunLastFailures.wiki', '| script | MyFixture |'#13#10'| do something |');
   CreateWikiFile('RerunLastFailures_Suite.wiki', '| script | MyFixture |'#13#10'| do something |');
-  
+
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
     Assert.IsFalse(UsageMap.ContainsKey('myfixture.dosomething'), 'Should ignore RerunLastFailures files');
@@ -213,7 +213,7 @@ begin
 
   // PageA uses FixtureA
   CreateWikiFile('PageA.wiki', '| FixtureA |'#13#10'| name |'#13#10'| Alice |');
-  
+
   // PageB uses FixtureB
   CreateWikiFile('PageB.wiki', '| script | FixtureB |'#13#10'| set name | Bob |');
 

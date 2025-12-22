@@ -1,4 +1,4 @@
-// ======================================================================
+﻿// ======================================================================
 // Copyright (c) 2025 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -22,7 +22,7 @@ uses
 type
 
   TUsageMap = TObjectDictionary<String, TStringList>;
-  
+
   // Maps Fixture -> (MethodKey -> Patterns)
   TPatternMap = TObjectDictionary<TSlimFixtureDoc, TDictionary<String, TArray<String>>>;
 
@@ -193,7 +193,7 @@ begin
           // Determine if we should scan this row
           var ShouldScan := False;
           if IsScript then ShouldScan := True
-          else if IsDT and (TableRow = 1) then ShouldScan := True; 
+          else if IsDT and (TableRow = 1) then ShouldScan := True;
 
           if ShouldScan then
           begin
@@ -203,11 +203,11 @@ begin
               begin
                 MethodKey := Pair.Key;
                 MethodPatterns := Pair.Value;
-                
+
                 var Found := False;
                 for Pat in MethodPatterns do
                 begin
-                  if ContainsText(TrimmedLine, Pat) then 
+                  if ContainsText(TrimmedLine, Pat) then
                   begin
                      Found := True;
                      Break;
@@ -217,7 +217,7 @@ begin
                 if Found then
                 begin
                   UsageKey := Format('%s.%s', [ActiveFixture.Name, MethodKey]).ToLower;
-                  
+
                   if not AUsageMap.TryGetValue(UsageKey, UsageList) then
                   begin
                     UsageList := TStringList.Create;
@@ -268,7 +268,7 @@ begin
       end;
 
       if Fixture.DelphiClass <> '' then
-         FixtureMap.AddOrSetValue(Fixture.DelphiClass.ToLower, Fixture); 
+         FixtureMap.AddOrSetValue(Fixture.DelphiClass.ToLower, Fixture);
 
       var MMap := TDictionary<String, TArray<String>>.Create;
       PatternMap.Add(Fixture, MMap);

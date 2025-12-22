@@ -29,7 +29,7 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 |$DavidId  |David                                 |
 
 !3 Documentation
-|script|!-SlimDoc.Generator-!                                                                                                                                        |
-|show  |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                                                                                               |
-|generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixtureDocs.html-!                                                                                   |
-|check |generated link        |<a href="files/SlimFixtureDocs.html" target="_blank">Open Documentation</a>                                                           |
+|script                |!-SlimDoc.Generator-!                                                                      |
+|show                  |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                             |
+|generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
+|check                 |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
