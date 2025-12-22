@@ -176,13 +176,17 @@ begin
   // "SetSelId" should be found when used as "Sel Id" or "sel id" in a Decision Table
   // Header row 1: Fixture Name. Header row 2: Column names (setters)
   CreateWikiFile('DecisionTable.wiki', '| MyFixture |'#13#10'| sel id |'#13#10'| 1 |');
+  
+  // Also check escaped variant (typically used for CamelCase to avoid WikiWords)
+  CreateWikiFile('EscapedDecisionTable.wiki', '| MyFixture |'#13#10'| !-SelId-! |'#13#10'| 1 |');
 
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
     Assert.IsTrue(UsageMap.ContainsKey('myfixture.setselid'), 'Should find usage for setselid');
     List := UsageMap['myfixture.setselid'];
-    Assert.AreEqual(1, List.Count, 'Should find 1 usage');
-    Assert.AreEqual('DecisionTable', List[0]);
+    Assert.AreEqual(2, List.Count, 'Should find 2 usages (normal and escaped)');
+    Assert.IsTrue(List.IndexOf('DecisionTable') >= 0);
+    Assert.IsTrue(List.IndexOf('EscapedDecisionTable') >= 0);
   finally
     UsageMap.Free;
   end;
