@@ -29,10 +29,13 @@ type
   TSlimUsageAnalyzer = class
   private
     function  CamelCaseToSpaced(const S: String): String;
-    function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
+    procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript: Boolean);
+    function  ExtractTableCells(const ALine: String): TArray<String>;
     function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
+    function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
     function  IsIgnoredFile(const AFilePath: String): Boolean;
     procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+    procedure ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
   public
     function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
   end;
@@ -95,37 +98,132 @@ function TSlimUsageAnalyzer.FindFixture(const AName: String; AFixtureMap: TDicti
 var
   CleanName: String;
 begin
-  if AName.IsEmpty then Exit(nil);
+  if AName.IsEmpty then
+    Exit(nil);
   CleanName := AName.Replace(' ', '').ToLower;
   if not AFixtureMap.TryGetValue(CleanName, Result) then
     Result := nil;
 end;
 
-procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+function TSlimUsageAnalyzer.ExtractTableCells(const ALine: String): TArray<String>;
 var
-  ActiveFixture  : TSlimFixtureDoc;
-  C              : Integer;
-  Cells          : TArray<String>;
+  C       : Integer;
+  EndIdx  : Integer;
+  RawCells: TArray<String>;
+  StartIdx: Integer;
+begin
+  RawCells := ALine.Trim.Split(['|']);
+  StartIdx := 0;
+  if (Length(RawCells) > 0) and (RawCells[0] = '') then
+    StartIdx := 1;
+  EndIdx := High(RawCells);
+  if (EndIdx >= StartIdx) and (RawCells[EndIdx] = '') then
+    Dec(EndIdx);
+
+  SetLength(Result, 0);
+  for C := StartIdx to EndIdx do
+  begin
+    var CellVal := RawCells[C].Trim;
+    if CellVal.StartsWith('!-') and CellVal.EndsWith('-!') then
+       CellVal := CellVal.Substring(2, CellVal.Length - 4);
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := CellVal;
+  end;
+end;
+
+procedure TSlimUsageAnalyzer.DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript: Boolean);
+begin
+  AActiveFixture := nil;
+  AIsDT := False;
+  AIsScript := False;
+  if Length(ACells) = 0 then
+    Exit;
+
+  // Case 1: | FixtureName | ... (Decision Table)
+  AActiveFixture := FindFixture(ACells[0], AFixtureMap);
+  AIsDT:=Assigned(AActiveFixture);
+  if AIsDT then
+    Exit;
+
+  if Length(ACells) > 1 then
+  begin
+    // Case 2: | script | FixtureName | ...
+    // Case 3: | dt | FixtureName | ...
+    var TableType := ACells[0].ToLower;
+    if (TableType = 'script') or (TableType = 'dt') or (TableType = 'ddt') or (TableType = 'table') or (TableType = 'query') then
+    begin
+      AActiveFixture := FindFixture(ACells[1], AFixtureMap);
+      if Assigned(AActiveFixture) then
+      begin
+        if TableType = 'script' then
+          AIsScript := True
+        else
+          AIsDT := True;
+      end;
+    end;
+  end;
+end;
+
+procedure TSlimUsageAnalyzer.ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+var
   CurrentPatterns: TDictionary<String, TArray<String>>;
-  InTable        : Boolean;
-  IsDT           : Boolean;
-  IsScript       : Boolean;
-  Line           : String;
-  Lines          : TArray<String>;
   MethodKey      : String;
   MethodPatterns : TArray<String>;
   Pat            : String;
-  RawCells       : TArray<String>;
-  TableRow       : Integer;
   UsageKey       : String;
   UsageList      : TStringList;
-  WikiPageName   : String;
+begin
+  if not APatternMap.TryGetValue(AActiveFixture, CurrentPatterns) then
+    Exit;
+
+  for var Pair in CurrentPatterns do
+  begin
+    MethodKey := Pair.Key;
+    MethodPatterns := Pair.Value;
+
+    var Found := False;
+    for Pat in MethodPatterns do
+    begin
+      if ContainsText(ALine, Pat) then
+      begin
+        Found := True;
+        Break;
+      end;
+    end;
+
+    if Found then
+    begin
+      UsageKey := Format('%s.%s', [AActiveFixture.Name, MethodKey]).ToLower;
+      if not AUsageMap.TryGetValue(UsageKey, UsageList) then
+      begin
+        UsageList := TStringList.Create;
+        UsageList.Sorted := True;
+        UsageList.Duplicates := dupIgnore;
+        AUsageMap.Add(UsageKey, UsageList);
+      end;
+      UsageList.Add(AWikiPageName);
+    end;
+  end;
+end;
+
+procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+var
+  ActiveFixture: TSlimFixtureDoc;
+  Cells        : TArray<String>;
+  InTable      : Boolean;
+  IsDT         : Boolean;
+  IsScript     : Boolean;
+  Line         : String;
+  Lines        : TArray<String>;
+  TableRow     : Integer;
+  WikiPageName : String;
 begin
   if IsIgnoredFile(AFilePath)
     then Exit;
 
   WikiPageName := GetWikiPageName(AFitNesseRoot, AFilePath);
   Lines := TFile.ReadAllLines(AFilePath, TEncoding.UTF8);
+
   InTable := False;
   ActiveFixture := nil;
   TableRow := 0;
@@ -141,95 +239,16 @@ begin
       begin
         InTable := True;
         TableRow := 0;
-        ActiveFixture := nil;
-        IsDT := False;
-        IsScript := False;
-
-        RawCells := TrimmedLine.Split(['|']);
-        var StartIdx := 0;
-        if (Length(RawCells) > 0) and (RawCells[0] = '') then StartIdx := 1;
-        var EndIdx := High(RawCells);
-        if (EndIdx >= StartIdx) and (RawCells[EndIdx] = '') then Dec(EndIdx);
-
-        SetLength(Cells, 0);
-        for C := StartIdx to EndIdx do
-        begin
-          SetLength(Cells, Length(Cells) + 1);
-          var CellVal := RawCells[C].Trim;
-          if CellVal.StartsWith('!-') and CellVal.EndsWith('-!') then
-             CellVal := CellVal.Substring(2, CellVal.Length - 4);
-          Cells[High(Cells)] := CellVal;
-        end;
-
-        if Length(Cells) > 0 then
-        begin
-          // Case 1: | FixtureName | ... (Decision Table)
-          ActiveFixture := FindFixture(Cells[0], AFixtureMap);
-          if Assigned(ActiveFixture) then
-          begin
-            IsDT := True;
-          end
-          else if (Length(Cells) > 1) then
-          begin
-             // Case 2: | script | FixtureName | ...
-             // Case 3: | dt | FixtureName | ...
-             var TableType := Cells[0].ToLower;
-             if (TableType = 'script') or (TableType = 'dt') or (TableType = 'ddt') or (TableType = 'table') or (TableType = 'query') then
-             begin
-               ActiveFixture := FindFixture(Cells[1], AFixtureMap);
-               if Assigned(ActiveFixture) then
-               begin
-                 if TableType = 'script' then IsScript := True else IsDT := True;
-               end;
-             end;
-          end;
-        end;
+        Cells := ExtractTableCells(TrimmedLine);
+        DetectActiveFixture(Cells, AFixtureMap, ActiveFixture, IsDT, IsScript);
       end
       else
       begin
         Inc(TableRow);
         if Assigned(ActiveFixture) then
         begin
-          // Determine if we should scan this row
-          var ShouldScan := False;
-          if IsScript then ShouldScan := True
-          else if IsDT and (TableRow = 1) then ShouldScan := True;
-
-          if ShouldScan then
-          begin
-            if APatternMap.TryGetValue(ActiveFixture, CurrentPatterns) then
-            begin
-              for var Pair in CurrentPatterns do
-              begin
-                MethodKey := Pair.Key;
-                MethodPatterns := Pair.Value;
-
-                var Found := False;
-                for Pat in MethodPatterns do
-                begin
-                  if ContainsText(TrimmedLine, Pat) then
-                  begin
-                     Found := True;
-                     Break;
-                  end;
-                end;
-
-                if Found then
-                begin
-                  UsageKey := Format('%s.%s', [ActiveFixture.Name, MethodKey]).ToLower;
-
-                  if not AUsageMap.TryGetValue(UsageKey, UsageList) then
-                  begin
-                    UsageList := TStringList.Create;
-                    UsageList.Sorted := True;
-                    UsageList.Duplicates := dupIgnore;
-                    AUsageMap.Add(UsageKey, UsageList);
-                  end;
-                  UsageList.Add(WikiPageName);
-                end;
-              end;
-            end;
-          end;
+          if IsScript or (IsDT and (TableRow = 1)) then
+            ScanRowForUsage(TrimmedLine, WikiPageName, ActiveFixture, APatternMap, AUsageMap);
         end;
       end;
     end
@@ -244,18 +263,17 @@ end;
 function TSlimUsageAnalyzer.Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
 var
   FileName  : String;
-  Files     : TStringDynArray;
+  Files     : TArray<String>;
   Fixture   : TSlimFixtureDoc;
   FixtureMap: TDictionary<String, TSlimFixtureDoc>;
   Method    : TSlimMethodDoc;
   PatternMap: TPatternMap;
   Patterns  : TArray<String>;
-  Spaced        : String;
+  Spaced    : String;
 begin
   Result := TObjectDictionary<String, TStringList>.Create([doOwnsValues]);
   FixtureMap := TDictionary<String, TSlimFixtureDoc>.Create;
   PatternMap := TObjectDictionary<TSlimFixtureDoc, TDictionary<String, TArray<String>>>.Create([doOwnsValues]);
-
   try
     // Build Maps
     for Fixture in AFixtures do
