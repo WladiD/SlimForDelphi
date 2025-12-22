@@ -59,10 +59,8 @@ var
   Fixture: TSlimFixtureDoc;
   Method : TSlimMethodDoc;
 begin
-  FTempDir := TPath.Combine(TPath.GetTempPath, 'SlimUsageTest_' + TGUID.NewGuid.ToString);
-  // Ensure no trailing delimiter
-  if FTempDir.EndsWith(PathDelim) then
-    FTempDir := FTempDir.Substring(0, FTempDir.Length - 1);
+  FTempDir := IncludeTrailingPathDelimiter(
+    TPath.Combine(TPath.GetTempPath, 'SlimUsageTest_' + TGUID.NewGuid.ToString));
 
   TDirectory.CreateDirectory(FTempDir);
 

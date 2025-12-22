@@ -31,6 +31,7 @@ type
     function  CamelCaseToSpaced(const S: String): String;
     function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
     function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
+    function  IsIgnoredFile(const AFilePath: String): Boolean;
     procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
   public
     function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
@@ -41,14 +42,14 @@ implementation
 { TSlimUsageAnalyzer }
 
 function TSlimUsageAnalyzer.CamelCaseToSpaced(const S: String): String;
-var
-  I : Integer;
-  SB: TStringBuilder;
 begin
-  if S.IsEmpty then Exit('');
-  SB := TStringBuilder.Create;
+  Result := '';
+  if S.IsEmpty
+    then Exit;
+  
+  var SB := TStringBuilder.Create;
   try
-    for I := 1 to S.Length do
+    for var I := 1 to S.Length do
     begin
       if (I > 1) and CharInSet(S[I], ['A'..'Z']) then
         SB.Append(' ');
@@ -60,13 +61,17 @@ begin
   end;
 end;
 
+function TSlimUsageAnalyzer.IsIgnoredFile(const AFilePath: String): Boolean;
+begin
+  Result := ExtractFileName(AFilePath).StartsWith('RerunLastFailures', True);
+end;
+
 function TSlimUsageAnalyzer.GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
 var
   RelPath: String;
-  Root: String;
+  Root   : String;
 begin
-  Root := AFitNesseRoot;
-  if not Root.EndsWith(PathDelim) then Root := Root + PathDelim;
+  Root := IncludeTrailingPathDelimiter(AFitNesseRoot);
 
   if AFilePath.StartsWith(Root, True) then
     RelPath := AFilePath.Substring(Root.Length)
@@ -99,33 +104,28 @@ end;
 procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
 var
   ActiveFixture  : TSlimFixtureDoc;
+  C              : Integer;
   Cells          : TArray<String>;
-  RawCells       : TArray<String>;
   CurrentPatterns: TDictionary<String, TArray<String>>;
   InTable        : Boolean;
   IsDT           : Boolean;
   IsScript       : Boolean;
   Line           : String;
-  Lines          : TStringDynArray;
+  Lines          : TArray<String>;
   MethodKey      : String;
   MethodPatterns : TArray<String>;
   Pat            : String;
+  RawCells       : TArray<String>;
   TableRow       : Integer;
   UsageKey       : String;
   UsageList      : TStringList;
   WikiPageName   : String;
-  C              : Integer;
 begin
-  if ExtractFileName(AFilePath).StartsWith('RerunLastFailures', True) then Exit;
+  if IsIgnoredFile(AFilePath)
+    then Exit;
 
   WikiPageName := GetWikiPageName(AFitNesseRoot, AFilePath);
-
-  try
-    Lines := TFile.ReadAllLines(AFilePath, TEncoding.UTF8);
-  except
-    Exit;
-  end;
-
+  Lines := TFile.ReadAllLines(AFilePath, TEncoding.UTF8);
   InTable := False;
   ActiveFixture := nil;
   TableRow := 0;
