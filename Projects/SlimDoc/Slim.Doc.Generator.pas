@@ -24,7 +24,7 @@ type
   TSlimDocGenerator = class
   private
     procedure SortFixtures(AFixtures: TList<TSlimFixtureDoc>);
-    procedure SortMemberList(AList: TList<TSlimMemberDoc>);
+    procedure SortMembers(AList: TList<TSlimMemberDoc>);
   public
     function Generate(AFixtures: TList<TSlimFixtureDoc>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
   end;
@@ -44,7 +44,7 @@ begin
     end));
 end;
 
-procedure TSlimDocGenerator.SortMemberList(AList: TList<TSlimMemberDoc>);
+procedure TSlimDocGenerator.SortMembers(AList: TList<TSlimMemberDoc>);
 begin
   AList.Sort(TComparer<TSlimMemberDoc>.Construct(
     function(const L, R: TSlimMemberDoc): Integer
@@ -71,8 +71,7 @@ begin
   SortFixtures(AFixtures);
   SB := TStringBuilder.Create;
   try
-    SB.Append(
-      '''
+    SB.Append('''
       <!DOCTYPE html>
       <html>
       <head>
@@ -208,8 +207,8 @@ begin
     // Fixtures
     for Fixture in AFixtures do
     begin
-      SortMemberList(TList<TSlimMemberDoc>(Fixture.Methods));
-      SortMemberList(TList<TSlimMemberDoc>(Fixture.Properties));
+      SortMembers(TList<TSlimMemberDoc>(Fixture.Methods));
+      SortMembers(TList<TSlimMemberDoc>(Fixture.Properties));
       SB.AppendFormat('<div class="fixture" id="%s">', [Fixture.Id]);
       SB.Append('<div class="fixture-header">');
       SB.AppendFormat('<span>%s <span class="namespace">%s</span></span>', [Fixture.Name, Fixture.Namespace]);
