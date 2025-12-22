@@ -256,8 +256,8 @@ begin
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
 
-  // Wiki uses fully qualified name
-  CreateWikiFile('Doc.wiki', '| script | SlimDoc.Generator |'#13#10'| analyze usage | arg |');
+  // Wiki uses fully qualified and escaped name
+  CreateWikiFile('Doc.wiki', '| script | !-SlimDoc.Generator-! |'#13#10'| analyze usage | arg |');
 
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
@@ -272,29 +272,19 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestEscapedFixtureName;
 var
-  Fixture : TSlimFixtureDoc;
-  Method  : TSlimMethodDoc;
   UsageMap: TUsageMap;
   List    : TStringList;
 begin
-  Fixture := TSlimFixtureDoc.Create;
-  Fixture.Name := 'Generator';
-  Fixture.Namespace := 'SlimDoc';
-
-  Method := TSlimMethodDoc.Create;
-  Method.Name := 'AnalyzeUsage';
-  Fixture.Methods.Add(Method);
-  FFixtures.Add(Fixture);
-
-  // Wiki uses escaped name !-SlimDoc.Generator-!
-  CreateWikiFile('Doc.wiki', '| script | !-SlimDoc.Generator-! |'#13#10'| analyze usage | arg |');
+  // Setup already contains 'MyFixture' with 'DoSomething'
+  // Wiki uses escaped simple name !-MyFixture-!
+  CreateWikiFile('SimpleEscaped.wiki', '| script | !-MyFixture-! |'#13#10'| do something |');
 
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
-    Assert.IsTrue(UsageMap.ContainsKey('generator.analyzeusage'), 'Should find usage for Generator.AnalyzeUsage with escaped fixture name');
-    List := UsageMap['generator.analyzeusage'];
+    Assert.IsTrue(UsageMap.ContainsKey('myfixture.dosomething'), 'Should find usage for MyFixture.DoSomething with escaped fixture name');
+    List := UsageMap['myfixture.dosomething'];
     Assert.AreEqual(1, List.Count);
-    Assert.AreEqual('Doc', List[0]);
+    Assert.AreEqual('SimpleEscaped', List[0]);
   finally
     UsageMap.Free;
   end;
