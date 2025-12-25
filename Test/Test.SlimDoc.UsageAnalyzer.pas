@@ -53,9 +53,19 @@ type
     [Test]
     procedure TestLibraryTableInSetupPage;
     [Test]
+    procedure TestLibraryTableInIncludedPage;
+    [Test]
+    procedure TestIncludeWithInvalidPath;
+    [Test]
+    procedure TestIncludeWithImplicitPath;
+    [Test]
     procedure TestLibraryTableWithSpaces;
     [Test]
     procedure TestScriptTableWithFixtureNamedScript;
+    [Test]
+    procedure TestInterleavedMethodUsage;
+    [Test]
+    procedure TestOnlyReservePositionsReproduction;
     [Test]
     procedure TestScenarioUsage;
   end;
@@ -93,6 +103,12 @@ begin
   Method.Name := 'SetSelId';
   Fixture.Methods.Add(Method);
 
+  // Method with multiple arguments for interleaved testing
+  // Name: ClickToolbarButtonOnFormWithIcon
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'ClickToolbarButtonOnFormWithIcon';
+  Fixture.Methods.Add(Method);
+
   FFixtures.Add(Fixture);
 
   // Library Fixture
@@ -114,6 +130,14 @@ begin
   // Script Fixture (empty, relies on Library)
   Fixture := TSlimFixtureDoc.Create;
   Fixture.Name := 'ScriptFixture';
+  FFixtures.Add(Fixture);
+
+  // Specific Fixture from user case
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'NpkReserveForm';
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'ClickToolbarButtonOnFormWithIcon';
+  Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
 end;
 
@@ -371,6 +395,84 @@ begin
   end;
 end;
 
+procedure TTestSlimUsageAnalyzer.TestLibraryTableInIncludedPage;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Included page defines library
+  CreateWikiFile('IncludedPage.wiki',
+    '| library |'#13#10 +
+    '| LibraryFixture |');
+
+  // Test page includes the other page and uses the library method
+  CreateWikiFile('TestPage.wiki',
+    '!include -setup <IncludedPage'#13#10 +
+    '| script | ScriptFixture |'#13#10 +
+    '| execute action | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('libraryfixture.executeaction'), 'Should find usage from included library');
+    List := UsageMap['libraryfixture.executeaction'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('TestPage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestIncludeWithInvalidPath;
+var
+  UsageMap: TUsageMap;
+begin
+  // Test page with invalid include path that causes EInOutArgumentException
+  CreateWikiFile('InvalidInclude.wiki',
+    '!include -setup <[>Vars]'#13#10 +
+    '| script | MyFixture |'#13#10 +
+    '| do something |');
+
+  // Should not raise exception
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('myfixture.dosomething'));
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestIncludeWithImplicitPath;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Create a structure: Root/ATDD/MySuite/Setup.wiki
+  var AtddDir := TPath.Combine(FTempDir, 'ATDD');
+  var SuiteDir := TPath.Combine(AtddDir, 'MySuite');
+  TDirectory.CreateDirectory(SuiteDir);
+
+  TFile.WriteAllText(TPath.Combine(SuiteDir, 'Setup.wiki'),
+    '| library |'#13#10 +
+    '| LibraryFixture |', TEncoding.UTF8);
+
+  // Test page includes using <MySuite.Setup (skipping ATDD)
+  CreateWikiFile('TestPage.wiki',
+    '!include -setup <MySuite.Setup'#13#10 +
+    '| script | ScriptFixture |'#13#10 +
+    '| execute action | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    // This will likely fail until we implement the fallback logic
+    Assert.IsTrue(UsageMap.ContainsKey('libraryfixture.executeaction'), 'Should find usage from included library with implicit ATDD path');
+    List := UsageMap['libraryfixture.executeaction'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('TestPage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
 procedure TTestSlimUsageAnalyzer.TestLibraryTableWithSpaces;
 var
   UsageMap: TUsageMap;
@@ -418,6 +520,50 @@ begin
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
     Assert.IsTrue(UsageMap.ContainsKey('flowcontrol.ignorealltestsifdefined'), 'Should find library usage even if fixture is named Script');
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestInterleavedMethodUsage;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Wiki page with interleaved method call
+  // | Click Toolbar Button On Form | $Form | With Icon | ADD |
+  CreateWikiFile('Interleaved.wiki',
+    '| script | MyFixture |'#13#10 +
+    '| Click Toolbar Button On Form | $ReserveForm | With Icon | DOC_ADD |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('myfixture.clicktoolbarbuttononformwithicon'), 'Should find usage for interleaved method call');
+    List := UsageMap['myfixture.clicktoolbarbuttononformwithicon'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('Interleaved', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestOnlyReservePositionsReproduction;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Exact reproduction of the user's wiki snippet
+  CreateWikiFile('OnlyReservePositions.wiki',
+    '|script                                       |Npk Reserve Form|$ReserveForm     |'#13#10 +
+    '|Click Toolbar Button On Form                 |$ReserveForm    |With Icon|DOC_ADD|');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('npkreserveform.clicktoolbarbuttononformwithicon'),
+      'Should find usage for ClickToolbarButtonOnFormWithIcon in reproduction case');
+    List := UsageMap['npkreserveform.clicktoolbarbuttononformwithicon'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('OnlyReservePositions', List[0]);
   finally
     UsageMap.Free;
   end;

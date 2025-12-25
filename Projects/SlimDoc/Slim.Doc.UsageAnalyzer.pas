@@ -30,6 +30,7 @@ type
   private
     function  CamelCaseToSpaced(const S: String): String;
     function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+    procedure CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
     procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
     function  ExtractTableCells(const ALine: String): TArray<String>;
     function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
@@ -37,6 +38,7 @@ type
     function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
     function  IsIgnoredFile(const AFilePath: String): Boolean;
     procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+    function  ResolveIncludePath(const AFitNesseRoot, ACurrentDir, AIncludePath: String): String;
     procedure ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
   public
     function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
@@ -51,7 +53,7 @@ begin
   Result := '';
   if S.IsEmpty
     then Exit;
-  
+
   var SB := TStringBuilder.Create;
   try
     for var I := 1 to S.Length do
@@ -104,6 +106,130 @@ begin
   end;
 end;
 
+procedure TSlimUsageAnalyzer.CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
+var
+  Line: String;
+begin
+  for Line in ALines do
+  begin
+    var Trimmed := Line.Trim;
+    if Trimmed.StartsWith('!include', True) then
+    begin
+      var Parts := Trimmed.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+      if Length(Parts) < 2 then Continue;
+
+      var IncludePath := '';
+      for var I := 1 to High(Parts) do
+        if not Parts[I].StartsWith('-') then
+        begin
+          IncludePath := Parts[I];
+          Break;
+        end;
+
+      if IncludePath <> '' then
+      begin
+        var FullPath := ResolveIncludePath(AFitNesseRoot, ACurrentDir, IncludePath);
+        if (FullPath <> '') and TFile.Exists(FullPath) and (AVisitedFiles.IndexOf(FullPath) < 0) then
+        begin
+          AVisitedFiles.Add(FullPath);
+          var IncludedLines := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
+
+          // 1. Collect libraries from the included file itself
+          var Libs := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
+          try
+            for var F in Libs do
+              if not ALibraryFixtures.Contains(F) then
+                ALibraryFixtures.Add(F);
+          finally
+            Libs.Free;
+          end;
+
+          // 2. Recursively follow includes in the included file
+          CollectLibrariesFromIncludes(AFitNesseRoot, ExtractFileDir(FullPath), IncludedLines, AFixtureMap, ALibraryFixtures, AVisitedFiles);
+        end;
+      end;
+    end;
+  end;
+end;
+
+function TSlimUsageAnalyzer.ResolveIncludePath(const AFitNesseRoot, ACurrentDir, AIncludePath: String): String;
+var
+  CleanPath: String;
+  Root     : String;
+begin
+  Result := '';
+  try
+    CleanPath := AIncludePath;
+    Root := IncludeTrailingPathDelimiter(AFitNesseRoot);
+
+    if CleanPath.StartsWith('<') then
+    begin
+      // Relative to FitNesseRoot
+      CleanPath := CleanPath.Substring(1).Replace('.', PathDelim);
+      Result := Root + CleanPath;
+    end
+    else if CleanPath.StartsWith('.') then
+    begin
+      // Relative to FitNesseRoot (absolute path in FitNesse terms)
+      CleanPath := CleanPath.Substring(1).Replace('.', PathDelim);
+      Result := Root + CleanPath;
+    end
+    else if CleanPath.StartsWith('^') then
+    begin
+      // Subpage
+      CleanPath := CleanPath.Substring(1).Replace('.', PathDelim);
+      Result := TPath.Combine(ACurrentDir, CleanPath);
+    end
+    else
+    begin
+      // Sibling or relative
+      CleanPath := CleanPath.Replace('.', PathDelim);
+      Result := TPath.Combine(ACurrentDir, CleanPath);
+    end;
+
+    if (not Result.EndsWith('.wiki', True)) and (not Result.EndsWith('content.txt', True)) then
+    begin
+      if TFile.Exists(Result + '.wiki') then
+        Result := Result + '.wiki'
+      else if TFile.Exists(TPath.Combine(Result, 'content.txt')) then
+        Result := TPath.Combine(Result, 'content.txt');
+    end;
+
+    // If file not found and path started with < (root relative), try checking common subfolders like ATDD
+    if (Result <> '') and (not TFile.Exists(Result)) and AIncludePath.StartsWith('<') then
+    begin
+      // Re-calculate RelPath from original AIncludePath
+      var RelPath := AIncludePath.Substring(1).Replace('.', PathDelim);
+      var Candidates: TArray<String>;
+      Candidates := ['ATDD', 'Playground'];
+
+      for var Candidate in Candidates do
+      begin
+        var AltPath := TPath.Combine(Root, Candidate);
+        AltPath := TPath.Combine(AltPath, RelPath);
+
+        if TFile.Exists(AltPath + '.wiki') then
+        begin
+          Result := AltPath + '.wiki';
+          Break;
+        end
+        else if TFile.Exists(TPath.Combine(AltPath, 'content.txt')) then
+        begin
+          Result := TPath.Combine(AltPath, 'content.txt');
+          Break;
+        end;
+      end;
+    end;
+
+  except
+    on E: Exception do
+    begin
+      // Ignore invalid paths (e.g. variables in path like <[>Vars])
+      Result := '';
+    end;
+  end;
+end;
+
 function TSlimUsageAnalyzer.GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
 var
   CurrentDir: String;
@@ -130,15 +256,13 @@ begin
   Result := TList<TSlimFixtureDoc>.Create;
   Root := ExcludeTrailingPathDelimiter(AFitNesseRoot);
   CurrentDir := ExtractFileDir(AFilePath);
-  
+
   // Walk up until we are above Root
   while (Length(CurrentDir) >= Length(Root)) and (SameText(CurrentDir, Root) or CurrentDir.StartsWith(Root + PathDelim, True)) do
   begin
     CheckFile('SetUp.wiki');
     CheckFile('SuiteSetUp.wiki');
-    CheckFile('SetUp'); // Check for folder/content? No, usually SetUp page is .wiki or folder/content.txt. 
-                      // If SetUp is a folder, we might need to check SetUp/content.txt.
-                      // For simplicity, sticking to .wiki as per current patterns.
+    CheckFile('SetUp');
 
     CurrentDir := ExtractFileDir(CurrentDir);
   end;
@@ -232,8 +356,8 @@ begin
 
   // Check for table type keywords first, before checking if FirstCell is a fixture name.
   // This is important because a fixture could be named "Script" (e.g. Base.UI.Script).
-  if (FirstCell = 'script') or (FirstCell = 'dt') or (FirstCell = 'ddt') or 
-     (FirstCell = 'table') or (FirstCell = 'query') or (FirstCell = 'ordered query') or 
+  if (FirstCell = 'script') or (FirstCell = 'dt') or (FirstCell = 'ddt') or
+     (FirstCell = 'table') or (FirstCell = 'query') or (FirstCell = 'ordered query') or
      (FirstCell = 'subset query') then
   begin
     if Length(ACells) > 1 then
@@ -248,7 +372,7 @@ begin
         Exit;
       end;
     end;
-    
+
     // If it's just "| script |" without a fixture name, it's still a script table
     if FirstCell = 'script' then
     begin
@@ -270,9 +394,29 @@ var
   Pat            : String;
   UsageKey       : String;
   UsageList      : TStringList;
+  Cells          : TArray<String>;
 begin
   if not APatternMap.TryGetValue(AActiveFixture, CurrentPatterns) then
     Exit;
+
+  Cells := ExtractTableCells(ALine);
+  if Length(Cells) = 0 then
+    Exit;
+
+  // Build a "compact" version of the row for matching.
+  // Standard Slim logic for script tables:
+  // | method | arg1 | arg2 | -> "method"
+  // | method | arg1 | extra | arg2 | -> "method extra"
+  // We'll build a combined string from alternate cells: 0, 2, 4...
+  var Combined := '';
+  var I := 0;
+  while I < Length(Cells) do
+  begin
+    if not Combined.IsEmpty then
+      Combined := Combined + ' ';
+    Combined := Combined + Cells[I];
+    Inc(I, 2);
+  end;
 
   for var Pair in CurrentPatterns do
   begin
@@ -282,7 +426,15 @@ begin
     var Found := False;
     for Pat in MethodPatterns do
     begin
+      // 1. Check full line (legacy behavior, good for Decision Tables and simple scripts)
       if ContainsText(ALine, Pat) then
+      begin
+        Found := True;
+        Break;
+      end;
+
+      // 2. Check combined alternate cells (Interleaved arguments in script tables)
+      if ContainsText(Combined, Pat) then
       begin
         Found := True;
         Break;
@@ -319,6 +471,7 @@ var
   Lines          : TArray<String>;
   TableRow       : Integer;
   WikiPageName   : String;
+  VisitedFiles   : TStringList;
 begin
   if IsIgnoredFile(AFilePath)
     then Exit;
@@ -333,10 +486,21 @@ begin
   IsScript := False;
   IsScenario := False;
   IsLibraryTable := False;
-  
+
   // Init libraries with inherited ones
   LibraryFixtures := GetInheritedLibraries(AFitNesseRoot, AFilePath, AFixtureMap);
   try
+    // Also scan for !include in the current file to find more libraries
+    VisitedFiles := TStringList.Create;
+    try
+      VisitedFiles.Sorted := True;
+      VisitedFiles.Duplicates := dupIgnore;
+      VisitedFiles.Add(AFilePath);
+      CollectLibrariesFromIncludes(AFitNesseRoot, ExtractFileDir(AFilePath), Lines, AFixtureMap, LibraryFixtures, VisitedFiles);
+    finally
+      VisitedFiles.Free;
+    end;
+
     for Line in Lines do
     begin
       var TrimmedLine := Line.Trim;
@@ -383,7 +547,7 @@ begin
               if IsScript or (IsDT and (TableRow = 1)) then
               begin
                 ScanRowForUsage(TrimmedLine, WikiPageName, ActiveFixture, APatternMap, AUsageMap);
-                
+
                 // Also scan libraries if it is a script table
                 if IsScript then
                   for LibFixture in LibraryFixtures do
@@ -393,8 +557,6 @@ begin
             else if IsScenario then
             begin
               // In scenarios, we don't know the active fixture, so we check all available fixtures.
-              // This is a broad search but ensures we find usages in scenario definitions.
-              // Note: We might want to optimize this if it becomes too slow or produces too many false positives.
               for LibFixture in APatternMap.Keys do
                 ScanRowForUsage(TrimmedLine, WikiPageName, LibFixture, APatternMap, AUsageMap);
             end;
