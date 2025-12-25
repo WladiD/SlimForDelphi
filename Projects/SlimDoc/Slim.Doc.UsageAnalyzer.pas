@@ -84,25 +84,19 @@ begin
     if TrimmedLine.StartsWith('|') then
     begin
       Cells := ExtractTableCells(TrimmedLine);
-      if not InLibraryTable then
+      if Length(Cells) = 0 then
+        Continue;
+      if InLibraryTable then
       begin
-        if (Length(Cells) > 0) and SameText(Cells[0], 'library') then
-          InLibraryTable := True;
+        LibFixture := FindFixture(Cells[0], AFixtureMap);
+        if Assigned(LibFixture) and (not Result.Contains(LibFixture)) then
+          Result.Add(LibFixture);
       end
       else
-      begin
-        if Length(Cells) > 0 then
-        begin
-          LibFixture := FindFixture(Cells[0], AFixtureMap);
-          if Assigned(LibFixture) and (not Result.Contains(LibFixture)) then
-            Result.Add(LibFixture);
-        end;
-      end;
+        InLibraryTable := SameText(Cells[0], 'library');
     end
     else
-    begin
       InLibraryTable := False;
-    end;
   end;
 end;
 
