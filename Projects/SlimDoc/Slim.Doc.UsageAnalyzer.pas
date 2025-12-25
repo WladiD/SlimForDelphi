@@ -54,17 +54,11 @@ begin
   if S.IsEmpty then
     Exit;
 
-  var SB := TStringBuilder.Create;
-  try
-    for var I := 1 to S.Length do
-    begin
-      if (I > 1) and CharInSet(S[I], ['A'..'Z']) then
-        SB.Append(' ');
-      SB.Append(S[I]);
-    end;
-    Result := SB.ToString;
-  finally
-    SB.Free;
+  for var Loop: Integer := 1 to S.Length do
+  begin
+    if (Loop > 1) and CharInSet(S[Loop], ['A'..'Z']) then
+      Result := Result + ' ';
+    Result := Result + S[Loop];
   end;
 end;
 
@@ -73,14 +67,13 @@ var
   Cells         : TArray<String>;
   InLibraryTable: Boolean;
   LibFixture    : TSlimFixtureDoc;
-  Line          : String;
 begin
   Result := TList<TSlimFixtureDoc>.Create;
   InLibraryTable := False;
 
-  for Line in ALines do
+  for var Line: String in ALines do
   begin
-    var TrimmedLine := Line.Trim;
+    var TrimmedLine: String := Line.Trim;
     if TrimmedLine.StartsWith('|') then
     begin
       Cells := ExtractTableCells(TrimmedLine);
@@ -101,19 +94,18 @@ begin
 end;
 
 procedure TSlimUsageAnalyzer.CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
-var
-  Line: String;
 begin
-  for Line in ALines do
+  for var Line: String in ALines do
   begin
-    var Trimmed := Line.Trim;
-    if not Trimmed.StartsWith('!include', True) then
+    var TrimmedLine: String := Line.Trim;
+    if not TrimmedLine.StartsWith('!include', True) then
       Continue;
 
-    var Parts := Trimmed.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-    if Length(Parts) < 2 then Continue;
+    var Parts: TArray<String> := TrimmedLine.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+    if Length(Parts) < 2 then
+      Continue;
 
-    var IncludePath := '';
+    var IncludePath: String := '';
     for var I := 1 to High(Parts) do
       if not Parts[I].StartsWith('-') then
       begin
@@ -124,16 +116,16 @@ begin
     if IncludePath = '' then
       Continue;
 
-    var FullPath := ResolveIncludePath(AFitNesseRoot, ACurrentDir, IncludePath);
+    var FullPath: String := ResolveIncludePath(AFitNesseRoot, ACurrentDir, IncludePath);
     if (FullPath <> '') and TFile.Exists(FullPath) and (AVisitedFiles.IndexOf(FullPath) < 0) then
     begin
       AVisitedFiles.Add(FullPath);
-      var IncludedLines := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
+      var IncludedLines: TArray<String> := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
 
       // 1. Collect libraries from the included file itself
-      var Libs := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
+      var Libs: TList<TSlimFixtureDoc> := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
       try
-        for var F in Libs do
+        for var F: TSlimFixtureDoc in Libs do
           if not ALibraryFixtures.Contains(F) then
             ALibraryFixtures.Add(F);
       finally
@@ -231,17 +223,17 @@ var
 
   procedure CheckFile(const AName: String);
   begin
-    var Path := TPath.Combine(CurrentDir, AName);
-    if TFile.Exists(Path) then
-    begin
-      Libs := CollectLibrariesFromLines(TFile.ReadAllLines(Path, TEncoding.UTF8), AFixtureMap);
-      try
-        for var F in Libs do
-          if not Result.Contains(F) then
-            Result.Add(F);
-      finally
-        Libs.Free;
-      end;
+    var Path: String := TPath.Combine(CurrentDir, AName);
+    if not TFile.Exists(Path) then
+      Exit;
+
+    Libs := CollectLibrariesFromLines(TFile.ReadAllLines(Path, TEncoding.UTF8), AFixtureMap);
+    try
+      for var F: TSlimFixtureDoc in Libs do
+        if not Result.Contains(F) then
+          Result.Add(F);
+    finally
+      Libs.Free;
     end;
   end;
 
@@ -284,7 +276,7 @@ begin
   if SameText(ExtractFileName(RelPath), 'content.txt') then
      RelPath := ExtractFileDir(RelPath);
 
-  var Ext := ExtractFileExt(RelPath);
+  var Ext: String := ExtractFileExt(RelPath);
   if Ext <> '' then
     RelPath := RelPath.Substring(0, RelPath.Length - Ext.Length);
 
@@ -295,11 +287,11 @@ function TSlimUsageAnalyzer.FindFixture(const AName: String; AFixtureMap: TDicti
 var
   CleanName: String;
 begin
+  Result := nil;
   if AName.IsEmpty then
-    Exit(nil);
+    Exit;
   CleanName := AName.Replace(' ', '').ToLower;
-  if not AFixtureMap.TryGetValue(CleanName, Result) then
-    Result := nil;
+  AFixtureMap.TryGetValue(CleanName, Result);
 end;
 
 function TSlimUsageAnalyzer.ExtractTableCells(const ALine: String): TArray<String>;
