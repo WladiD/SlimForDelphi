@@ -65,7 +65,7 @@ type
     [Test]
     procedure TestInterleavedMethodUsage;
     [Test]
-    procedure TestOnlyReservePositionsReproduction;
+    procedure TestMyFormReproduction;
     [Test]
     procedure TestScenarioUsage;
   end;
@@ -134,7 +134,7 @@ begin
 
   // Specific Fixture from user case
   Fixture := TSlimFixtureDoc.Create;
-  Fixture.Name := 'NpkReserveForm';
+  Fixture.Name := 'MyForm';
   Method := TSlimMethodDoc.Create;
   Method.Name := 'ClickToolbarButtonOnFormWithIcon';
   Fixture.Methods.Add(Method);
@@ -547,23 +547,22 @@ begin
   end;
 end;
 
-procedure TTestSlimUsageAnalyzer.TestOnlyReservePositionsReproduction;
+procedure TTestSlimUsageAnalyzer.TestMyFormReproduction;
 var
   UsageMap: TUsageMap;
   List    : TStringList;
 begin
-  // Exact reproduction of the user's wiki snippet
-  CreateWikiFile('OnlyReservePositions.wiki',
-    '|script                                       |Npk Reserve Form|$ReserveForm     |'#13#10 +
-    '|Click Toolbar Button On Form                 |$ReserveForm    |With Icon|DOC_ADD|');
+  CreateWikiFile('MyFormPositions.wiki',
+    '|script                      |My Form         |$MyForm          |'#13#10 +
+    '|Click Toolbar Button On Form|$MyForm         |With Icon|DOC_ADD|');
 
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
   try
-    Assert.IsTrue(UsageMap.ContainsKey('npkreserveform.clicktoolbarbuttononformwithicon'),
+    Assert.IsTrue(UsageMap.ContainsKey('myform.clicktoolbarbuttononformwithicon'),
       'Should find usage for ClickToolbarButtonOnFormWithIcon in reproduction case');
-    List := UsageMap['npkreserveform.clicktoolbarbuttononformwithicon'];
+    List := UsageMap['myform.clicktoolbarbuttononformwithicon'];
     Assert.AreEqual(1, List.Count);
-    Assert.AreEqual('OnlyReservePositions', List[0]);
+    Assert.AreEqual('MyFormPositions', List[0]);
   finally
     UsageMap.Free;
   end;
