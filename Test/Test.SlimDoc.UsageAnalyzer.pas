@@ -48,6 +48,16 @@ type
     procedure TestNamespacedFixtureUsage;
     [Test]
     procedure TestEscapedFixtureName;
+    [Test]
+    procedure TestLibraryTableUsage;
+    [Test]
+    procedure TestLibraryTableInSetupPage;
+    [Test]
+    procedure TestLibraryTableWithSpaces;
+    [Test]
+    procedure TestScriptTableWithFixtureNamedScript;
+    [Test]
+    procedure TestScenarioUsage;
   end;
 
 implementation
@@ -83,6 +93,27 @@ begin
   Method.Name := 'SetSelId';
   Fixture.Methods.Add(Method);
 
+  FFixtures.Add(Fixture);
+
+  // Library Fixture
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'LibraryFixture';
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'ExecuteAction';
+  Fixture.Methods.Add(Method);
+  FFixtures.Add(Fixture);
+
+  // Flow Control Fixture (simulating the issue)
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'FlowControl';
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'IgnoreAllTestsIfDefined';
+  Fixture.Methods.Add(Method);
+  FFixtures.Add(Fixture);
+
+  // Script Fixture (empty, relies on Library)
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'ScriptFixture';
   FFixtures.Add(Fixture);
 end;
 
@@ -174,7 +205,7 @@ begin
   // "SetSelId" should be found when used as "Sel Id" or "sel id" in a Decision Table
   // Header row 1: Fixture Name. Header row 2: Column names (setters)
   CreateWikiFile('DecisionTable.wiki', '| MyFixture |'#13#10'| sel id |'#13#10'| 1 |');
-  
+
   // Also check escaped variant (typically used for CamelCase to avoid WikiWords)
   CreateWikiFile('EscapedDecisionTable.wiki', '| MyFixture |'#13#10'| !-SelId-! |'#13#10'| 1 |');
 
@@ -283,6 +314,143 @@ begin
     List := UsageMap['myfixture.dosomething'];
     Assert.AreEqual(1, List.Count);
     Assert.AreEqual('SimpleEscaped', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestLibraryTableUsage;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Library table imports "LibraryFixture"
+  // Script table uses "ScriptFixture"
+  // Method "ExecuteAction" is in LibraryFixture, not ScriptFixture
+  CreateWikiFile('LibraryUsage.wiki',
+    '| Library |'#13#10 +
+    '| LibraryFixture |'#13#10 +
+    ''#13#10 +
+    '| script | ScriptFixture |'#13#10 +
+    '| execute action | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('libraryfixture.executeaction'), 'Should find usage for LibraryFixture.ExecuteAction via Library table');
+    List := UsageMap['libraryfixture.executeaction'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('LibraryUsage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestLibraryTableInSetupPage;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // SetUp page imports "LibraryFixture"
+  CreateWikiFile('SetUp.wiki',
+    '| Library |'#13#10 +
+    '| LibraryFixture |');
+
+  // Test page uses "ScriptFixture" but calls "ExecuteAction" from Library
+  CreateWikiFile('TestPage.wiki',
+    '| script | ScriptFixture |'#13#10 +
+    '| execute action | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('libraryfixture.executeaction'), 'Should find usage from inherited SetUp library');
+    List := UsageMap['libraryfixture.executeaction'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('TestPage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestLibraryTableWithSpaces;
+var
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // SuiteSetUp defines "Flow Control" as library
+  CreateWikiFile('SuiteSetUp.wiki',
+    '| Library |'#13#10 +
+    '| Flow Control |');
+
+  // Page uses ScriptFixture but calls IgnoreAllTestsIfDefined
+  CreateWikiFile('TestPage.wiki',
+    '| script | ScriptFixture |'#13#10 +
+    '| ignore all tests if defined | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('flowcontrol.ignorealltestsifdefined'), 'Should find usage for FlowControl.IgnoreAllTestsIfDefined via inherited Library');
+    List := UsageMap['flowcontrol.ignorealltestsifdefined'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('TestPage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestScriptTableWithFixtureNamedScript;
+var
+  UsageMap: TUsageMap;
+  Fixture : TSlimFixtureDoc;
+begin
+  // Setup a fixture named "Script" (like Base.UI.Script)
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'Script';
+  FFixtures.Add(Fixture);
+
+  // SuiteSetUp defines "FlowControl" as library
+  CreateWikiFile('SuiteSetUp.wiki', '| Library |'#13#10'| FlowControl |');
+
+  // Page uses "script" table with fixture "Script"
+  CreateWikiFile('TestPage.wiki',
+    '| script | Script |'#13#10 +
+    '| ignore all tests if defined | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('flowcontrol.ignorealltestsifdefined'), 'Should find library usage even if fixture is named Script');
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestScenarioUsage;
+var
+  Fixture : TSlimFixtureDoc;
+  Method  : TSlimMethodDoc;
+  UsageMap: TUsageMap;
+  List    : TStringList;
+begin
+  // Fixture setup
+  Fixture := TSlimFixtureDoc.Create;
+  Fixture.Name := 'ScenarioFixture';
+  Method := TSlimMethodDoc.Create;
+  Method.Name := 'ScenarioMethod';
+  Fixture.Methods.Add(Method);
+  FFixtures.Add(Fixture);
+
+  // Wiki file with scenario
+  // Even without explicit fixture usage, methods in scenarios should be detected
+  // (potentially matching against all fixtures or libraries)
+  CreateWikiFile('ScenarioUsage.wiki',
+    '| scenario | MyScenario | arg |'#13#10 +
+    '| scenario method | arg |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('scenariofixture.scenariomethod'), 'Should find usage in scenario');
+    List := UsageMap['scenariofixture.scenariomethod'];
+    Assert.AreEqual(1, List.Count);
+    Assert.AreEqual('ScenarioUsage', List[0]);
   finally
     UsageMap.Free;
   end;

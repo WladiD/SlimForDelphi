@@ -29,9 +29,11 @@ type
   TSlimUsageAnalyzer = class
   private
     function  CamelCaseToSpaced(const S: String): String;
-    procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript: Boolean);
+    function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+    procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
     function  ExtractTableCells(const ALine: String): TArray<String>;
     function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
+    function  GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
     function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
     function  IsIgnoredFile(const AFilePath: String): Boolean;
     procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
@@ -61,6 +63,84 @@ begin
     Result := SB.ToString;
   finally
     SB.Free;
+  end;
+end;
+
+function TSlimUsageAnalyzer.CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+var
+  Cells         : TArray<String>;
+  InLibraryTable: Boolean;
+  LibFixture    : TSlimFixtureDoc;
+  Line          : String;
+begin
+  Result := TList<TSlimFixtureDoc>.Create;
+  InLibraryTable := False;
+
+  for Line in ALines do
+  begin
+    var TrimmedLine := Line.Trim;
+    if TrimmedLine.StartsWith('|') then
+    begin
+      Cells := ExtractTableCells(TrimmedLine);
+      if not InLibraryTable then
+      begin
+        if (Length(Cells) > 0) and SameText(Cells[0], 'library') then
+          InLibraryTable := True;
+      end
+      else
+      begin
+        if Length(Cells) > 0 then
+        begin
+          LibFixture := FindFixture(Cells[0], AFixtureMap);
+          if Assigned(LibFixture) and (not Result.Contains(LibFixture)) then
+            Result.Add(LibFixture);
+        end;
+      end;
+    end
+    else
+    begin
+      InLibraryTable := False;
+    end;
+  end;
+end;
+
+function TSlimUsageAnalyzer.GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+var
+  CurrentDir: String;
+  Libs      : TList<TSlimFixtureDoc>;
+  Root      : String;
+
+  procedure CheckFile(const AName: String);
+  begin
+    var Path := TPath.Combine(CurrentDir, AName);
+    if TFile.Exists(Path) then
+    begin
+      Libs := CollectLibrariesFromLines(TFile.ReadAllLines(Path, TEncoding.UTF8), AFixtureMap);
+      try
+        for var F in Libs do
+          if not Result.Contains(F) then
+            Result.Add(F);
+      finally
+        Libs.Free;
+      end;
+    end;
+  end;
+
+begin
+  Result := TList<TSlimFixtureDoc>.Create;
+  Root := ExcludeTrailingPathDelimiter(AFitNesseRoot);
+  CurrentDir := ExtractFileDir(AFilePath);
+  
+  // Walk up until we are above Root
+  while (Length(CurrentDir) >= Length(Root)) and (SameText(CurrentDir, Root) or CurrentDir.StartsWith(Root + PathDelim, True)) do
+  begin
+    CheckFile('SetUp.wiki');
+    CheckFile('SuiteSetUp.wiki');
+    CheckFile('SetUp'); // Check for folder/content? No, usually SetUp page is .wiki or folder/content.txt. 
+                      // If SetUp is a folder, we might need to check SetUp/content.txt.
+                      // For simplicity, sticking to .wiki as per current patterns.
+
+    CurrentDir := ExtractFileDir(CurrentDir);
   end;
 end;
 
@@ -131,37 +211,55 @@ begin
   end;
 end;
 
-procedure TSlimUsageAnalyzer.DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript: Boolean);
+procedure TSlimUsageAnalyzer.DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
 begin
   AActiveFixture := nil;
   AIsDT := False;
   AIsScript := False;
+  AIsScenario := False;
+
   if Length(ACells) = 0 then
     Exit;
 
-  // Case 1: | FixtureName | ... (Decision Table)
-  AActiveFixture := FindFixture(ACells[0], AFixtureMap);
-  AIsDT:=Assigned(AActiveFixture);
-  if AIsDT then
-    Exit;
+  var FirstCell := ACells[0].ToLower;
 
-  if Length(ACells) > 1 then
+  // Case 0: | Scenario | ...
+  if FirstCell = 'scenario' then
   begin
-    // Case 2: | script | FixtureName | ...
-    // Case 3: | dt | FixtureName | ...
-    var TableType := ACells[0].ToLower;
-    if (TableType = 'script') or (TableType = 'dt') or (TableType = 'ddt') or (TableType = 'table') or (TableType = 'query') then
+    AIsScenario := True;
+    Exit;
+  end;
+
+  // Check for table type keywords first, before checking if FirstCell is a fixture name.
+  // This is important because a fixture could be named "Script" (e.g. Base.UI.Script).
+  if (FirstCell = 'script') or (FirstCell = 'dt') or (FirstCell = 'ddt') or 
+     (FirstCell = 'table') or (FirstCell = 'query') or (FirstCell = 'ordered query') or 
+     (FirstCell = 'subset query') then
+  begin
+    if Length(ACells) > 1 then
     begin
       AActiveFixture := FindFixture(ACells[1], AFixtureMap);
       if Assigned(AActiveFixture) then
       begin
-        if TableType = 'script' then
+        if FirstCell = 'script' then
           AIsScript := True
         else
           AIsDT := True;
+        Exit;
       end;
     end;
+    
+    // If it's just "| script |" without a fixture name, it's still a script table
+    if FirstCell = 'script' then
+    begin
+      AIsScript := True;
+      Exit;
+    end;
   end;
+
+  // Case 1: | FixtureName | ... (Decision Table)
+  AActiveFixture := FindFixture(ACells[0], AFixtureMap);
+  AIsDT := Assigned(AActiveFixture);
 end;
 
 procedure TSlimUsageAnalyzer.ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
@@ -208,15 +306,19 @@ end;
 
 procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
 var
-  ActiveFixture: TSlimFixtureDoc;
-  Cells        : TArray<String>;
-  InTable      : Boolean;
-  IsDT         : Boolean;
-  IsScript     : Boolean;
-  Line         : String;
-  Lines        : TArray<String>;
-  TableRow     : Integer;
-  WikiPageName : String;
+  ActiveFixture  : TSlimFixtureDoc;
+  Cells          : TArray<String>;
+  InTable        : Boolean;
+  IsDT           : Boolean;
+  IsLibraryTable : Boolean;
+  IsScenario     : Boolean;
+  IsScript       : Boolean;
+  LibFixture     : TSlimFixtureDoc;
+  LibraryFixtures: TList<TSlimFixtureDoc>;
+  Line           : String;
+  Lines          : TArray<String>;
+  TableRow       : Integer;
+  WikiPageName   : String;
 begin
   if IsIgnoredFile(AFilePath)
     then Exit;
@@ -229,34 +331,86 @@ begin
   TableRow := 0;
   IsDT := False;
   IsScript := False;
-
-  for Line in Lines do
-  begin
-    var TrimmedLine := Line.Trim;
-    if TrimmedLine.StartsWith('|') then
+  IsScenario := False;
+  IsLibraryTable := False;
+  
+  // Init libraries with inherited ones
+  LibraryFixtures := GetInheritedLibraries(AFitNesseRoot, AFilePath, AFixtureMap);
+  try
+    for Line in Lines do
     begin
-      if not InTable then
+      var TrimmedLine := Line.Trim;
+      if TrimmedLine.StartsWith('|') then
       begin
-        InTable := True;
-        TableRow := 0;
-        Cells := ExtractTableCells(TrimmedLine);
-        DetectActiveFixture(Cells, AFixtureMap, ActiveFixture, IsDT, IsScript);
+        if not InTable then
+        begin
+          InTable := True;
+          TableRow := 0;
+          Cells := ExtractTableCells(TrimmedLine);
+
+          if (Length(Cells) > 0) and SameText(Cells[0], 'library') then
+          begin
+            IsLibraryTable := True;
+            IsDT := False;
+            IsScript := False;
+            IsScenario := False;
+            ActiveFixture := nil;
+          end
+          else
+          begin
+            IsLibraryTable := False;
+            DetectActiveFixture(Cells, AFixtureMap, ActiveFixture, IsDT, IsScript, IsScenario);
+          end;
+        end
+        else
+        begin
+          Inc(TableRow);
+
+          if IsLibraryTable then
+          begin
+            Cells := ExtractTableCells(TrimmedLine);
+            if Length(Cells) > 0 then
+            begin
+              LibFixture := FindFixture(Cells[0], AFixtureMap);
+              if Assigned(LibFixture) and (not LibraryFixtures.Contains(LibFixture)) then
+                LibraryFixtures.Add(LibFixture);
+            end;
+          end
+          else
+          begin
+            if Assigned(ActiveFixture) then
+            begin
+              if IsScript or (IsDT and (TableRow = 1)) then
+              begin
+                ScanRowForUsage(TrimmedLine, WikiPageName, ActiveFixture, APatternMap, AUsageMap);
+                
+                // Also scan libraries if it is a script table
+                if IsScript then
+                  for LibFixture in LibraryFixtures do
+                    ScanRowForUsage(TrimmedLine, WikiPageName, LibFixture, APatternMap, AUsageMap);
+              end;
+            end
+            else if IsScenario then
+            begin
+              // In scenarios, we don't know the active fixture, so we check all available fixtures.
+              // This is a broad search but ensures we find usages in scenario definitions.
+              // Note: We might want to optimize this if it becomes too slow or produces too many false positives.
+              for LibFixture in APatternMap.Keys do
+                ScanRowForUsage(TrimmedLine, WikiPageName, LibFixture, APatternMap, AUsageMap);
+            end;
+          end;
+        end;
       end
       else
       begin
-        Inc(TableRow);
-        if Assigned(ActiveFixture) then
-        begin
-          if IsScript or (IsDT and (TableRow = 1)) then
-            ScanRowForUsage(TrimmedLine, WikiPageName, ActiveFixture, APatternMap, AUsageMap);
-        end;
+        InTable := False;
+        ActiveFixture := nil;
+        IsLibraryTable := False;
+        IsScenario := False;
       end;
-    end
-    else
-    begin
-      InTable := False;
-      ActiveFixture := nil;
     end;
+  finally
+    LibraryFixtures.Free;
   end;
 end;
 
