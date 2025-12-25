@@ -29,8 +29,8 @@ type
   TSlimUsageAnalyzer = class
   private
     function  CamelCaseToSpaced(const S: String): String;
-    function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
     procedure CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
+    function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
     procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
     function  ExtractTableCells(const ALine: String): TArray<String>;
     function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
@@ -51,8 +51,8 @@ implementation
 function TSlimUsageAnalyzer.CamelCaseToSpaced(const S: String): String;
 begin
   Result := '';
-  if S.IsEmpty
-    then Exit;
+  if S.IsEmpty then
+    Exit;
 
   var SB := TStringBuilder.Create;
   try
@@ -113,41 +113,41 @@ begin
   for Line in ALines do
   begin
     var Trimmed := Line.Trim;
-    if Trimmed.StartsWith('!include', True) then
-    begin
-      var Parts := Trimmed.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-      if Length(Parts) < 2 then Continue;
+    if not Trimmed.StartsWith('!include', True) then
+      Continue;
 
-      var IncludePath := '';
-      for var I := 1 to High(Parts) do
-        if not Parts[I].StartsWith('-') then
-        begin
-          IncludePath := Parts[I];
-          Break;
-        end;
+    var Parts := Trimmed.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+    if Length(Parts) < 2 then Continue;
 
-      if IncludePath <> '' then
+    var IncludePath := '';
+    for var I := 1 to High(Parts) do
+      if not Parts[I].StartsWith('-') then
       begin
-        var FullPath := ResolveIncludePath(AFitNesseRoot, ACurrentDir, IncludePath);
-        if (FullPath <> '') and TFile.Exists(FullPath) and (AVisitedFiles.IndexOf(FullPath) < 0) then
-        begin
-          AVisitedFiles.Add(FullPath);
-          var IncludedLines := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
-
-          // 1. Collect libraries from the included file itself
-          var Libs := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
-          try
-            for var F in Libs do
-              if not ALibraryFixtures.Contains(F) then
-                ALibraryFixtures.Add(F);
-          finally
-            Libs.Free;
-          end;
-
-          // 2. Recursively follow includes in the included file
-          CollectLibrariesFromIncludes(AFitNesseRoot, ExtractFileDir(FullPath), IncludedLines, AFixtureMap, ALibraryFixtures, AVisitedFiles);
-        end;
+        IncludePath := Parts[I];
+        Break;
       end;
+
+    if IncludePath = '' then
+      Continue;
+
+    var FullPath := ResolveIncludePath(AFitNesseRoot, ACurrentDir, IncludePath);
+    if (FullPath <> '') and TFile.Exists(FullPath) and (AVisitedFiles.IndexOf(FullPath) < 0) then
+    begin
+      AVisitedFiles.Add(FullPath);
+      var IncludedLines := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
+
+      // 1. Collect libraries from the included file itself
+      var Libs := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
+      try
+        for var F in Libs do
+          if not ALibraryFixtures.Contains(F) then
+            ALibraryFixtures.Add(F);
+      finally
+        Libs.Free;
+      end;
+
+      // 2. Recursively follow includes in the included file
+      CollectLibrariesFromIncludes(AFitNesseRoot, ExtractFileDir(FullPath), IncludedLines, AFixtureMap, ALibraryFixtures, AVisitedFiles);
     end;
   end;
 end;
@@ -220,7 +220,6 @@ begin
         end;
       end;
     end;
-
   except
     on E: Exception do
     begin
@@ -311,7 +310,6 @@ end;
 
 function TSlimUsageAnalyzer.ExtractTableCells(const ALine: String): TArray<String>;
 var
-  C       : Integer;
   EndIdx  : Integer;
   RawCells: TArray<String>;
   StartIdx: Integer;
@@ -325,9 +323,9 @@ begin
     Dec(EndIdx);
 
   SetLength(Result, 0);
-  for C := StartIdx to EndIdx do
+  for var Loop: Integer := StartIdx to EndIdx do
   begin
-    var CellVal := RawCells[C].Trim;
+    var CellVal := RawCells[Loop].Trim;
     if CellVal.StartsWith('!-') and CellVal.EndsWith('-!') then
        CellVal := CellVal.Substring(2, CellVal.Length - 4);
     SetLength(Result, Length(Result) + 1);
@@ -388,13 +386,13 @@ end;
 
 procedure TSlimUsageAnalyzer.ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
 var
+  Cells          : TArray<String>;
   CurrentPatterns: TDictionary<String, TArray<String>>;
   MethodKey      : String;
   MethodPatterns : TArray<String>;
   Pat            : String;
   UsageKey       : String;
   UsageList      : TStringList;
-  Cells          : TArray<String>;
 begin
   if not APatternMap.TryGetValue(AActiveFixture, CurrentPatterns) then
     Exit;
@@ -426,19 +424,11 @@ begin
     var Found := False;
     for Pat in MethodPatterns do
     begin
-      // 1. Check full line (legacy behavior, good for Decision Tables and simple scripts)
-      if ContainsText(ALine, Pat) then
-      begin
-        Found := True;
+      Found :=
+        ContainsText(ALine, Pat) or  // 1. Check full line (legacy behavior, good for Decision Tables and simple scripts)
+        ContainsText(Combined, Pat); // 2. Check combined alternate cells (Interleaved arguments in script tables)
+      if Found then
         Break;
-      end;
-
-      // 2. Check combined alternate cells (Interleaved arguments in script tables)
-      if ContainsText(Combined, Pat) then
-      begin
-        Found := True;
-        Break;
-      end;
     end;
 
     if Found then
@@ -470,11 +460,11 @@ var
   Line           : String;
   Lines          : TArray<String>;
   TableRow       : Integer;
-  WikiPageName   : String;
   VisitedFiles   : TStringList;
+  WikiPageName   : String;
 begin
-  if IsIgnoredFile(AFilePath)
-    then Exit;
+  if IsIgnoredFile(AFilePath) then
+    Exit;
 
   WikiPageName := GetWikiPageName(AFitNesseRoot, AFilePath);
   Lines := TFile.ReadAllLines(AFilePath, TEncoding.UTF8);
