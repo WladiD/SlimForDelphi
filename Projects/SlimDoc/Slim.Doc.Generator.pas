@@ -17,6 +17,7 @@ uses
   System.SysUtils,
 
   Slim.Doc.Model,
+  Slim.Doc.Utils,
   Slim.Doc.UsageAnalyzer;
 
 type
@@ -284,7 +285,24 @@ begin
         begin
           UsageStr := '<div class="usage-links">';
           for U in UsageList do
-             UsageStr := UsageStr + Format('<a href="../%s" target="_blank">%s</a>', [U, U]);
+          begin
+             var Fragment := 'text=' + Method.Name;
+             var Spaced := CamelCaseToSpaced(Method.Name);
+             if Spaced <> Method.Name then
+               Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
+
+             if (Method.Name.Length > 3) and Method.Name.StartsWith('Set', True) then
+             begin
+               var PropName := Method.Name.Substring(3);
+               Fragment := Fragment + '&text=' + PropName;
+               
+               var SpacedProp := CamelCaseToSpaced(PropName);
+               if SpacedProp <> PropName then
+                 Fragment := Fragment + '&text=' + SpacedProp.Replace(' ', '%20');
+             end;
+             
+             UsageStr := UsageStr + Format('<a href="../%s#:~:%s" target="_blank">%s</a>', [U, Fragment, U]);
+          end;
           UsageStr := UsageStr + '</div>';
 
           if Method.IsInherited then RowClass := ' class="inherited-member usage-row"'

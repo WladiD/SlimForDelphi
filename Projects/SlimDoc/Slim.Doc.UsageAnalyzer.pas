@@ -17,7 +17,8 @@ uses
   System.SysUtils,
   System.Types,
 
-  Slim.Doc.Model;
+  Slim.Doc.Model,
+  Slim.Doc.Utils;
 
 type
 
@@ -28,7 +29,6 @@ type
 
   TSlimUsageAnalyzer = class
   private
-    function  CamelCaseToSpaced(const S: String): String;
     procedure CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
     function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
     procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
@@ -47,20 +47,6 @@ type
 implementation
 
 { TSlimUsageAnalyzer }
-
-function TSlimUsageAnalyzer.CamelCaseToSpaced(const S: String): String;
-begin
-  Result := '';
-  if S.IsEmpty then
-    Exit;
-
-  for var Loop: Integer := 1 to S.Length do
-  begin
-    if (Loop > 1) and CharInSet(S[Loop], ['A'..'Z']) then
-      Result := Result + ' ';
-    Result := Result + S[Loop];
-  end;
-end;
 
 function TSlimUsageAnalyzer.CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
 var
