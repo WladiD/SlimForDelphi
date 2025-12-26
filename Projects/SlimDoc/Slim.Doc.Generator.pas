@@ -278,8 +278,12 @@ begin
         if Method.IsInherited then RowClass := 'inherited-member';
         if RowClass <> '' then RowClass := ' class="' + RowClass + '"';
 
-        SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
-          [RowClass, ToggleCell, Method.Name, Method.GetParamsString, Method.ReturnType, Method.SyncMode, Method.Origin]);
+        var SyncStyle := '';
+        if SameText(Method.SyncMode, 'smUnsynchronized') then
+          SyncStyle := ' style="color:#888"';
+
+        SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
+          [RowClass, ToggleCell, Method.Name, Method.GetParamsString, Method.ReturnType, SyncStyle, Method.SyncMode, Method.Origin]);
 
         if HasUsage then
         begin

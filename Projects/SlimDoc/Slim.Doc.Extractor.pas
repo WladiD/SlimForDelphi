@@ -25,7 +25,7 @@ type
   TSlimDocExtractor = class
   private
     function IsStandardNoise(const AMethodName: String): Boolean;
-    function GetSyncModeStr(AMember: TRttiMember): String;
+    function GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
   public
     function ExtractAll: TObjectList<TSlimFixtureDoc>;
     function ExtractClass(AClass: TClass): TSlimFixtureDoc;
@@ -90,9 +90,10 @@ begin
     SameText(AMethodName, 'DelayedOwner');
 end;
 
-function TSlimDocExtractor.GetSyncModeStr(AMember: TRttiMember): String;
+function TSlimDocExtractor.GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
 var
   LAttr: TCustomAttribute;
+  Mode : TSyncMode;
 begin
   Result := '';
   for LAttr in AMember.GetAttributes do
@@ -102,6 +103,12 @@ begin
       Result := GetEnumName(TypeInfo(TSyncMode), Ord(SlimMemberSyncModeAttribute(LAttr).SyncMode));
       Exit;
     end;
+  end;
+
+  if (Result = '') and Assigned(AInstance) then
+  begin
+    Mode := AInstance.SyncMode(AMember);
+    Result := GetEnumName(TypeInfo(TSyncMode), Ord(Mode));
   end;
 end;
 
@@ -125,6 +132,7 @@ var
   Ctx           : TRttiContext;
   DocMethod     : TSlimMethodDoc;
   DocProp       : TSlimPropertyDoc;
+  FixtureInstance: TSlimFixture;
   Method        : TRttiMethod;
   Param         : TRttiParameter;
   ParentClassRef: TClass;
@@ -133,7 +141,18 @@ var
 begin
   Result := TSlimFixtureDoc.Create;
   Ctx := TRttiContext.Create;
+  FixtureInstance := nil;
   try
+    if AClass.InheritsFrom(TSlimFixture) then
+    begin
+      try
+        FixtureInstance := TSlimFixtureClass(AClass).Create;
+      except
+        // Ignore constructor errors during doc generation
+        FixtureInstance := nil;
+      end;
+    end;
+
     RType := Ctx.GetType(AClass);
     Result.DelphiClass := RType.Name;
 
@@ -171,7 +190,7 @@ begin
       DocMethod.Origin := Method.Parent.Name;
       if not DocMethod.IsInherited then DocMethod.Origin := 'Self';
       
-      DocMethod.SyncMode := GetSyncModeStr(Method);
+      DocMethod.SyncMode := GetSyncModeStr(Method, FixtureInstance);
       if Assigned(Method.ReturnType) then
         DocMethod.ReturnType := Method.ReturnType.Name
       else
@@ -208,6 +227,7 @@ begin
     end;
 
   finally
+    FixtureInstance.Free;
     Ctx.Free;
   end;
 end;

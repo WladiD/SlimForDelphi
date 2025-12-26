@@ -40,6 +40,7 @@ type
   public
     function  CurName: String;
     procedure SetSelId(AId: Integer);
+    function  SyncMode(AMember: TRttiMember): TSyncMode; override;
   end;
 
 implementation
@@ -117,6 +118,11 @@ end;
 procedure TSlimSelectEntryFixture.SetSelId(AId: Integer);
 begin
   MainForm.SelectEntryById(AId);
+end;
+
+function TSlimSelectEntryFixture.SyncMode(AMember: TRttiMember): TSyncMode;
+begin
+  Result := smSynchronized;
 end;
 
 initialization
