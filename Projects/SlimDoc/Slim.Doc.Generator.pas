@@ -289,7 +289,16 @@ begin
              var Fragment := 'text=' + Method.Name;
              var Spaced := CamelCaseToSpaced(Method.Name);
              if Spaced <> Method.Name then
+             begin
                Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
+               // Range match for interleaved calls: WriteVarValue -> text=Write,Value
+               if Spaced.Contains(' ') then
+               begin
+                 var Parts := Spaced.Split([' ']);
+                 if Length(Parts) >= 2 then
+                   Fragment := Fragment + '&text=' + Parts[0] + ',' + Parts[High(Parts)];
+               end;
+             end;
 
              if (Method.Name.Length > 3) and Method.Name.StartsWith('Set', True) then
              begin
@@ -298,7 +307,15 @@ begin
                
                var SpacedProp := CamelCaseToSpaced(PropName);
                if SpacedProp <> PropName then
+               begin
                  Fragment := Fragment + '&text=' + SpacedProp.Replace(' ', '%20');
+                 if SpacedProp.Contains(' ') then
+                 begin
+                   var Parts := SpacedProp.Split([' ']);
+                   if Length(Parts) >= 2 then
+                     Fragment := Fragment + '&text=' + Parts[0] + ',' + Parts[High(Parts)];
+                 end;
+               end;
              end;
              
              UsageStr := UsageStr + Format('<a href="../%s#:~:%s" target="_blank">%s</a>', [U, Fragment, U]);
