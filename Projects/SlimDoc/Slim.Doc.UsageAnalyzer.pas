@@ -308,14 +308,20 @@ begin
   if (EndIdx >= StartIdx) and (RawCells[EndIdx] = '') then
     Dec(EndIdx);
 
-  SetLength(Result, 0);
+  var CellsCount: Integer := 0;
+  if EndIdx >= StartIdx then
+    CellsCount := EndIdx - StartIdx + 1;
+  SetLength(Result, CellsCount);
+  if CellsCount=0 then
+    Exit;
+
   for var Loop: Integer := StartIdx to EndIdx do
   begin
     var CellVal := RawCells[Loop].Trim;
     if CellVal.StartsWith('!-') and CellVal.EndsWith('-!') then
        CellVal := CellVal.Substring(2, CellVal.Length - 4);
-    SetLength(Result, Length(Result) + 1);
-    Result[High(Result)] := CellVal;
+
+    Result[Loop - StartIdx] := CellVal;
   end;
 end;
 
