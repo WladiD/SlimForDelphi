@@ -214,6 +214,7 @@ begin
       DocProp.IsInherited := Prop.Parent <> RType;
       DocProp.Origin := Prop.Parent.Name;
       if not DocProp.IsInherited then DocProp.Origin := 'Self';
+      DocProp.SyncMode := GetSyncModeStr(Prop, FixtureInstance);
 
       DocProp.Access := '';
       if Prop.IsReadable then DocProp.Access := 'Read';

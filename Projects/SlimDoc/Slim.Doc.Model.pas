@@ -44,6 +44,7 @@ type
   public
     Access      : String;
     PropertyType: String;
+    SyncMode    : String;
   end;
 
   TSlimFixtureDoc = class

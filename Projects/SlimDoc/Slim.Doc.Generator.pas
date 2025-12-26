@@ -346,6 +346,7 @@ begin
                 <th>Name</th>
                 <th>Type</th>
                 <th>Access</th>
+                <th>Sync Mode</th>
                 <th>Origin</th>
               </tr>
             </thead>
@@ -358,8 +359,12 @@ begin
           if Prop.IsInherited then RowClass := 'inherited-member';
           if RowClass <> '' then RowClass := ' class="' + RowClass + '"';
 
-          SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td style="color:#888">%s</td></tr>',
-            [RowClass, Prop.Name, Prop.PropertyType, Prop.Access, Prop.Origin]);
+          var SyncStyle := '';
+          if SameText(Prop.SyncMode, 'smUnsynchronized') then
+            SyncStyle := ' style="color:#888"';
+
+          SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
+            [RowClass, Prop.Name, Prop.PropertyType, Prop.Access, SyncStyle, Prop.SyncMode, Prop.Origin]);
         end;
         SB.AppendLine('</tbody></table>');
       end;
