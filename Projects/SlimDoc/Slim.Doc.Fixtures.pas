@@ -44,6 +44,11 @@ begin
   inherited;
 end;
 
+/// <summary>
+/// Scans the FitNesse root directory for method and property usages across all wiki pages.
+/// </summary>
+/// <param name="AFitNesseRoot">The absolute path to the FitNesseRoot folder.</param>
+/// <returns>A summary string containing the number of analyzed methods.</returns>
 function TSlimDocGeneratorFixture.AnalyzeUsage(const AFitNesseRoot: String): String;
 var
   Analyzer : TSlimUsageAnalyzer;
@@ -67,6 +72,11 @@ begin
   end;
 end;
 
+/// <summary>
+/// Generates the HTML documentation file containing all registered Slim fixtures, their members, and usage statistics.
+/// </summary>
+/// <param name="AFilePath">The absolute path where the HTML file should be saved.</param>
+/// <returns>An HTML anchor tag linking to the generated file.</returns>
 function TSlimDocGeneratorFixture.GenerateDocumentation(const AFilePath: String): String;
 var
   Extractor: TSlimDocExtractor;
