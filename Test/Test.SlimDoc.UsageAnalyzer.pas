@@ -68,6 +68,8 @@ type
     procedure TestMyFormReproduction;
     [Test]
     procedure TestScenarioUsage;
+    [Test]
+    procedure TestPropertyUsage;
   end;
 
 implementation
@@ -108,6 +110,11 @@ begin
   Method := TSlimMethodDoc.Create;
   Method.Name := 'ClickToolbarButtonOnFormWithIcon';
   Fixture.Methods.Add(Method);
+
+  // Add property 'SomeProp'
+  var Prop := TSlimPropertyDoc.Create;
+  Prop.Name := 'SomeProp';
+  Fixture.Properties.Add(Prop);
 
   FFixtures.Add(Fixture);
 
@@ -596,6 +603,30 @@ begin
     List := UsageMap['scenariofixture.scenariomethod'];
     Assert.AreEqual(1, List.Count);
     Assert.AreEqual('ScenarioUsage', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestPropertyUsage;
+var
+  List    : TStringList;
+  UsageMap: TUsageMap;
+begin
+  // Property usage via 'check' (getter)
+  CreateWikiFile('PropGetter.wiki', '| script | MyFixture |'#13#10'| check | some prop | value |');
+
+  // Property usage via 'set' (setter without set-prefix, common in decision tables)
+  // Or in script tables: | some prop | value | (setter call)
+  CreateWikiFile('PropSetter.wiki', '| script | MyFixture |'#13#10'| some prop | value |');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('myfixture.someprop'), 'Should find usage for property SomeProp');
+    List := UsageMap['myfixture.someprop'];
+    Assert.AreEqual(2, List.Count, 'Should find 2 usages');
+    Assert.IsTrue(List.IndexOf('PropGetter') >= 0);
+    Assert.IsTrue(List.IndexOf('PropSetter') >= 0);
   finally
     UsageMap.Free;
   end;
