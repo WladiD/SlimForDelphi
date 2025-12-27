@@ -10,10 +10,11 @@ Beyond simple API listing, SlimDoc includes a **Usage Analyzer** that scans your
 *   **RTTI Extraction**: Extracts methods, properties, parameter types, return types, and `[SlimFixture]` attributes.
 *   **Noise Filtering**: Automatically hides standard `TObject` methods (like `Free`, `ClassName`, etc.) to focus on your business logic.
 *   **Usage Analysis**: Scans your `FitNesseRoot` (files like `.wiki` and `content.txt`) to cross-reference fixture usage. The generated report includes links back to the specific wiki pages where methods are called.
+*   **XML Comments**: Extracts standard Delphi XML documentation comments (`/// <summary>...`) from source files and displays them in the documentation.
 *   **Interactive HTML**: The output is a single-page HTML file with:
     *   Search/Filter functionality.
     *   Table of Contents.
-    *   Collapsible "Used in..." sections.
+    *   Collapsible "Used in..." and Description sections.
     *   Toggle for inherited members.
 
 ## Getting Started
@@ -33,15 +34,17 @@ You can invoke the generator using the `SlimDoc.Generator` fixture (implemented 
 ```slim
 !3 Documentation
 |script                |!-SlimDoc.Generator-!                                                                      |
-|show                  |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                             |
+|show                  |analyze usage       |!-..\..\FitNesse\FitNesseRoot-!                                       |
+|include xml comments  |!-..\..\Projects\SlimDoc-!                                                                 |
 |generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
 |check                 |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
 ```
 
 **Steps:**
 1.  **analyze usage**: (Optional) Scans the provided directory path for fixture usage.
-2.  **generate documentation**: Generates the HTML file at the specified path.
-3.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
+2.  **include xml comments**: (Optional) Scans the source code in the provided directory for XML comments (`/// ...`).
+3.  **generate documentation**: Generates the HTML file at the specified path.
+4.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
 
 ## Project Structure
 
