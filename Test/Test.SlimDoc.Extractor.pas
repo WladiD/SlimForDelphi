@@ -187,6 +187,9 @@ begin
 
     Docs := Extractor.ExtractXmlDocs(Path);
     try
+      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture'), 'Should contain Class TSlimDocGeneratorFixture');
+      Assert.IsTrue(Docs['TSlimDocGeneratorFixture'].Contains('Generates HTML documentation for Slim Fixtures'), 'Class Doc content mismatch');
+
       Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.GenerateDocumentation'), 'Should contain GenerateDocumentation');
       Assert.IsTrue(Docs['TSlimDocGeneratorFixture.GenerateDocumentation'].Contains('Generates the HTML documentation file'), 'Doc content mismatch');
 

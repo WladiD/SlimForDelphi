@@ -247,6 +247,11 @@ begin
       SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td><td style="border: none; padding: 2px 0;"><span class="class-name">%s</span></td></tr>', [ClassDecl]);
       SB.Append('</table>');
 
+      if Fixture.Description <> '' then
+      begin
+        SB.AppendFormat('<div class="description-content" style="padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Fixture.Description]);
+      end;
+
       // Methods
       SB.Append('''
         <h3>Methods</h3>

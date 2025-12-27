@@ -268,6 +268,10 @@ begin
   try
     Docs := XmlExtractor.ExtractXmlDocs(SourceFile);
     try
+      // Enrich Class Description
+      if Docs.ContainsKey(ADoc.DelphiClass) then
+        ADoc.Description := Docs[ADoc.DelphiClass];
+
       // Enrich Methods
       for var M in ADoc.Methods do
       begin
@@ -309,14 +313,15 @@ begin
     var Line := S.Trim;
     if Line.StartsWith('///') then
       Line := Line.Substring(3).Trim;
-
-    if Result <> '' then Result := Result + sLineBreak;
+    if Result <> '' then
+      Result := Result + sLineBreak;
     Result := Result + Line;
   end;
 end;
 
 function TSlimXmlDocExtractor.ExtractXmlDocs(const ASourceFile: String): TDictionary<String, String>;
 var
+  ClassRegex  : TRegEx;
   CommentBlock: TStringList;
   I           : Integer;
   InComment   : Boolean;
@@ -335,9 +340,10 @@ begin
   CommentBlock := TStringList.Create;
   try
     InComment := False;
-    // Regex to capture "procedure ClassName.MethodName" or "property ClassName.PropName" or just "MethodName"
-    // Captures: 1=Type (proc/func/prop), 2=Name
-    MethodRegex := TRegEx.Create('^\s*(?:class\s+)?(procedure|function|constructor|destructor|property)\s+([\w\.]+)', [TRegExOption.roIgnoreCase]);
+    // Regex to capture "procedure ClassName.MethodName"
+    MethodRegex := TRegEx.Create('^(?:class\s+)?(procedure|function|constructor|destructor|property)\s+([\w\.]+)', [TRegExOption.roIgnoreCase]);
+    // Regex to capture "TMyClass = class"
+    ClassRegex := TRegEx.Create('^(\w+)\s*=\s*class', [TRegExOption.roIgnoreCase]);
 
     for I := 0 to High(Lines) do
     begin
@@ -348,28 +354,37 @@ begin
         InComment := True;
         CommentBlock.Add(Line);
       end
-      else
+      else if InComment then
       begin
-        if InComment then
+        // Ignore attributes (lines starting with [)
+        if Line.StartsWith('[') then
+          Continue;
+
+        // End of comment block, check if next line is a declaration
+        if Line <> '' then
         begin
-          // End of comment block, check if next line is a declaration
-          if Line <> '' then
+          Match := MethodRegex.Match(Line);
+          if Match.Success then
           begin
-             Match := MethodRegex.Match(Line);
-             if Match.Success then
-             begin
-               MemberName := Match.Groups[2].Value; // e.g. "TSlimDocGeneratorFixture.AnalyzeUsage" or "GeneratedLink"
-
-               // Store the normalized comment
-               if not Result.ContainsKey(MemberName) then
-                 Result.Add(MemberName, NormalizeComment(CommentBlock));
-             end;
+           MemberName := Match.Groups[2].Value; // Method/Prop name
+           if not Result.ContainsKey(MemberName) then
+             Result.Add(MemberName, NormalizeComment(CommentBlock));
+          end
+          else
+          begin
+           Match := ClassRegex.Match(Line);
+           if Match.Success then
+           begin
+             MemberName := Match.Groups[1].Value; // Class name
+             if not Result.ContainsKey(MemberName) then
+               Result.Add(MemberName, NormalizeComment(CommentBlock));
+           end;
           end;
-
-          // Reset
-          CommentBlock.Clear;
-          InComment := False;
         end;
+
+        // Reset
+        CommentBlock.Clear;
+        InComment := False;
       end;
     end;
   finally

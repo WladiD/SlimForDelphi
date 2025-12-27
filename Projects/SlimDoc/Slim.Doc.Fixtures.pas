@@ -22,6 +22,9 @@ uses
 
 type
 
+  /// <summary>
+  /// Generates HTML documentation for Slim Fixtures, including usage analysis and XML comments extraction.
+  /// </summary>
   [SlimFixture('Generator', 'SlimDoc')]
   TSlimDocGeneratorFixture = class(TSlimFixture)
   private
