@@ -140,6 +140,30 @@ begin
             }
           }
 
+          function updateSearchOption() {
+            var useFixture = document.getElementById("chkFixture").checked;
+            var useNamespace = document.getElementById("chkNamespace").checked;
+            var useMember = document.getElementById("chkMember").checked;
+            var useComment = document.getElementById("chkComment").checked;
+            var useUsage = document.getElementById("chkUsage").checked;
+            
+            var parts = [];
+            if (useFixture) parts.push("fixtures");
+            if (useNamespace) parts.push("namespaces");
+            if (useMember) parts.push("methods/properties");
+            if (useComment) parts.push("comments");
+            if (useUsage) parts.push("usage");
+            
+            var text = "Search";
+            if (parts.length > 0) {
+               text += " for " + parts.join(", ");
+            }
+            text += "...";
+            
+            document.getElementById("searchInput").placeholder = text;
+            filterFixtures();
+          }
+
           function filterFixtures() {
             var input = document.getElementById("searchInput");
             var filter = input.value.toUpperCase();
@@ -279,11 +303,11 @@ begin
             <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
           </div>
           <div class="filter-options">
-            <label><input type="checkbox" id="chkFixture" checked onchange="filterFixtures()"> Fixture Names</label>
-            <label><input type="checkbox" id="chkNamespace" checked onchange="filterFixtures()"> Namespaces</label>
-            <label><input type="checkbox" id="chkMember" checked onchange="filterFixtures()"> Methods/Properties</label>
-            <label><input type="checkbox" id="chkComment" checked onchange="filterFixtures()"> Comments</label>
-            <label><input type="checkbox" id="chkUsage" checked onchange="filterFixtures()"> Usage</label>
+            <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
+            <label><input type="checkbox" id="chkNamespace" checked onchange="updateSearchOption()"> Namespaces</label>
+            <label><input type="checkbox" id="chkMember" checked onchange="updateSearchOption()"> Methods/Properties</label>
+            <label><input type="checkbox" id="chkComment" checked onchange="updateSearchOption()"> Comments</label>
+            <label><input type="checkbox" id="chkUsage" checked onchange="updateSearchOption()"> Usage</label>
           </div>
         </div>
         <h1>Registered Slim Fixtures</h1>
