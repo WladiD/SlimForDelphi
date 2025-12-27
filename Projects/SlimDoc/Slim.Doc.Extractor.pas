@@ -30,10 +30,10 @@ type
     FRootSourcePath: String;
     function IsStandardNoise(const AMethodName: String): Boolean;
     function GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
-    procedure InjectXmlDocs(ADoc: TSlimFixtureDoc; const AUnitName: String);
+    procedure InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName: String);
   public
-    function ExtractAll: TObjectList<TSlimFixtureDoc>;
-    function ExtractClass(AClass: TClass): TSlimFixtureDoc;
+    function ExtractAll: TObjectList<TSlimDocFixture>;
+    function ExtractClass(AClass: TClass): TSlimDocFixture;
     property RootSourcePath: String read FRootSourcePath write FRootSourcePath;
   end;
 
@@ -127,12 +127,12 @@ begin
   end;
 end;
 
-function TSlimDocExtractor.ExtractAll: TObjectList<TSlimFixtureDoc>;
+function TSlimDocExtractor.ExtractAll: TObjectList<TSlimDocFixture>;
 var
   C: TClass;
   Fixtures: TClassList;
 begin
-  Result := TObjectList<TSlimFixtureDoc>.Create(True);
+  Result := TObjectList<TSlimDocFixture>.Create(True);
   Fixtures := TSlimFixtureResolverAccess.GetFixtures;
   for C in Fixtures do
   begin
@@ -141,12 +141,12 @@ begin
   end;
 end;
 
-function TSlimDocExtractor.ExtractClass(AClass: TClass): TSlimFixtureDoc;
+function TSlimDocExtractor.ExtractClass(AClass: TClass): TSlimDocFixture;
 var
   Attr          : TCustomAttribute;
   Ctx           : TRttiContext;
-  DocMethod     : TSlimMethodDoc;
-  DocProp       : TSlimPropertyDoc;
+  DocMethod     : TSlimDocMethod;
+  DocProp       : TSlimDocProperty;
   FixtureInstance: TSlimFixture;
   Method        : TRttiMethod;
   Param         : TRttiParameter;
@@ -154,7 +154,7 @@ var
   Prop          : TRttiProperty;
   RType         : TRttiType;
 begin
-  Result := TSlimFixtureDoc.Create;
+  Result := TSlimDocFixture.Create;
   Ctx := TRttiContext.Create;
   FixtureInstance := nil;
   try
@@ -199,7 +199,7 @@ begin
       if Method.IsConstructor and (Length(Method.GetParameters) = 0) then Continue;
       if IsStandardNoise(Method.Name) then Continue;
 
-      DocMethod := TSlimMethodDoc.Create;
+      DocMethod := TSlimDocMethod.Create;
       DocMethod.Name := Method.Name;
       DocMethod.IsInherited := Method.Parent <> RType;
       DocMethod.Origin := Method.Parent.Name;
@@ -212,7 +212,7 @@ begin
         DocMethod.ReturnType := 'void';
 
       for Param in Method.GetParameters do
-        DocMethod.Parameters.Add(TSlimParameterDoc.Create(Param.Name, Param.ParamType.Name));
+        DocMethod.Parameters.Add(TSlimDocParameter.Create(Param.Name, Param.ParamType.Name));
 
       Result.Methods.Add(DocMethod);
     end;
@@ -223,7 +223,7 @@ begin
       if Prop.Visibility < mvPublic then Continue;
       if IsStandardNoise(Prop.Name) then Continue;
 
-      DocProp := TSlimPropertyDoc.Create;
+      DocProp := TSlimDocProperty.Create;
       DocProp.Name := Prop.Name;
       DocProp.PropertyType := Prop.PropertyType.Name;
       DocProp.IsInherited := Prop.Parent <> RType;
@@ -251,7 +251,7 @@ begin
   end;
 end;
 
-procedure TSlimDocExtractor.InjectXmlDocs(ADoc: TSlimFixtureDoc; const AUnitName: String);
+procedure TSlimDocExtractor.InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName: String);
 var
   Files: TStringDynArray;
   SourceFile: String;

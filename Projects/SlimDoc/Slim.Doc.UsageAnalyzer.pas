@@ -25,36 +25,36 @@ type
   TUsageMap = TObjectDictionary<String, TStringList>;
 
   // Maps Fixture -> (MethodKey -> Patterns)
-  TPatternMap = TObjectDictionary<TSlimFixtureDoc, TDictionary<String, TArray<String>>>;
+  TPatternMap = TObjectDictionary<TSlimDocFixture, TDictionary<String, TArray<String>>>;
 
   TSlimUsageAnalyzer = class
   private
-    procedure CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
-    function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
-    procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
+    procedure CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>; ALibraryFixtures: TList<TSlimDocFixture>; AVisitedFiles: TStringList);
+    function  CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>): TList<TSlimDocFixture>;
+    procedure DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>; var AActiveFixture: TSlimDocFixture; var AIsDT, AIsScript, AIsScenario: Boolean);
     function  ExtractTableCells(const ALine: String): TArray<String>;
-    function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
-    function  GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+    function  FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimDocFixture>): TSlimDocFixture;
+    function  GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimDocFixture>): TList<TSlimDocFixture>;
     function  GetWikiPageName(const AFitNesseRoot, AFilePath: String): String;
     function  IsIgnoredFile(const AFilePath: String): Boolean;
-    procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+    procedure ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimDocFixture>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
     function  ResolveIncludePath(const AFitNesseRoot, ACurrentDir, AIncludePath: String): String;
-    procedure ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+    procedure ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimDocFixture; APatternMap: TPatternMap; AUsageMap: TUsageMap);
   public
-    function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
+    function Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimDocFixture>): TUsageMap;
   end;
 
 implementation
 
 { TSlimUsageAnalyzer }
 
-function TSlimUsageAnalyzer.CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+function TSlimUsageAnalyzer.CollectLibrariesFromLines(const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>): TList<TSlimDocFixture>;
 var
   Cells         : TArray<String>;
   InLibraryTable: Boolean;
-  LibFixture    : TSlimFixtureDoc;
+  LibFixture    : TSlimDocFixture;
 begin
-  Result := TList<TSlimFixtureDoc>.Create;
+  Result := TList<TSlimDocFixture>.Create;
   InLibraryTable := False;
 
   for var Line: String in ALines do
@@ -79,7 +79,7 @@ begin
   end;
 end;
 
-procedure TSlimUsageAnalyzer.CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; ALibraryFixtures: TList<TSlimFixtureDoc>; AVisitedFiles: TStringList);
+procedure TSlimUsageAnalyzer.CollectLibrariesFromIncludes(const AFitNesseRoot, ACurrentDir: String; const ALines: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>; ALibraryFixtures: TList<TSlimDocFixture>; AVisitedFiles: TStringList);
 begin
   for var Line: String in ALines do
   begin
@@ -109,9 +109,9 @@ begin
       var IncludedLines: TArray<String> := TFile.ReadAllLines(FullPath, TEncoding.UTF8);
 
       // 1. Collect libraries from the included file itself
-      var Libs: TList<TSlimFixtureDoc> := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
+      var Libs: TList<TSlimDocFixture> := CollectLibrariesFromLines(IncludedLines, AFixtureMap);
       try
-        for var F: TSlimFixtureDoc in Libs do
+        for var F: TSlimDocFixture in Libs do
           if not ALibraryFixtures.Contains(F) then
             ALibraryFixtures.Add(F);
       finally
@@ -201,10 +201,10 @@ begin
   end;
 end;
 
-function TSlimUsageAnalyzer.GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TList<TSlimFixtureDoc>;
+function TSlimUsageAnalyzer.GetInheritedLibraries(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimDocFixture>): TList<TSlimDocFixture>;
 var
   CurrentDir: String;
-  Libs      : TList<TSlimFixtureDoc>;
+  Libs      : TList<TSlimDocFixture>;
   Root      : String;
 
   procedure CheckFile(const AName: String);
@@ -215,7 +215,7 @@ var
 
     Libs := CollectLibrariesFromLines(TFile.ReadAllLines(Path, TEncoding.UTF8), AFixtureMap);
     try
-      for var F: TSlimFixtureDoc in Libs do
+      for var F: TSlimDocFixture in Libs do
         if not Result.Contains(F) then
           Result.Add(F);
     finally
@@ -224,7 +224,7 @@ var
   end;
 
 begin
-  Result := TList<TSlimFixtureDoc>.Create;
+  Result := TList<TSlimDocFixture>.Create;
   Root := ExcludeTrailingPathDelimiter(AFitNesseRoot);
   CurrentDir := ExtractFileDir(AFilePath);
 
@@ -269,7 +269,7 @@ begin
   Result := RelPath.Replace(PathDelim, '.');
 end;
 
-function TSlimUsageAnalyzer.FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>): TSlimFixtureDoc;
+function TSlimUsageAnalyzer.FindFixture(const AName: String; AFixtureMap: TDictionary<String, TSlimDocFixture>): TSlimDocFixture;
 var
   CleanName: String;
 begin
@@ -311,7 +311,7 @@ begin
   end;
 end;
 
-procedure TSlimUsageAnalyzer.DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; var AActiveFixture: TSlimFixtureDoc; var AIsDT, AIsScript, AIsScenario: Boolean);
+procedure TSlimUsageAnalyzer.DetectActiveFixture(const ACells: TArray<String>; AFixtureMap: TDictionary<String, TSlimDocFixture>; var AActiveFixture: TSlimDocFixture; var AIsDT, AIsScript, AIsScenario: Boolean);
 begin
   AActiveFixture := nil;
   AIsDT := False;
@@ -362,7 +362,7 @@ begin
   AIsDT := Assigned(AActiveFixture);
 end;
 
-procedure TSlimUsageAnalyzer.ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimFixtureDoc; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+procedure TSlimUsageAnalyzer.ScanRowForUsage(const ALine, AWikiPageName: String; AActiveFixture: TSlimDocFixture; APatternMap: TPatternMap; AUsageMap: TUsageMap);
 var
   Cells          : TArray<String>;
   CurrentPatterns: TDictionary<String, TArray<String>>;
@@ -424,17 +424,17 @@ begin
   end;
 end;
 
-procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimFixtureDoc>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
+procedure TSlimUsageAnalyzer.ProcessFile(const AFitNesseRoot, AFilePath: String; AFixtureMap: TDictionary<String, TSlimDocFixture>; APatternMap: TPatternMap; AUsageMap: TUsageMap);
 var
-  ActiveFixture  : TSlimFixtureDoc;
+  ActiveFixture  : TSlimDocFixture;
   Cells          : TArray<String>;
   InTable        : Boolean;
   IsDT           : Boolean;
   IsLibraryTable : Boolean;
   IsScenario     : Boolean;
   IsScript       : Boolean;
-  LibFixture     : TSlimFixtureDoc;
-  LibraryFixtures: TList<TSlimFixtureDoc>;
+  LibFixture     : TSlimDocFixture;
+  LibraryFixtures: TList<TSlimDocFixture>;
   Line           : String;
   Lines          : TArray<String>;
   TableRow       : Integer;
@@ -544,20 +544,20 @@ begin
   end;
 end;
 
-function TSlimUsageAnalyzer.Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimFixtureDoc>): TUsageMap;
+function TSlimUsageAnalyzer.Analyze(const AFitNesseRoot: String; AFixtures: TList<TSlimDocFixture>): TUsageMap;
 var
   FileName  : String;
   Files     : TArray<String>;
-  Fixture   : TSlimFixtureDoc;
-  FixtureMap: TDictionary<String, TSlimFixtureDoc>;
-  Method    : TSlimMethodDoc;
+  Fixture   : TSlimDocFixture;
+  FixtureMap: TDictionary<String, TSlimDocFixture>;
+  Method    : TSlimDocMethod;
   PatternMap: TPatternMap;
   Patterns  : TArray<String>;
   Spaced    : String;
 begin
   Result := TObjectDictionary<String, TStringList>.Create([doOwnsValues]);
-  FixtureMap := TDictionary<String, TSlimFixtureDoc>.Create;
-  PatternMap := TObjectDictionary<TSlimFixtureDoc, TDictionary<String, TArray<String>>>.Create([doOwnsValues]);
+  FixtureMap := TDictionary<String, TSlimDocFixture>.Create;
+  PatternMap := TObjectDictionary<TSlimDocFixture, TDictionary<String, TArray<String>>>.Create([doOwnsValues]);
   try
     // Build Maps
     for Fixture in AFixtures do

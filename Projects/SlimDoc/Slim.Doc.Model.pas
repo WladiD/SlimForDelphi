@@ -16,14 +16,14 @@ uses
 
 type
 
-  TSlimParameterDoc = class
+  TSlimDocParameter = class
   public
     Name     : String;
     ParamType: String;
     constructor Create(const AName, AParamType: String);
   end;
 
-  TSlimMemberDoc = class
+  TSlimDocMember = class
   public
     Description: String;
     IsInherited: Boolean;
@@ -31,9 +31,9 @@ type
     Origin     : String;
   end;
 
-  TSlimMethodDoc = class(TSlimMemberDoc)
+  TSlimDocMethod = class(TSlimDocMember)
   public
-    Parameters : TObjectList<TSlimParameterDoc>;
+    Parameters : TObjectList<TSlimDocParameter>;
     ReturnType : String;
     SyncMode   : String;
     constructor Create;
@@ -41,22 +41,22 @@ type
     function GetParamsString: String;
   end;
 
-  TSlimPropertyDoc = class(TSlimMemberDoc)
+  TSlimDocProperty = class(TSlimDocMember)
   public
     Access      : String;
     PropertyType: String;
     SyncMode    : String;
   end;
 
-  TSlimFixtureDoc = class
+  TSlimDocFixture = class
   public
     DelphiClass     : String;
     Description     : String;
     InheritanceChain: TStringList;
-    Methods         : TObjectList<TSlimMethodDoc>;
+    Methods         : TObjectList<TSlimDocMethod>;
     Name            : String;
     Namespace       : String;
-    Properties      : TObjectList<TSlimPropertyDoc>;
+    Properties      : TObjectList<TSlimDocProperty>;
     UnitName        : String;
     constructor Create;
     destructor Destroy; override;
@@ -65,32 +65,32 @@ type
 
 implementation
 
-{ TSlimParameterDoc }
+{ TSlimDocParameter }
 
-constructor TSlimParameterDoc.Create(const AName, AParamType: String);
+constructor TSlimDocParameter.Create(const AName, AParamType: String);
 begin
   inherited Create;
   Name := AName;
   ParamType := AParamType;
 end;
 
-{ TSlimMethodDoc }
+{ TSlimDocMethod }
 
-constructor TSlimMethodDoc.Create;
+constructor TSlimDocMethod.Create;
 begin
   inherited Create;
-  Parameters := TObjectList<TSlimParameterDoc>.Create;
+  Parameters := TObjectList<TSlimDocParameter>.Create;
 end;
 
-destructor TSlimMethodDoc.Destroy;
+destructor TSlimDocMethod.Destroy;
 begin
   Parameters.Free;
   inherited;
 end;
 
-function TSlimMethodDoc.GetParamsString: String;
+function TSlimDocMethod.GetParamsString: String;
 var
-  P: TSlimParameterDoc;
+  P: TSlimDocParameter;
 begin
   Result := '';
   for P in Parameters do
@@ -100,17 +100,17 @@ begin
   end;
 end;
 
-{ TSlimFixtureDoc }
+{ TSlimDocFixture }
 
-constructor TSlimFixtureDoc.Create;
+constructor TSlimDocFixture.Create;
 begin
   inherited Create;
   InheritanceChain := TStringList.Create;
-  Methods := TObjectList<TSlimMethodDoc>.Create;
-  Properties := TObjectList<TSlimPropertyDoc>.Create;
+  Methods := TObjectList<TSlimDocMethod>.Create;
+  Properties := TObjectList<TSlimDocProperty>.Create;
 end;
 
-destructor TSlimFixtureDoc.Destroy;
+destructor TSlimDocFixture.Destroy;
 begin
   InheritanceChain.Free;
   Methods.Free;
@@ -118,7 +118,7 @@ begin
   inherited;
 end;
 
-function TSlimFixtureDoc.Id: String;
+function TSlimDocFixture.Id: String;
 begin
   Result := Format('%s.%s', [Namespace, Name]);
 end;

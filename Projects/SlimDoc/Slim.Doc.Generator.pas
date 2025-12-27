@@ -24,20 +24,20 @@ type
 
   TSlimDocGenerator = class
   private
-    procedure SortFixtures(AFixtures: TList<TSlimFixtureDoc>);
-    procedure SortMembers(AList: TList<TSlimMemberDoc>);
+    procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
+    procedure SortMembers(AList: TList<TSlimDocMember>);
   public
-    function Generate(AFixtures: TList<TSlimFixtureDoc>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
+    function Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
   end;
 
 implementation
 
 { TSlimDocGenerator }
 
-procedure TSlimDocGenerator.SortFixtures(AFixtures: TList<TSlimFixtureDoc>);
+procedure TSlimDocGenerator.SortFixtures(AFixtures: TList<TSlimDocFixture>);
 begin
-  AFixtures.Sort(TComparer<TSlimFixtureDoc>.Construct(
-    function(const L, R: TSlimFixtureDoc): Integer
+  AFixtures.Sort(TComparer<TSlimDocFixture>.Construct(
+    function(const L, R: TSlimDocFixture): Integer
     begin
       Result := CompareText(L.Namespace, R.Namespace);
       if Result = 0 then
@@ -45,22 +45,22 @@ begin
     end));
 end;
 
-procedure TSlimDocGenerator.SortMembers(AList: TList<TSlimMemberDoc>);
+procedure TSlimDocGenerator.SortMembers(AList: TList<TSlimDocMember>);
 begin
-  AList.Sort(TComparer<TSlimMemberDoc>.Construct(
-    function(const L, R: TSlimMemberDoc): Integer
+  AList.Sort(TComparer<TSlimDocMember>.Construct(
+    function(const L, R: TSlimDocMember): Integer
     begin
       Result := CompareText(L.Name, R.Name);
     end));
 end;
 
-function TSlimDocGenerator.Generate(AFixtures: TList<TSlimFixtureDoc>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
+function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
 var
-  Fixture   : TSlimFixtureDoc;
+  Fixture   : TSlimDocFixture;
   HasUsage  : Boolean;
   LinkName  : String;
-  Method    : TSlimMethodDoc;
-  Prop      : TSlimPropertyDoc;
+  Method    : TSlimDocMethod;
+  Prop      : TSlimDocProperty;
   RowClass  : String;
   SB        : TStringBuilder;
   ToggleCell: String;
@@ -324,8 +324,8 @@ begin
     // Fixtures
     for Fixture in AFixtures do
     begin
-      SortMembers(TList<TSlimMemberDoc>(Fixture.Methods));
-      SortMembers(TList<TSlimMemberDoc>(Fixture.Properties));
+      SortMembers(TList<TSlimDocMember>(Fixture.Methods));
+      SortMembers(TList<TSlimDocMember>(Fixture.Properties));
       SB.AppendFormat('<div class="fixture" id="%s">', [Fixture.Id]);
       SB.Append('<div class="fixture-header">');
       SB.AppendFormat('<span>%s <span class="namespace">%s</span></span>', [Fixture.Name, Fixture.Namespace]);

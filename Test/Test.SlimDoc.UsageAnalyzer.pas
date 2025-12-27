@@ -26,7 +26,7 @@ type
   TTestSlimUsageAnalyzer = class
   private
     FAnalyzer: TSlimUsageAnalyzer;
-    FFixtures: TObjectList<TSlimFixtureDoc>;
+    FFixtures: TObjectList<TSlimDocFixture>;
     FTempDir : String;
     procedure CreateWikiFile(const AFileName, AContent: String);
   public
@@ -78,8 +78,8 @@ implementation
 
 procedure TTestSlimUsageAnalyzer.Setup;
 var
-  Fixture: TSlimFixtureDoc;
-  Method : TSlimMethodDoc;
+  Fixture: TSlimDocFixture;
+  Method : TSlimDocMethod;
 begin
   FTempDir := IncludeTrailingPathDelimiter(
     TPath.Combine(TPath.GetTempPath, 'SlimUsageTest_' + TGUID.NewGuid.ToString));
@@ -87,62 +87,62 @@ begin
   TDirectory.CreateDirectory(FTempDir);
 
   FAnalyzer := TSlimUsageAnalyzer.Create;
-  FFixtures := TObjectList<TSlimFixtureDoc>.Create;
+  FFixtures := TObjectList<TSlimDocFixture>.Create;
 
   // Create a dummy fixture model for testing
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'MyFixture';
 
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'DoSomething';
   Fixture.Methods.Add(Method);
 
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'CalculateValue';
   Fixture.Methods.Add(Method);
 
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'SetSelId';
   Fixture.Methods.Add(Method);
 
   // Method with multiple arguments for interleaved testing
   // Name: ClickToolbarButtonOnFormWithIcon
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'ClickToolbarButtonOnFormWithIcon';
   Fixture.Methods.Add(Method);
 
   // Add property 'SomeProp'
-  var Prop := TSlimPropertyDoc.Create;
+  var Prop := TSlimDocProperty.Create;
   Prop.Name := 'SomeProp';
   Fixture.Properties.Add(Prop);
 
   FFixtures.Add(Fixture);
 
   // Library Fixture
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'LibraryFixture';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'ExecuteAction';
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
 
   // Flow Control Fixture (simulating the issue)
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'FlowControl';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'IgnoreAllTestsIfDefined';
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
 
   // Script Fixture (empty, relies on Library)
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'ScriptFixture';
   FFixtures.Add(Fixture);
 
   // Specific Fixture from user case
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'MyForm';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'ClickToolbarButtonOnFormWithIcon';
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
@@ -254,23 +254,23 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestAmbiguousMethodUsage;
 var
-  FixtureA, FixtureB: TSlimFixtureDoc;
-  Method    : TSlimMethodDoc;
+  FixtureA, FixtureB: TSlimDocFixture;
+  Method    : TSlimDocMethod;
   UsageMap  : TUsageMap;
   List      : TStringList;
 begin
   // Setup FixtureA with SetName
-  FixtureA := TSlimFixtureDoc.Create;
+  FixtureA := TSlimDocFixture.Create;
   FixtureA.Name := 'FixtureA';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'SetName';
   FixtureA.Methods.Add(Method);
   FFixtures.Add(FixtureA);
 
   // Setup FixtureB with SetName
-  FixtureB := TSlimFixtureDoc.Create;
+  FixtureB := TSlimDocFixture.Create;
   FixtureB.Name := 'FixtureB';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'SetName';
   FixtureB.Methods.Add(Method);
   FFixtures.Add(FixtureB);
@@ -301,17 +301,17 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestNamespacedFixtureUsage;
 var
-  Fixture : TSlimFixtureDoc;
-  Method  : TSlimMethodDoc;
+  Fixture : TSlimDocFixture;
+  Method  : TSlimDocMethod;
   UsageMap: TUsageMap;
   List    : TStringList;
 begin
   // Setup Fixture with Namespace
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'Generator';
   Fixture.Namespace := 'SlimDoc'; // Full name: SlimDoc.Generator
 
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'AnalyzeUsage';
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);
@@ -509,10 +509,10 @@ end;
 procedure TTestSlimUsageAnalyzer.TestScriptTableWithFixtureNamedScript;
 var
   UsageMap: TUsageMap;
-  Fixture : TSlimFixtureDoc;
+  Fixture : TSlimDocFixture;
 begin
   // Setup a fixture named "Script" (like Base.UI.Script)
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'Script';
   FFixtures.Add(Fixture);
 
@@ -577,15 +577,15 @@ end;
 
 procedure TTestSlimUsageAnalyzer.TestScenarioUsage;
 var
-  Fixture : TSlimFixtureDoc;
-  Method  : TSlimMethodDoc;
+  Fixture : TSlimDocFixture;
+  Method  : TSlimDocMethod;
   UsageMap: TUsageMap;
   List    : TStringList;
 begin
   // Fixture setup
-  Fixture := TSlimFixtureDoc.Create;
+  Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'ScenarioFixture';
-  Method := TSlimMethodDoc.Create;
+  Method := TSlimDocMethod.Create;
   Method.Name := 'ScenarioMethod';
   Fixture.Methods.Add(Method);
   FFixtures.Add(Fixture);

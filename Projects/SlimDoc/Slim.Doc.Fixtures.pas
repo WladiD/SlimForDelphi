@@ -61,7 +61,7 @@ function TSlimDocGeneratorFixture.AnalyzeUsage(const AFitNesseRoot: String): Str
 var
   Analyzer : TSlimUsageAnalyzer;
   Extractor: TSlimDocExtractor;
-  Fixtures : TObjectList<TSlimFixtureDoc>;
+  Fixtures : TObjectList<TSlimDocFixture>;
 begin
   FreeAndNil(FUsageMap);
   Extractor := TSlimDocExtractor.Create;
@@ -102,7 +102,7 @@ end;
 function TSlimDocGeneratorFixture.GenerateDocumentation(const AFilePath: String): String;
 var
   Extractor: TSlimDocExtractor;
-  Fixtures : TObjectList<TSlimFixtureDoc>;
+  Fixtures : TObjectList<TSlimDocFixture>;
   Generator: TSlimDocGenerator;
 begin
   Extractor := TSlimDocExtractor.Create;

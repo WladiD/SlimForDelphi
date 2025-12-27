@@ -83,7 +83,7 @@ end;
 
 procedure TTestSlimDocExtractor.TestInheritanceChain;
 var
-  Doc      : TSlimFixtureDoc;
+  Doc      : TSlimDocFixture;
   Extractor: TSlimDocExtractor;
 begin
   Doc := nil;
@@ -107,12 +107,12 @@ end;
 
 procedure TTestSlimDocExtractor.TestExtraction;
 var
-  Doc      : TSlimFixtureDoc;
+  Doc      : TSlimDocFixture;
   Extractor: TSlimDocExtractor;
-  Method   : TSlimMethodDoc;
-  Prop     : TSlimPropertyDoc;
+  Method   : TSlimDocMethod;
+  Prop     : TSlimDocProperty;
 
-  function GetDocMethod(const AName: String): TSlimMethodDoc;
+  function GetDocMethod(const AName: String): TSlimDocMethod;
   begin
     for var M in Doc.Methods do
       if SameText(M.Name, AName) then
