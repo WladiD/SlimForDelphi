@@ -79,7 +79,7 @@ begin
         <meta charset="utf-8">
         <title>Slim Fixture Documentation</title>
         <style>
-          body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 80px; }
+          body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 110px; }
           h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
           h2 { color: #0078d7; margin-top: 30px; }
           table { border-collapse: collapse; width: 100%; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -93,10 +93,14 @@ begin
           .toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }
 
           /* Search Bar Styles */
-          .search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; align-items: center; }
+          .search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; flex-direction: column; }
+          .search-row { display: flex; align-items: center; margin-bottom: 8px; }
           #searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
           #searchInput:focus { border-color: #0078d7; }
           .search-label { margin-right: 15px; font-weight: bold; color: #555; }
+          .filter-options { display: flex; font-size: 0.9em; color: #555; gap: 15px; }
+          .filter-options label { cursor: pointer; display: flex; align-items: center; }
+          .filter-options input { margin-right: 5px; }
           .hidden-by-search { display: none !important; }
 
           /* Styles for inherited members */
@@ -139,13 +143,44 @@ begin
           function filterFixtures() {
             var input = document.getElementById("searchInput");
             var filter = input.value.toUpperCase();
+            
+            var useFixture = document.getElementById("chkFixture").checked;
+            var useNamespace = document.getElementById("chkNamespace").checked;
+            var useMember = document.getElementById("chkMember").checked;
+            var useComment = document.getElementById("chkComment").checked;
+            var useUsage = document.getElementById("chkUsage").checked;
+
             var fixtures = document.getElementsByClassName("fixture");
             var tocLinks = document.querySelectorAll(".toc li");
 
             for (var i = 0; i < fixtures.length; i++) {
               var fixture = fixtures[i];
               var header = fixture.querySelector(".fixture-header");
-              var headerText = header.textContent || header.innerText;
+              
+              // Fixture & Namespace
+              var headerText = "";
+              if (useFixture) headerText += (header.querySelector("span:first-child").firstChild.textContent || ""); // Name
+              if (useNamespace) headerText += (header.querySelector(".namespace").textContent || "");
+
+              // Also check class name if useFixture
+              if (useFixture) {
+                 var classElem = fixture.querySelector(".class-name");
+                 if (classElem) headerText += classElem.textContent;
+              }
+              // Also check class comment if useComment
+              if (useComment) {
+                 var classDesc = fixture.querySelector(".description-content"); // only the one direct under fixture div? No structure is flat inside fixture div mostly.
+                 // Actually class description is inside .fixture div, before methods table.
+                 // Let's iterate all description-contents in fixture, but distinguish method ones?
+                 // The method ones are inside hidden rows. The class one is visible (or direct child).
+                 // Implementation detail: Class desc is div.description-content direct child of div.fixture (after header and table).
+                 // Method desc is inside div.description-content inside td inside tr (hidden row).
+                 var directDesc = fixture.querySelectorAll(":scope > .description-content");
+                 for (var d = 0; d < directDesc.length; d++) {
+                    headerText += directDesc[d].textContent;
+                 }
+              }
+
               var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;
 
               var rows = fixture.querySelectorAll("tbody tr");
@@ -155,19 +190,66 @@ begin
                 var row = rows[j];
                 if (row.classList.contains("usage-row")) continue;
 
-                var rowText = row.textContent || row.innerText;
-                if (rowText.toUpperCase().indexOf(filter) > -1 || headerMatches) {
+                var usageRow = row.nextElementSibling;
+                var hasUsageRow = usageRow && usageRow.classList.contains("usage-row");
+
+                var rowMatches = false;
+                var usageMatches = false;
+
+                // Member Name
+                if (useMember) {
+                   var rowText = row.textContent || row.innerText;
+                   if (rowText.toUpperCase().indexOf(filter) > -1) rowMatches = true;
+                }
+
+                // Comment & Usage
+                if (hasUsageRow) {
+                   // Description
+                   if (useComment) {
+                      var descDiv = usageRow.querySelector(".description-content");
+                      if (descDiv && descDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+                   }
+                   // Usage
+                   if (useUsage) {
+                      var usageDiv = usageRow.querySelector(".usage-content");
+                      if (usageDiv && usageDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+                   }
+                }
+
+                if (filter === "") {
+                   row.classList.remove("hidden-by-search");
+                   if (hasUsageRow) {
+                      usageRow.classList.remove("hidden-by-search");
+                      usageRow.style.display = "none";
+                      var btn = row.querySelector(".toggle-btn");
+                      if (btn) btn.innerHTML = "&#9658;";
+                   }
+                   hasVisibleRow = true;
+                   continue;
+                }
+
+                if (headerMatches || rowMatches || usageMatches) {
                   row.classList.remove("hidden-by-search");
                   hasVisibleRow = true;
-                  var usageRow = row.nextElementSibling;
-                  if (usageRow && usageRow.classList.contains("usage-row")) {
+
+                  if (hasUsageRow) {
                      usageRow.classList.remove("hidden-by-search");
+                     
+                     if (usageMatches) {
+                       usageRow.style.display = "table-row";
+                       var btn = row.querySelector(".toggle-btn");
+                       if (btn) btn.innerHTML = "&#9660;";
+                     } else {
+                       usageRow.style.display = "none";
+                       var btn = row.querySelector(".toggle-btn");
+                       if (btn) btn.innerHTML = "&#9658;";
+                     }
                   }
                 } else {
                   row.classList.add("hidden-by-search");
-                  var usageRow = row.nextElementSibling;
-                  if (usageRow && usageRow.classList.contains("usage-row")) {
+                  if (hasUsageRow) {
                      usageRow.classList.add("hidden-by-search");
+                     usageRow.style.display = "none";
                   }
                 }
               }
@@ -192,8 +274,17 @@ begin
       </head>
       <body>
         <div class="search-container">
-          <span class="search-label">Slim Docs</span>
-          <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
+          <div class="search-row">
+            <span class="search-label">Slim Docs</span>
+            <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
+          </div>
+          <div class="filter-options">
+            <label><input type="checkbox" id="chkFixture" checked onchange="filterFixtures()"> Fixture Names</label>
+            <label><input type="checkbox" id="chkNamespace" checked onchange="filterFixtures()"> Namespaces</label>
+            <label><input type="checkbox" id="chkMember" checked onchange="filterFixtures()"> Methods/Properties</label>
+            <label><input type="checkbox" id="chkComment" checked onchange="filterFixtures()"> Comments</label>
+            <label><input type="checkbox" id="chkUsage" checked onchange="filterFixtures()"> Usage</label>
+          </div>
         </div>
         <h1>Registered Slim Fixtures</h1>
       ''');
