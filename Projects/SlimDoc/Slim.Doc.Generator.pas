@@ -370,11 +370,13 @@ begin
 
         for Prop in Fixture.Properties do
         begin
+          var LookupKey := Format('%s.%s', [Fixture.Name, Prop.Name]).ToLower;
+          HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
           var HasDescription := Prop.Description <> '';
           UsageRowId := Format('usage-%s-%s', [Fixture.Id, Prop.Name]).Replace('.', '-');
           
           ToggleCell := '';
-          if HasDescription then
+          if HasUsage or HasDescription then
             ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
 
           RowClass := '';
@@ -388,12 +390,31 @@ begin
           SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
             [RowClass, ToggleCell, Prop.Name, Prop.PropertyType, Prop.Access, SyncStyle, Prop.SyncMode, Prop.Origin]);
             
-          if HasDescription then
+          if HasUsage or HasDescription then
           begin
              if Prop.IsInherited then RowClass := ' class="inherited-member usage-row"'
              else RowClass := ' class="usage-row"';
              SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
-             SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Prop.Description]);
+
+             if HasDescription then
+               SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Prop.Description]);
+
+             if HasUsage then
+             begin
+               UsageStr := '<div class="usage-links">';
+               for U in UsageList do
+               begin
+                  var Fragment := 'text=' + Prop.Name;
+                  var Spaced := CamelCaseToSpaced(Prop.Name);
+                  if Spaced <> Prop.Name then
+                    Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
+                  
+                  UsageStr := UsageStr + Format('<a href="../%s#:~:%s" target="_blank">%s</a>', [U, Fragment, U]);
+               end;
+               UsageStr := UsageStr + '</div>';
+               SB.AppendFormat('<div class="usage-content"><strong>Used in:</strong> %s</div>', [UsageStr]);
+             end;
+
              SB.Append('</td></tr>');
           end;
         end;

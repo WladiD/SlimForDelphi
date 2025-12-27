@@ -595,6 +595,16 @@ begin
 
         MMap.AddOrSetValue(Method.Name, Patterns);
       end;
+
+      for var Prop in Fixture.Properties do
+      begin
+        Patterns := [Prop.Name];
+        Spaced := CamelCaseToSpaced(Prop.Name);
+        if not SameText(Spaced, Prop.Name) then
+          Patterns := Patterns + [Spaced];
+
+        MMap.AddOrSetValue(Prop.Name, Patterns);
+      end;
     end;
 
     if TDirectory.Exists(AFitNesseRoot) then
