@@ -294,6 +294,7 @@ begin
               }
             }
           }
+          window.onload = updateSearchOption;
         </script>
       </head>
       <body>
