@@ -36,6 +36,9 @@ type
     function GenerateDocumentation(const AFilePath: String): String;
     function AnalyzeUsage(const AFitNesseRoot: String): String;
     function IncludeXmlComments(const ARootSourcePath: String): Boolean;
+    /// <summary>
+    /// Returns the link to the generated documentation file after execution.
+    /// </summary>
     property GeneratedLink: String read FGeneratedLink;
   end;
 

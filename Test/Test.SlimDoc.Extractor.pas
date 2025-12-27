@@ -198,6 +198,9 @@ begin
 
       Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.IncludeXmlComments'), 'Should contain IncludeXmlComments');
       Assert.IsTrue(Docs['TSlimDocGeneratorFixture.IncludeXmlComments'].Contains('Configures the root path to search for source files'), 'Doc content mismatch');
+
+      Assert.IsTrue(Docs.ContainsKey('GeneratedLink'), 'Should contain GeneratedLink');
+      Assert.IsTrue(Docs['GeneratedLink'].Contains('Returns the link to the generated documentation'), 'Doc content mismatch');
     finally
       Docs.Free;
     end;
