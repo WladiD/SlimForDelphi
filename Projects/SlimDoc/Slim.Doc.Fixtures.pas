@@ -25,12 +25,14 @@ type
   [SlimFixture('Generator', 'SlimDoc')]
   TSlimDocGeneratorFixture = class(TSlimFixture)
   private
-    FGeneratedLink: String;
-    FUsageMap     : TUsageMap;
+    FGeneratedLink : String;
+    FRootSourcePath: String;
+    FUsageMap      : TUsageMap;
   public
     destructor Destroy; override;
     function GenerateDocumentation(const AFilePath: String): String;
     function AnalyzeUsage(const AFitNesseRoot: String): String;
+    function IncludeXmlComments(const ARootSourcePath: String): Boolean;
     property GeneratedLink: String read FGeneratedLink;
   end;
 
@@ -57,6 +59,9 @@ var
 begin
   FreeAndNil(FUsageMap);
   Extractor := TSlimDocExtractor.Create;
+  if FRootSourcePath <> '' then
+    Extractor.RootSourcePath := FRootSourcePath;
+
   Analyzer := TSlimUsageAnalyzer.Create;
   try
     Fixtures := Extractor.ExtractAll;
@@ -73,6 +78,17 @@ begin
 end;
 
 /// <summary>
+/// Configures the root path to search for source files to extract XML comments.
+/// </summary>
+/// <param name="ARootSourcePath">The absolute path to the source code root directory.</param>
+/// <returns>True if the path was accepted.</returns>
+function TSlimDocGeneratorFixture.IncludeXmlComments(const ARootSourcePath: String): Boolean;
+begin
+  FRootSourcePath := ARootSourcePath;
+  Result := True;
+end;
+
+/// <summary>
 /// Generates the HTML documentation file containing all registered Slim fixtures, their members, and usage statistics.
 /// </summary>
 /// <param name="AFilePath">The absolute path where the HTML file should be saved.</param>
@@ -84,6 +100,9 @@ var
   Generator: TSlimDocGenerator;
 begin
   Extractor := TSlimDocExtractor.Create;
+  if FRootSourcePath <> '' then
+    Extractor.RootSourcePath := FRootSourcePath;
+
   Generator := TSlimDocGenerator.Create;
   try
     Fixtures := Extractor.ExtractAll;

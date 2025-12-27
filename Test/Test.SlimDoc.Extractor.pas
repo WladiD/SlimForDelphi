@@ -12,6 +12,7 @@ uses
 
   System.Classes,
   System.Generics.Collections,
+  System.IOUtils,
   System.SysUtils,
 
   DUnitX.TestFramework,
@@ -48,6 +49,13 @@ type
     procedure TestExtraction;
     [Test]
     procedure TestInheritanceChain;
+  end;
+
+  [TestFixture]
+  TTestSlimXmlDocExtractor = class
+  public
+    [Test]
+    procedure TestExtractXmlDocs;
   end;
 
 implementation
@@ -158,5 +166,42 @@ begin
     Extractor.Free;
   end;
 end;
+
+{ TSlimXmlDocExtractor }
+
+procedure TTestSlimXmlDocExtractor.TestExtractXmlDocs;
+var
+  Extractor: TSlimXmlDocExtractor;
+  Docs: TDictionary<String, String>;
+  Path: String;
+begin
+  Extractor := TSlimXmlDocExtractor.Create;
+  try
+    // Adjust path to find the source file relative to the test runner executable
+    // Expected: Test/Win32/Debug/Test.Slim.exe
+    Path := '..\..\..\Projects\SlimDoc\Slim.Doc.Fixtures.pas';
+    if not TFile.Exists(Path) then
+      Path := '..\Projects\SlimDoc\Slim.Doc.Fixtures.pas'; // Fallback if running from root
+
+    Assert.IsTrue(TFile.Exists(Path), 'Source file not found at: ' + Path);
+
+    Docs := Extractor.ExtractXmlDocs(Path);
+    try
+      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.GenerateDocumentation'), 'Should contain GenerateDocumentation');
+      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.GenerateDocumentation'].Contains('Generates the HTML documentation file'), 'Doc content mismatch');
+
+      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.AnalyzeUsage'), 'Should contain AnalyzeUsage');
+      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.AnalyzeUsage'].Contains('Scans the FitNesse root directory'), 'Doc content mismatch');
+
+      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.IncludeXmlComments'), 'Should contain IncludeXmlComments');
+      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.IncludeXmlComments'].Contains('Configures the root path to search for source files'), 'Doc content mismatch');
+    finally
+      Docs.Free;
+    end;
+  finally
+    Extractor.Free;
+  end;
+end;
+
 
 end.

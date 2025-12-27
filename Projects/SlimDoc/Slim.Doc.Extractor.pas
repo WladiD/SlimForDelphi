@@ -13,8 +13,11 @@ uses
   System.Classes,
   System.Contnrs,
   System.Generics.Collections,
+  System.IOUtils,
+  System.RegularExpressions,
   System.Rtti,
   System.SysUtils,
+  System.Types,
   System.TypInfo,
 
   Slim.Doc.Model,
@@ -24,11 +27,23 @@ type
 
   TSlimDocExtractor = class
   private
+    FRootSourcePath: String;
     function IsStandardNoise(const AMethodName: String): Boolean;
     function GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
+    procedure InjectXmlDocs(ADoc: TSlimFixtureDoc; const AUnitName: String);
   public
     function ExtractAll: TObjectList<TSlimFixtureDoc>;
     function ExtractClass(AClass: TClass): TSlimFixtureDoc;
+    property RootSourcePath: String read FRootSourcePath write FRootSourcePath;
+  end;
+
+  TSlimXmlDocExtractor = class
+  private
+    function NormalizeComment(const ALines: TStringList): String;
+  public
+    // Returns a dictionary where Key = "ClassName.MethodName" (or just "MethodName")
+    // and Value = XML Content string
+    function ExtractXmlDocs(const ASourceFile: String): TDictionary<String, String>;
   end;
 
 implementation
@@ -227,9 +242,138 @@ begin
       Result.Properties.Add(DocProp);
     end;
 
+    if (FRootSourcePath <> '') and (Result.UnitName <> '') then
+      InjectXmlDocs(Result, Result.UnitName);
+
   finally
     FixtureInstance.Free;
     Ctx.Free;
+  end;
+end;
+
+procedure TSlimDocExtractor.InjectXmlDocs(ADoc: TSlimFixtureDoc; const AUnitName: String);
+var
+  Files: TStringDynArray;
+  SourceFile: String;
+  XmlExtractor: TSlimXmlDocExtractor;
+  Docs: TDictionary<String, String>;
+  FullMemberName: String;
+begin
+  // Find file
+  Files := TDirectory.GetFiles(FRootSourcePath, AUnitName + '.pas', TSearchOption.soAllDirectories);
+  if Length(Files) = 0 then Exit;
+  SourceFile := Files[0]; // Take first match
+
+  XmlExtractor := TSlimXmlDocExtractor.Create;
+  try
+    Docs := XmlExtractor.ExtractXmlDocs(SourceFile);
+    try
+      // Enrich Methods
+      for var M in ADoc.Methods do
+      begin
+        // Try 'ClassName.MethodName'
+        FullMemberName := Format('%s.%s', [ADoc.DelphiClass, M.Name]);
+        if Docs.ContainsKey(FullMemberName) then
+          M.Description := Docs[FullMemberName]
+        else if Docs.ContainsKey(M.Name) then
+          M.Description := Docs[M.Name];
+      end;
+      
+      // Enrich Properties
+      for var P in ADoc.Properties do
+      begin
+        FullMemberName := Format('%s.%s', [ADoc.DelphiClass, P.Name]);
+        if Docs.ContainsKey(FullMemberName) then
+          P.Description := Docs[FullMemberName]
+        else if Docs.ContainsKey(P.Name) then
+          P.Description := Docs[P.Name];
+      end;
+    finally
+      Docs.Free;
+    end;
+  finally
+    XmlExtractor.Free;
+  end;
+end;
+
+
+{ TSlimXmlDocExtractor }
+
+function TSlimXmlDocExtractor.NormalizeComment(const ALines: TStringList): String;
+var
+  S: String;
+begin
+  Result := '';
+  for S in ALines do
+  begin
+    var Line := S.Trim;
+    if Line.StartsWith('///') then
+      Line := Line.Substring(3).Trim;
+
+    if Result <> '' then Result := Result + sLineBreak;
+    Result := Result + Line;
+  end;
+end;
+
+function TSlimXmlDocExtractor.ExtractXmlDocs(const ASourceFile: String): TDictionary<String, String>;
+var
+  CommentBlock: TStringList;
+  I           : Integer;
+  InComment   : Boolean;
+  Line        : String;
+  Lines       : TArray<string>;
+  Match       : TMatch;
+  MemberName  : String;
+  MethodRegex : TRegEx;
+begin
+  Result := TDictionary<String, String>.Create;
+
+  if not TFile.Exists(ASourceFile) then
+    Exit;
+
+  Lines := TFile.ReadAllLines(ASourceFile);
+  CommentBlock := TStringList.Create;
+  try
+    InComment := False;
+    // Regex to capture "procedure ClassName.MethodName" or "property ClassName.PropName" or just "MethodName"
+    // Captures: 1=Type (proc/func/prop), 2=Name
+    MethodRegex := TRegEx.Create('^\s*(?:class\s+)?(procedure|function|constructor|destructor|property)\s+([\w\.]+)', [TRegExOption.roIgnoreCase]);
+
+    for I := 0 to High(Lines) do
+    begin
+      Line := Lines[I].Trim;
+
+      if Line.StartsWith('///') then
+      begin
+        InComment := True;
+        CommentBlock.Add(Line);
+      end
+      else
+      begin
+        if InComment then
+        begin
+          // End of comment block, check if next line is a declaration
+          if Line <> '' then
+          begin
+             Match := MethodRegex.Match(Line);
+             if Match.Success then
+             begin
+               MemberName := Match.Groups[2].Value; // e.g. "TSlimDocGeneratorFixture.AnalyzeUsage" or "GeneratedLink"
+
+               // Store the normalized comment
+               if not Result.ContainsKey(MemberName) then
+                 Result.Add(MemberName, NormalizeComment(CommentBlock));
+             end;
+          end;
+
+          // Reset
+          CommentBlock.Clear;
+          InComment := False;
+        end;
+      end;
+    end;
+  finally
+    CommentBlock.Free;
   end;
 end;
 

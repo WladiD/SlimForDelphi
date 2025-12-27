@@ -25,6 +25,7 @@ type
 
   TSlimMemberDoc = class
   public
+    Description: String;
     IsInherited: Boolean;
     Name       : String;
     Origin     : String;
@@ -50,6 +51,7 @@ type
   TSlimFixtureDoc = class
   public
     DelphiClass     : String;
+    Description     : String;
     InheritanceChain: TStringList;
     Methods         : TObjectList<TSlimMethodDoc>;
     Name            : String;

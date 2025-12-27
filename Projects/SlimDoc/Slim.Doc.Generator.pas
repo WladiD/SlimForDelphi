@@ -268,10 +268,11 @@ begin
       begin
         var LookupKey := Format('%s.%s', [Fixture.Name, Method.Name]).ToLower;
         HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
+        var HasDescription := Method.Description <> '';
         UsageRowId := Format('usage-%s-%s', [Fixture.Id, Method.Name]).Replace('.', '-');
         
         ToggleCell := '';
-        if HasUsage then
+        if HasUsage or HasDescription then
           ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
 
         RowClass := '';
@@ -285,52 +286,60 @@ begin
         SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
           [RowClass, ToggleCell, Method.Name, Method.GetParamsString, Method.ReturnType, SyncStyle, Method.SyncMode, Method.Origin]);
 
-        if HasUsage then
+        if HasUsage or HasDescription then
         begin
-          UsageStr := '<div class="usage-links">';
-          for U in UsageList do
-          begin
-             var Fragment := 'text=' + Method.Name;
-             var Spaced := CamelCaseToSpaced(Method.Name);
-             if Spaced <> Method.Name then
-             begin
-               Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
-               // Range match for interleaved calls: WriteVarValue -> text=Write,Value
-               if Spaced.Contains(' ') then
-               begin
-                 var Parts := Spaced.Split([' ']);
-                 if Length(Parts) >= 2 then
-                   Fragment := Fragment + '&text=' + Parts[0] + ',' + Parts[High(Parts)];
-               end;
-             end;
+          if Method.IsInherited then RowClass := ' class="inherited-member usage-row"'
+          else RowClass := ' class="usage-row"';
+          
+          SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
+          
+          if HasDescription then
+            SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Method.Description]);
 
-             if (Method.Name.Length > 3) and Method.Name.StartsWith('Set', True) then
-             begin
-               var PropName := Method.Name.Substring(3);
-               Fragment := Fragment + '&text=' + PropName;
-               
-               var SpacedProp := CamelCaseToSpaced(PropName);
-               if SpacedProp <> PropName then
+          if HasUsage then
+          begin
+            UsageStr := '<div class="usage-links">';
+            for U in UsageList do
+            begin
+               var Fragment := 'text=' + Method.Name;
+               var Spaced := CamelCaseToSpaced(Method.Name);
+               if Spaced <> Method.Name then
                begin
-                 Fragment := Fragment + '&text=' + SpacedProp.Replace(' ', '%20');
-                 if SpacedProp.Contains(' ') then
+                 Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
+                 // Range match for interleaved calls: WriteVarValue -> text=Write,Value
+                 if Spaced.Contains(' ') then
                  begin
-                   var Parts := SpacedProp.Split([' ']);
+                   var Parts := Spaced.Split([' ']);
                    if Length(Parts) >= 2 then
                      Fragment := Fragment + '&text=' + Parts[0] + ',' + Parts[High(Parts)];
                  end;
                end;
-             end;
-             
-             UsageStr := UsageStr + Format('<a href="../%s#:~:%s" target="_blank">%s</a>', [U, Fragment, U]);
-          end;
-          UsageStr := UsageStr + '</div>';
 
-          if Method.IsInherited then RowClass := ' class="inherited-member usage-row"'
-          else RowClass := ' class="usage-row"';
+               if (Method.Name.Length > 3) and Method.Name.StartsWith('Set', True) then
+               begin
+                 var PropName := Method.Name.Substring(3);
+                 Fragment := Fragment + '&text=' + PropName;
+                 
+                 var SpacedProp := CamelCaseToSpaced(PropName);
+                 if SpacedProp <> PropName then
+                 begin
+                   Fragment := Fragment + '&text=' + SpacedProp.Replace(' ', '%20');
+                   if SpacedProp.Contains(' ') then
+                   begin
+                     var Parts := SpacedProp.Split([' ']);
+                     if Length(Parts) >= 2 then
+                       Fragment := Fragment + '&text=' + Parts[0] + ',' + Parts[High(Parts)];
+                   end;
+                 end;
+               end;
+               
+               UsageStr := UsageStr + Format('<a href="../%s#:~:%s" target="_blank">%s</a>', [U, Fragment, U]);
+            end;
+            UsageStr := UsageStr + '</div>';
+            SB.AppendFormat('<div class="usage-content"><strong>Used in:</strong> %s</div>', [UsageStr]);
+          end;
           
-          SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6"><div class="usage-content"><strong>Used in:</strong> %s</div></td></tr>',
-            [RowClass, UsageRowId, UsageStr]);
+          SB.Append('</td></tr>');
         end;
       end;
       SB.AppendLine('</tbody></table>');
@@ -343,6 +352,7 @@ begin
           <table>
             <thead>
               <tr>
+                <th style="width: 20px;"></th>
                 <th>Name</th>
                 <th>Type</th>
                 <th>Access</th>
@@ -355,6 +365,13 @@ begin
 
         for Prop in Fixture.Properties do
         begin
+          var HasDescription := Prop.Description <> '';
+          UsageRowId := Format('usage-%s-%s', [Fixture.Id, Prop.Name]).Replace('.', '-');
+          
+          ToggleCell := '';
+          if HasDescription then
+            ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
+
           RowClass := '';
           if Prop.IsInherited then RowClass := 'inherited-member';
           if RowClass <> '' then RowClass := ' class="' + RowClass + '"';
@@ -363,8 +380,17 @@ begin
           if SameText(Prop.SyncMode, 'smUnsynchronized') then
             SyncStyle := ' style="color:#888"';
 
-          SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
-            [RowClass, Prop.Name, Prop.PropertyType, Prop.Access, SyncStyle, Prop.SyncMode, Prop.Origin]);
+          SB.AppendFormat('<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td%s>%s</td><td style="color:#888">%s</td></tr>',
+            [RowClass, ToggleCell, Prop.Name, Prop.PropertyType, Prop.Access, SyncStyle, Prop.SyncMode, Prop.Origin]);
+            
+          if HasDescription then
+          begin
+             if Prop.IsInherited then RowClass := ' class="inherited-member usage-row"'
+             else RowClass := ' class="usage-row"';
+             SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
+             SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Prop.Description]);
+             SB.Append('</td></tr>');
+          end;
         end;
         SB.AppendLine('</tbody></table>');
       end;

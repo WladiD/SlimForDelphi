@@ -31,5 +31,6 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 !3 Documentation
 |script                |!-SlimDoc.Generator-!                                                                      |
 |show                  |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                             |
+|include xml comments  |!-..\..\Projects\SlimDoc-!                                                                 |
 |generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
 |check                 |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
