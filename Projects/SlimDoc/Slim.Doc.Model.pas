@@ -29,13 +29,13 @@ type
     IsInherited: Boolean;
     Name       : String;
     Origin     : String;
+    SyncMode   : String;
   end;
 
   TSlimDocMethod = class(TSlimDocMember)
   public
     Parameters : TObjectList<TSlimDocParameter>;
     ReturnType : String;
-    SyncMode   : String;
     constructor Create;
     destructor Destroy; override;
     function GetParamsString: String;
@@ -45,7 +45,6 @@ type
   public
     Access      : String;
     PropertyType: String;
-    SyncMode    : String;
   end;
 
   TSlimDocFixture = class
@@ -89,13 +88,12 @@ begin
 end;
 
 function TSlimDocMethod.GetParamsString: String;
-var
-  P: TSlimDocParameter;
 begin
   Result := '';
-  for P in Parameters do
+  for var P: TSlimDocParameter in Parameters do
   begin
-    if Result <> '' then Result := Result + ', ';
+    if Result <> '' then
+      Result := Result + ', ';
     Result := Result + P.Name + ': ' + P.ParamType;
   end;
 end;

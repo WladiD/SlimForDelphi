@@ -28,9 +28,9 @@ type
   TSlimDocExtractor = class
   private
     FRootSourcePath: String;
-    function IsStandardNoise(const AMethodName: String): Boolean;
-    function GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
+    function  GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
     procedure InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName: String);
+    function  IsStandardNoise(const AMethodName: String): Boolean;
   public
     function ExtractAll: TObjectList<TSlimDocFixture>;
     function ExtractClass(AClass: TClass): TSlimDocFixture;
@@ -39,10 +39,8 @@ type
 
   TSlimXmlDocExtractor = class
   private
-    function NormalizeComment(const ALines: TStringList): String;
+    function NormalizeComment(ALines: TStringList): String;
   public
-    // Returns a dictionary where Key = "ClassName.MethodName" (or just "MethodName")
-    // and Value = XML Content string
     function ExtractXmlDocs(const ASourceFile: String): TDictionary<String, String>;
   end;
 
@@ -106,35 +104,23 @@ begin
 end;
 
 function TSlimDocExtractor.GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
-var
-  LAttr: TCustomAttribute;
-  Mode : TSyncMode;
 begin
-  Result := '';
-  for LAttr in AMember.GetAttributes do
+  for var LAttr: TCustomAttribute in AMember.GetAttributes do
   begin
     if LAttr is SlimMemberSyncModeAttribute then
-    begin
-      Result := GetEnumName(TypeInfo(TSyncMode), Ord(SlimMemberSyncModeAttribute(LAttr).SyncMode));
-      Exit;
-    end;
+      Exit(GetEnumName(TypeInfo(TSyncMode), Ord(SlimMemberSyncModeAttribute(LAttr).SyncMode)));
   end;
-
-  if (Result = '') and Assigned(AInstance) then
+  if Assigned(AInstance) then
   begin
-    Mode := AInstance.SyncMode(AMember);
+    var Mode : TSyncMode := AInstance.SyncMode(AMember);
     Result := GetEnumName(TypeInfo(TSyncMode), Ord(Mode));
   end;
 end;
 
 function TSlimDocExtractor.ExtractAll: TObjectList<TSlimDocFixture>;
-var
-  C: TClass;
-  Fixtures: TClassList;
 begin
   Result := TObjectList<TSlimDocFixture>.Create(True);
-  Fixtures := TSlimFixtureResolverAccess.GetFixtures;
-  for C in Fixtures do
+  for var C: TClass in TSlimFixtureResolverAccess.GetFixtures do
   begin
     if C.InheritsFrom(TSlimFixture) then
       Result.Add(ExtractClass(C));
@@ -143,16 +129,12 @@ end;
 
 function TSlimDocExtractor.ExtractClass(AClass: TClass): TSlimDocFixture;
 var
-  Attr          : TCustomAttribute;
-  Ctx           : TRttiContext;
-  DocMethod     : TSlimDocMethod;
-  DocProp       : TSlimDocProperty;
+  Ctx            : TRttiContext;
+  DocMethod      : TSlimDocMethod;
+  DocProp        : TSlimDocProperty;
   FixtureInstance: TSlimFixture;
-  Method        : TRttiMethod;
-  Param         : TRttiParameter;
-  ParentClassRef: TClass;
-  Prop          : TRttiProperty;
-  RType         : TRttiType;
+  ParentClassRef : TClass;
+  RType          : TRttiType;
 begin
   Result := TSlimDocFixture.Create;
   Ctx := TRttiContext.Create;
@@ -182,7 +164,7 @@ begin
     Result.Name := RType.Name;
     Result.Namespace := 'global';
 
-    for Attr in RType.GetAttributes do
+    for var Attr: TCustomAttribute in RType.GetAttributes do
       if Attr is SlimFixtureAttribute then
       begin
         Result.Name := SlimFixtureAttribute(Attr).Name;
@@ -191,60 +173,63 @@ begin
         Break;
       end;
 
-    // Methods
-    for Method in RType.GetMethods do
+    for var Method: TRttiMethod in RType.GetMethods do
     begin
-      if Method.Visibility < mvPublic then Continue;
-      if Method.IsDestructor then Continue;
-      if Method.IsConstructor and (Length(Method.GetParameters) = 0) then Continue;
-      if IsStandardNoise(Method.Name) then Continue;
+      if (Method.Visibility < mvPublic) or
+         (Method.IsDestructor ) or
+         (Method.IsConstructor and (Length(Method.GetParameters) = 0)) or
+         IsStandardNoise(Method.Name) then
+        Continue;
 
       DocMethod := TSlimDocMethod.Create;
       DocMethod.Name := Method.Name;
       DocMethod.IsInherited := Method.Parent <> RType;
       DocMethod.Origin := Method.Parent.Name;
-      if not DocMethod.IsInherited then DocMethod.Origin := 'Self';
-      
+      if not DocMethod.IsInherited then
+        DocMethod.Origin := 'Self';
+
       DocMethod.SyncMode := GetSyncModeStr(Method, FixtureInstance);
       if Assigned(Method.ReturnType) then
         DocMethod.ReturnType := Method.ReturnType.Name
       else
         DocMethod.ReturnType := 'void';
 
-      for Param in Method.GetParameters do
+      for var Param: TRttiParameter in Method.GetParameters do
         DocMethod.Parameters.Add(TSlimDocParameter.Create(Param.Name, Param.ParamType.Name));
 
       Result.Methods.Add(DocMethod);
     end;
 
-    // Properties
-    for Prop in RType.GetProperties do
+    for var Prop: TRttiProperty in RType.GetProperties do
     begin
-      if Prop.Visibility < mvPublic then Continue;
-      if IsStandardNoise(Prop.Name) then Continue;
+      if (Prop.Visibility < mvPublic) or
+         IsStandardNoise(Prop.Name) then
+        Continue;
 
       DocProp := TSlimDocProperty.Create;
       DocProp.Name := Prop.Name;
       DocProp.PropertyType := Prop.PropertyType.Name;
       DocProp.IsInherited := Prop.Parent <> RType;
       DocProp.Origin := Prop.Parent.Name;
-      if not DocProp.IsInherited then DocProp.Origin := 'Self';
+      if not DocProp.IsInherited then
+        DocProp.Origin := 'Self';
       DocProp.SyncMode := GetSyncModeStr(Prop, FixtureInstance);
 
-      DocProp.Access := '';
-      if Prop.IsReadable then DocProp.Access := 'Read';
-      if Prop.IsWritable then
-      begin
-        if DocProp.Access <> '' then DocProp.Access := DocProp.Access + '/Write'
-        else DocProp.Access := 'Write';
-      end;
-
+      var LIsReadable: Boolean:=Prop.IsReadable;
+      var LIsWritable: Boolean:=Prop.IsWritable;
+      if LIsReadable and LIsWritable then
+        DocProp.Access := 'Read/Write'
+      else if LIsReadable then
+        DocProp.Access := 'Read'
+      else if LIsWritable then
+        DocProp.Access := 'Write'
+      else
+        DocProp.Access := '';
       Result.Properties.Add(DocProp);
     end;
 
     if (FRootSourcePath <> '') and (Result.UnitName <> '') then
       InjectXmlDocs(Result, Result.UnitName);
-
   finally
     FixtureInstance.Free;
     Ctx.Free;
@@ -253,64 +238,53 @@ end;
 
 procedure TSlimDocExtractor.InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName: String);
 var
-  Files: TStringDynArray;
-  SourceFile: String;
-  XmlExtractor: TSlimXmlDocExtractor;
-  Docs: TDictionary<String, String>;
+  Description   : String;
+  Docs          : TDictionary<String, String>;
+  Files         : TStringDynArray;
   FullMemberName: String;
+  SourceFile    : String;
+  XmlExtractor  : TSlimXmlDocExtractor;
 begin
-  // Find file
   Files := TDirectory.GetFiles(FRootSourcePath, AUnitName + '.pas', TSearchOption.soAllDirectories);
-  if Length(Files) = 0 then Exit;
-  SourceFile := Files[0]; // Take first match
-
+  if Length(Files) = 0 then
+    Exit;
+  SourceFile := Files[0];
+  Docs := nil;
   XmlExtractor := TSlimXmlDocExtractor.Create;
   try
     Docs := XmlExtractor.ExtractXmlDocs(SourceFile);
-    try
-      // Enrich Class Description
-      if Docs.ContainsKey(ADoc.DelphiClass) then
-        ADoc.Description := Docs[ADoc.DelphiClass];
+    if Docs.TryGetValue(ADoc.DelphiClass, Description) then
+      ADoc.Description := Description;
 
-      // Enrich Methods
-      for var M in ADoc.Methods do
-      begin
-        // Try 'ClassName.MethodName'
-        FullMemberName := Format('%s.%s', [ADoc.DelphiClass, M.Name]);
-        if Docs.ContainsKey(FullMemberName) then
-          M.Description := Docs[FullMemberName]
-        else if Docs.ContainsKey(M.Name) then
-          M.Description := Docs[M.Name];
-      end;
-      
-      // Enrich Properties
-      for var P in ADoc.Properties do
-      begin
-        FullMemberName := Format('%s.%s', [ADoc.DelphiClass, P.Name]);
-        if Docs.ContainsKey(FullMemberName) then
-          P.Description := Docs[FullMemberName]
-        else if Docs.ContainsKey(P.Name) then
-          P.Description := Docs[P.Name];
-      end;
-    finally
-      Docs.Free;
+    for var M: TSlimDocMethod in ADoc.Methods do
+    begin
+      FullMemberName := Format('%s.%s', [ADoc.DelphiClass, M.Name]);
+      if Docs.TryGetValue(FullMemberName, Description) or
+         Docs.TryGetValue(M.Name, Description) then
+        M.Description := Description;
+    end;
+
+    for var P: TSlimDocProperty in ADoc.Properties do
+    begin
+      FullMemberName := Format('%s.%s', [ADoc.DelphiClass, P.Name]);
+      if Docs.TryGetValue(FullMemberName, Description) or
+         Docs.TryGetValue(P.Name, Description) then
+        P.Description := Description;
     end;
   finally
+    Docs.Free;
     XmlExtractor.Free;
   end;
 end;
 
-
 { TSlimXmlDocExtractor }
 
-function TSlimXmlDocExtractor.NormalizeComment(const ALines: TStringList): String;
-var
-  S: String;
+function TSlimXmlDocExtractor.NormalizeComment(ALines: TStringList): String;
 begin
   Result := '';
-  for S in ALines do
+  for var S: String in ALines do
   begin
-    var Line := S.Trim;
+    var Line: String := S.Trim;
     if Line.StartsWith('///') then
       Line := Line.Substring(3).Trim;
     if Result <> '' then
@@ -319,11 +293,14 @@ begin
   end;
 end;
 
+/// <summary>
+///   Returns a dictionary where Key = "ClassName.MethodName" (or just "MethodName")
+///   and Value = XML Content string
+/// </summary>
 function TSlimXmlDocExtractor.ExtractXmlDocs(const ASourceFile: String): TDictionary<String, String>;
 var
   ClassRegex  : TRegEx;
   CommentBlock: TStringList;
-  I           : Integer;
   InComment   : Boolean;
   Line        : String;
   Lines       : TArray<string>;
@@ -332,7 +309,6 @@ var
   MethodRegex : TRegEx;
 begin
   Result := TDictionary<String, String>.Create;
-
   if not TFile.Exists(ASourceFile) then
     Exit;
 
@@ -345,9 +321,12 @@ begin
     // Regex to capture "TMyClass = class"
     ClassRegex := TRegEx.Create('^(\w+)\s*=\s*class', [TRegExOption.roIgnoreCase]);
 
-    for I := 0 to High(Lines) do
+    for var Loop: Integer := 0 to High(Lines) do
     begin
-      Line := Lines[I].Trim;
+      Line := Lines[Loop].Trim;
+      if (Line = '') or
+         Line.StartsWith('[') then // Ignore attributes (lines starting with [)
+        Continue;
 
       if Line.StartsWith('///') then
       begin
@@ -356,29 +335,22 @@ begin
       end
       else if InComment then
       begin
-        // Ignore attributes (lines starting with [)
-        if Line.StartsWith('[') then
-          Continue;
-
         // End of comment block, check if next line is a declaration
-        if Line <> '' then
+        Match := MethodRegex.Match(Line);
+        if Match.Success then
         begin
-          Match := MethodRegex.Match(Line);
+          MemberName := Match.Groups[2].Value; // Method/Prop name
+          if not Result.ContainsKey(MemberName) then
+            Result.Add(MemberName, NormalizeComment(CommentBlock));
+        end
+        else
+        begin
+          Match := ClassRegex.Match(Line);
           if Match.Success then
           begin
-           MemberName := Match.Groups[2].Value; // Method/Prop name
-           if not Result.ContainsKey(MemberName) then
-             Result.Add(MemberName, NormalizeComment(CommentBlock));
-          end
-          else
-          begin
-           Match := ClassRegex.Match(Line);
-           if Match.Success then
-           begin
-             MemberName := Match.Groups[1].Value; // Class name
-             if not Result.ContainsKey(MemberName) then
-               Result.Add(MemberName, NormalizeComment(CommentBlock));
-           end;
+            MemberName := Match.Groups[1].Value; // Class name
+            if not Result.ContainsKey(MemberName) then
+              Result.Add(MemberName, NormalizeComment(CommentBlock));
           end;
         end;
 
