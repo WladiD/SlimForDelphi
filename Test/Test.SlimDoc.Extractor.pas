@@ -30,10 +30,10 @@ type
   public
     constructor Create(AParam: Integer);
     procedure MethodOne;
-    function MethodTwo(A: String): Boolean;
+    function  MethodTwo(A: String): Boolean;
     [SlimMemberSyncMode(smSynchronized)]
     procedure SyncMethod;
-    property MyProp: Integer read FProp write FProp;
+    property  MyProp: Integer read FProp write FProp;
   end;
 
   TSimpleBaseFixture = class(TSlimFixture)
@@ -96,8 +96,6 @@ begin
     Assert.IsTrue(Doc.InheritanceChain.Count >= 3, 'Inheritance chain should have at least 3 items');
     Assert.AreEqual('TSimpleBaseFixture', Doc.InheritanceChain[0]);
     Assert.AreEqual('TSlimFixture', Doc.InheritanceChain[1]);
-    // Note: Intermediate ancestors might vary depending on TObject/interfaced object implementation details, 
-    // but TObject is usually at the end.
     Assert.AreEqual('TObject', Doc.InheritanceChain[Doc.InheritanceChain.Count - 1]);
   finally
     Doc.Free;
@@ -114,7 +112,7 @@ var
 
   function GetDocMethod(const AName: String): TSlimDocMethod;
   begin
-    for var M in Doc.Methods do
+    for var M: TSlimDocMethod in Doc.Methods do
       if SameText(M.Name, AName) then
         Exit(M);
     Result := nil;
@@ -133,7 +131,7 @@ begin
     if Doc.Methods.Count <> 4 then
     begin
       var Msg := 'Extracted methods: ';
-      for var M in Doc.Methods do
+      for var M: TSlimDocMethod in Doc.Methods do
         Msg := Msg + M.Name + ', ';
       Assert.AreEqual(4, Doc.Methods.Count, Msg);
     end;
@@ -171,10 +169,12 @@ end;
 
 procedure TTestSlimXmlDocExtractor.TestExtractXmlDocs;
 var
-  Extractor: TSlimXmlDocExtractor;
-  Docs: TDictionary<String, String>;
-  Path: String;
+  Description: String;
+  Docs       : TDictionary<String, String>;
+  Extractor  : TSlimXmlDocExtractor;
+  Path       : String;
 begin
+  Docs := nil;
   Extractor := TSlimXmlDocExtractor.Create;
   try
     // Adjust path to find the source file relative to the test runner executable
@@ -184,30 +184,26 @@ begin
       Path := '..\Projects\SlimDoc\Slim.Doc.Fixtures.pas'; // Fallback if running from root
 
     Assert.IsTrue(TFile.Exists(Path), 'Source file not found at: ' + Path);
-
     Docs := Extractor.ExtractXmlDocs(Path);
-    try
-      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture'), 'Should contain Class TSlimDocGeneratorFixture');
-      Assert.IsTrue(Docs['TSlimDocGeneratorFixture'].Contains('Generates HTML documentation for Slim Fixtures'), 'Class Doc content mismatch');
 
-      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.GenerateDocumentation'), 'Should contain GenerateDocumentation');
-      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.GenerateDocumentation'].Contains('Generates the HTML documentation file'), 'Doc content mismatch');
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture', Description), 'Should contain Class TSlimDocGeneratorFixture');
+    Assert.IsTrue(Description.Contains('Generates HTML documentation for Slim Fixtures'), 'Class Doc content mismatch');
 
-      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.AnalyzeUsage'), 'Should contain AnalyzeUsage');
-      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.AnalyzeUsage'].Contains('Scans the FitNesse root directory'), 'Doc content mismatch');
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.GenerateDocumentation', Description), 'Should contain GenerateDocumentation');
+    Assert.IsTrue(Description.Contains('Generates the HTML documentation file'), 'Doc content mismatch');
 
-      Assert.IsTrue(Docs.ContainsKey('TSlimDocGeneratorFixture.IncludeXmlComments'), 'Should contain IncludeXmlComments');
-      Assert.IsTrue(Docs['TSlimDocGeneratorFixture.IncludeXmlComments'].Contains('Configures the root path to search for source files'), 'Doc content mismatch');
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.AnalyzeUsage', Description), 'Should contain AnalyzeUsage');
+    Assert.IsTrue(Description.Contains('Scans the FitNesse root directory'), 'Doc content mismatch');
 
-      Assert.IsTrue(Docs.ContainsKey('GeneratedLink'), 'Should contain GeneratedLink');
-      Assert.IsTrue(Docs['GeneratedLink'].Contains('Returns the link to the generated documentation'), 'Doc content mismatch');
-    finally
-      Docs.Free;
-    end;
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.IncludeXmlComments', Description), 'Should contain IncludeXmlComments');
+    Assert.IsTrue(Description.Contains('Configures the root path to search for source files'), 'Doc content mismatch');
+
+    Assert.IsTrue(Docs.TryGetValue('GeneratedLink', Description), 'Should contain GeneratedLink');
+    Assert.IsTrue(Description.Contains('Returns the link to the generated documentation'), 'Doc content mismatch');
   finally
+    Docs.Free;
     Extractor.Free;
   end;
 end;
-
 
 end.
