@@ -14,6 +14,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
+  System.RegularExpressions,
   System.SysUtils,
 
   Slim.Doc.Model,
@@ -24,6 +25,7 @@ type
 
   TSlimDocGenerator = class
   private
+    function  FormatXmlComment(const AXml: String): String;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
   public
@@ -52,6 +54,24 @@ begin
     begin
       Result := CompareText(L.Name, R.Name);
     end));
+end;
+
+function TSlimDocGenerator.FormatXmlComment(const AXml: String): String;
+begin
+  if AXml = '' then
+    Exit('');
+  
+  Result := AXml;
+  // Summary
+  Result := TRegEx.Replace(Result, '<summary>\s*(.*?)</summary>', '<div class="xml-summary">$1</div>', [roSingleLine, roIgnoreCase]);
+  
+  // Params
+  Result := TRegEx.Replace(Result, '<param name="(.*?)">\s*', '<div class="xml-param"><span class="xml-param-name">$1</span>: ', [roIgnoreCase]);
+  Result := Result.Replace('</param>', '</div>', [rfReplaceAll, rfIgnoreCase]);
+
+  // Returns
+  Result := Result.Replace('<returns>', '<div class="xml-returns"><span class="xml-param-name">Returns:</span> ', [rfReplaceAll, rfIgnoreCase]);
+  Result := Result.Replace('</returns>', '</div>', [rfReplaceAll, rfIgnoreCase]);
 end;
 
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
@@ -117,9 +137,14 @@ begin
 
           /* Description Styles */
           .description-content { color: #555; }
-          .description-content summary { white-space: pre-wrap; }
-          .fixture-description { padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; font-style: italic; }
-          .member-description { padding: 5px 10px 5px 30px; font-style: italic; }
+          .fixture-description { padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; }
+          .member-description { padding: 5px 10px 5px 30px; }
+          
+          /* XML Doc Styles */
+          .xml-summary { margin-bottom: 8px; display: block; white-space: pre-wrap; }
+          .xml-param { margin-left: 10px; display: block; }
+          .xml-param-name { font-weight: bold; font-family: Consolas, monospace; color: #333; }
+          .xml-returns { margin-left: 10px; margin-top: 8px; display: block; }
         </style>
         <script>
           function toggleInherited(checkbox, fixtureId) {
@@ -380,7 +405,7 @@ begin
       SB.Append('</table>');
 
       if Fixture.Description <> '' then
-        SB.AppendFormat('<div class="description-content fixture-description">%s</div>', [Fixture.Description]);
+        SB.AppendFormat('<div class="description-content fixture-description">%s</div>', [FormatXmlComment(Fixture.Description)]);
 
       // Methods
       SB.Append('''
@@ -429,7 +454,7 @@ begin
           SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
           
           if HasDescription then
-            SB.AppendFormat('<div class="description-content member-description">%s</div>', [Method.Description]);
+            SB.AppendFormat('<div class="description-content member-description">%s</div>', [FormatXmlComment(Method.Description)]);
 
           if HasUsage then
           begin
@@ -527,7 +552,7 @@ begin
              SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
 
              if HasDescription then
-               SB.AppendFormat('<div class="description-content member-description">%s</div>', [Prop.Description]);
+               SB.AppendFormat('<div class="description-content member-description">%s</div>', [FormatXmlComment(Prop.Description)]);
 
              if HasUsage then
              begin
