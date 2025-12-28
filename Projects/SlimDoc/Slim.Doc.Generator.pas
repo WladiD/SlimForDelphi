@@ -359,8 +359,18 @@ begin
       end;
 
       SB.Append('<table style="width: auto; border: none; margin-bottom: 15px; background-color: transparent; box-shadow: none;">');
-      SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Unit:</td><td style="border: none; padding: 2px 0;">%s</td></tr>', [Fixture.UnitName]);
-      SB.AppendFormat('<tr><td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td><td style="border: none; padding: 2px 0;"><span class="class-name">%s</span></td></tr>', [ClassDecl]);
+      SB.AppendFormat('''
+        <tr>
+          <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Unit:</td>
+          <td style="border: none; padding: 2px 0;">%s</td>
+        </tr>
+        ''', [Fixture.UnitName]);
+      SB.AppendFormat('''
+        <tr>
+          <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td>
+          <td style="border: none; padding: 2px 0;"><span class="class-name">%s</span></td>
+        </tr>
+        ''', [ClassDecl]);
       SB.Append('</table>');
 
       if Fixture.Description <> '' then
@@ -370,20 +380,20 @@ begin
 
       // Methods
       SB.Append('''
-        <h3>Methods</h3>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 20px;"></th>
-              <th>Name</th>
-              <th>Parameters</th>
-              <th>Return Type</th>
-              <th>Sync Mode</th>
-              <th>Origin</th>
-            </tr>
-          </thead>
-          <tbody>
-      ''');
+          <h3>Methods</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 20px;"></th>
+                <th>Name</th>
+                <th>Parameters</th>
+                <th>Return Type</th>
+                <th>Sync Mode</th>
+                <th>Origin</th>
+              </tr>
+            </thead>
+            <tbody>
+        ''');
 
       for Method in Fixture.Methods do
       begin
@@ -469,20 +479,20 @@ begin
       if Fixture.Properties.Count > 0 then
       begin
         SB.Append('''
-          <h3>Properties</h3>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 20px;"></th>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Access</th>
-                <th>Sync Mode</th>
-                <th>Origin</th>
-              </tr>
-            </thead>
-            <tbody>
-        ''');
+            <h3>Properties</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 20px;"></th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Access</th>
+                  <th>Sync Mode</th>
+                  <th>Origin</th>
+                </tr>
+              </thead>
+              <tbody>
+          ''');
 
         for Prop in Fixture.Properties do
         begin
