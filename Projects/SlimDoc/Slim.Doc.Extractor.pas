@@ -222,9 +222,7 @@ begin
       else if LIsReadable then
         DocProp.Access := 'Read'
       else if LIsWritable then
-        DocProp.Access := 'Write'
-      else
-        DocProp.Access := '';
+        DocProp.Access := 'Write';
       Result.Properties.Add(DocProp);
     end;
 
@@ -365,3 +363,4 @@ begin
 end;
 
 end.
+
