@@ -114,6 +114,12 @@ begin
           .toggle-btn { cursor: pointer; color: #0078d7; font-weight: bold; user-select: none; display: inline-block; width: 16px; text-align: center; }
           .usage-links a { display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 1px 5px; background-color: #fff; border-radius: 3px; font-size: 0.9em; color: #333; text-decoration: none; border: 1px solid #ccc; }
           .usage-links a:hover { background-color: #e6f2ff; border-color: #0078d7; }
+
+          /* Description Styles */
+          .description-content { color: #555; }
+          .description-content summary { white-space: pre-wrap; }
+          .fixture-description { padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; font-style: italic; }
+          .member-description { padding: 5px 10px 5px 30px; font-style: italic; }
         </style>
         <script>
           function toggleInherited(checkbox, fixtureId) {
@@ -374,9 +380,7 @@ begin
       SB.Append('</table>');
 
       if Fixture.Description <> '' then
-      begin
-        SB.AppendFormat('<div class="description-content" style="padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Fixture.Description]);
-      end;
+        SB.AppendFormat('<div class="description-content fixture-description">%s</div>', [Fixture.Description]);
 
       // Methods
       SB.Append('''
@@ -425,7 +429,7 @@ begin
           SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
           
           if HasDescription then
-            SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Method.Description]);
+            SB.AppendFormat('<div class="description-content member-description">%s</div>', [Method.Description]);
 
           if HasUsage then
           begin
@@ -523,7 +527,7 @@ begin
              SB.AppendFormat('<tr%s id="%s" style="display:none;"><td colspan="6">', [RowClass, UsageRowId]);
 
              if HasDescription then
-               SB.AppendFormat('<div class="description-content" style="padding: 5px 10px 5px 30px; font-style: italic; color: #555; white-space: pre-wrap;">%s</div>', [Prop.Description]);
+               SB.AppendFormat('<div class="description-content member-description">%s</div>', [Prop.Description]);
 
              if HasUsage then
              begin
