@@ -144,9 +144,50 @@ begin
           .xml-summary { margin-bottom: 8px; display: block; white-space: pre-wrap; }
           .xml-param { margin-left: 10px; display: block; }
           .xml-param-name { font-weight: bold; font-family: Consolas, monospace; color: #333; }
-          .xml-returns { margin-left: 10px; margin-top: 8px; display: block; }
+          .xml-returns { margin-top: 8px; font-weight: bold; color: #0078d7; display: block; }
+
+          .highlight { background-color: #fff2a8; color: black; border-radius: 2px; }
         </style>
         <script>
+          function removeHighlights() {
+            var highlights = document.querySelectorAll(".highlight");
+            for (var i = 0; i < highlights.length; i++) {
+              var span = highlights[i];
+              var parent = span.parentNode;
+              parent.replaceChild(document.createTextNode(span.textContent), span);
+              parent.normalize();
+            }
+          }
+
+          function highlight(element, text) {
+            if (!text || !element) return;
+            text = text.toUpperCase();
+            
+            var node = element.firstChild;
+            while (node) {
+              var next = node.nextSibling;
+              if (node.nodeType === 3) { // Text Node
+                var val = node.nodeValue;
+                var idx = val.toUpperCase().indexOf(text);
+                if (idx >= 0) {
+                  var span = document.createElement("span");
+                  span.className = "highlight";
+                  span.textContent = val.substr(idx, text.length);
+                  
+                  var after = node.splitText(idx);
+                  var remaining = after.splitText(text.length);
+                  
+                  after.parentNode.replaceChild(span, after);
+                  node = remaining; // Continue searching in the remaining text
+                  continue; 
+                }
+              } else if (node.nodeType === 1 && node.className !== "highlight" && node.tagName !== "SCRIPT") {
+                highlight(node, text);
+              }
+              node = next;
+            }
+          }
+
           function toggleInherited(checkbox, fixtureId) {
             var container = document.getElementById(fixtureId);
             var rows = container.querySelectorAll(".inherited-member");
@@ -196,6 +237,8 @@ begin
           }
 
           function filterFixtures() {
+            removeHighlights();
+
             var input = document.getElementById("searchInput");
             var filter = input.value.toUpperCase();
             
@@ -224,12 +267,6 @@ begin
               }
               // Also check class comment if useComment
               if (useComment) {
-                 var classDesc = fixture.querySelector(".description-content"); // only the one direct under fixture div? No structure is flat inside fixture div mostly.
-                 // Actually class description is inside .fixture div, before methods table.
-                 // Let's iterate all description-contents in fixture, but distinguish method ones?
-                 // The method ones are inside hidden rows. The class one is visible (or direct child).
-                 // Implementation detail: Class desc is div.description-content direct child of div.fixture (after header and table).
-                 // Method desc is inside div.description-content inside td inside tr (hidden row).
                  var directDesc = fixture.querySelectorAll(":scope > .description-content");
                  for (var d = 0; d < directDesc.length; d++) {
                     headerText += directDesc[d].textContent;
@@ -287,11 +324,14 @@ begin
                   row.classList.remove("hidden-by-search");
                   hasVisibleRow = true;
 
+                  if (rowMatches && filter.length > 0) highlight(row, filter);
+
                   if (hasUsageRow) {
                      usageRow.classList.remove("hidden-by-search");
                      
                      if (usageMatches) {
                        usageRow.style.display = "table-row";
+                       if (filter.length > 0) highlight(usageRow, filter);
                        var btn = row.querySelector(".toggle-btn");
                        if (btn) btn.innerHTML = "&#9660;";
                      } else {
@@ -309,6 +349,16 @@ begin
                 }
               }
 
+              if (headerMatches && filter.length > 0) {
+                 highlight(header, filter);
+                 var classElem = fixture.querySelector(".class-name");
+                 if (classElem) highlight(classElem, filter);
+                 var directDesc = fixture.querySelectorAll(":scope > .description-content");
+                 for (var d = 0; d < directDesc.length; d++) {
+                    highlight(directDesc[d], filter);
+                 }
+              }
+
               if (hasVisibleRow || headerMatches) {
                 fixture.style.display = "";
               } else {
@@ -320,6 +370,7 @@ begin
               var link = tocLinks[k];
               if (link.textContent.toUpperCase().indexOf(filter) > -1) {
                 link.style.display = "";
+                if (filter.length > 0) highlight(link, filter);
               } else {
                 link.style.display = "none";
               }
