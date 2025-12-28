@@ -114,8 +114,7 @@ begin
   var Prop := TSlimDocProperty.Create;
   Prop.Name := 'SomeProp';
   Fixture.Properties.Add(Prop);
-
-
+  
   // Library Fixture
   Fixture := TSlimDocFixture.Create;
   FFixtures.Add(Fixture);
@@ -168,9 +167,15 @@ var
   List    : TStringList;
   UsageMap: TUsageMap;
 begin
-  CreateWikiFile('PageOne.wiki', '| script | MyFixture |'#13#10'| do something |');
+  CreateWikiFile('PageOne.wiki', '''
+    | script | MyFixture |
+    | do something       |
+    ''');
   // Need explicit fixture for analyzer to detect context
-  CreateWikiFile('SubDir\PageTwo.wiki', '| script | MyFixture |'#13#10'| check | calculate value | 5 |');
+  CreateWikiFile('SubDir\PageTwo.wiki', '''
+    | script | MyFixture           |
+    | check  | calculate value | 5 |
+    ''');
   CreateWikiFile('PageThree.wiki', 'No relevant methods here.');
 
   UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
@@ -196,11 +201,11 @@ var
 begin
   // "CalculateValue" should be found as "CalculateValue" AND "calculate value"
   CreateWikiFile('Camel.wiki', '''
-    | script | MyFixture |
-    | check | CalculateValue
+    | script | MyFixture      |
+    | check  | CalculateValue |
     ''');
   CreateWikiFile('Spaced.wiki', '''
-    | script | MyFixture |
+    | script | MyFixture       |
     | check  | calculate value |
     ''');
 
@@ -685,3 +690,4 @@ begin
 end;
 
 end.
+
