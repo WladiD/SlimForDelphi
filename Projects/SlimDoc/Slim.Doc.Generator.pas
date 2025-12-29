@@ -130,7 +130,6 @@ var
   LookupKey     : String;
   RowClass      : String;
   SyncStyle     : String;
-  ToggleCell    : String;
   U             : String;
   UsageLinksArr : TDocVariantData;
   UsageList     : TStringList;
@@ -144,10 +143,6 @@ begin
   HasDescription := Member.Description <> '';
   UsageRowId := Format('usage-%s-%s', [Fixture.Id, Member.Name]).Replace('.', '-');
 
-  ToggleCell := '';
-  if HasUsage or HasDescription then
-    ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
-
   RowClass := '';
   if Member.IsInherited then RowClass := 'inherited-member';
 
@@ -157,7 +152,6 @@ begin
 
   Result.AddValue('Name', Member.Name);
   if RowClass <> '' then Result.AddValue('RowClass', RowClass);
-  Result.AddValue('ToggleCell', ToggleCell);
 
   if Member is TSlimDocMethod then
      Result.AddValue('ReturnType', TSlimDocMethod(Member).ReturnType)

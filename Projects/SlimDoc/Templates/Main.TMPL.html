@@ -319,7 +319,7 @@
         <th>Origin</th>
       </tr>
     </thead>
-    <tbody>{{#Methods}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{{ToggleCell}}}</td><td>{{Name}}</td><td>{{ParamsString}}</td><td>{{ReturnType}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Methods}}</tbody></table>
+    <tbody>{{#Methods}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{#HasUsageOrDesc}}<span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>{{/HasUsageOrDesc}}</td><td>{{Name}}</td><td>{{ParamsString}}</td><td>{{ReturnType}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Methods}}</tbody></table>
 {{#HasProperties}}
       <h3>Properties</h3>
       <table>
@@ -333,7 +333,7 @@
             <th>Origin</th>
           </tr>
         </thead>
-        <tbody>{{#Properties}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{{ToggleCell}}}</td><td>{{Name}}</td><td>{{PropertyType}}</td><td>{{Access}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Properties}}</tbody></table>
+        <tbody>{{#Properties}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{#HasUsageOrDesc}}<span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>{{/HasUsageOrDesc}}</td><td>{{Name}}</td><td>{{PropertyType}}</td><td>{{Access}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Properties}}</tbody></table>
 {{/HasProperties}}
 </div>
 {{/Fixtures}}
