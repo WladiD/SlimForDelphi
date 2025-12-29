@@ -29,10 +29,10 @@ type
 
   TSlimDocGenerator = class
   private
+    function  BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
     function  FormatXmlComment(const AXml: String): String;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
-    function  BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
   public
     function Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
   end;
@@ -81,8 +81,9 @@ end;
 
 function TSlimDocGenerator.BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
 var
-  Fragment, Spaced: String;
-  Parts: TArray<String>;
+  Fragment: String;
+  Parts   : TArray<String>;
+  Spaced  : String;
 begin
   Fragment := 'text=' + MemberName;
   Spaced := CamelCaseToSpaced(MemberName);
@@ -122,25 +123,31 @@ end;
 
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
 var
-  Fixture   : TSlimDocFixture;
-  Doc, FixtureObj: TDocVariantData;
-  FixturesArr, MethodsArr, PropsArr: TDocVariantData;
+  Doc            : TDocVariantData;
+  Fixture        : TSlimDocFixture;
+  FixtureObj     : TDocVariantData;
+  FixturesArr    : TDocVariantData;
+  Method         : TSlimDocMethod;
+  MethodsArr     : TDocVariantData;
+  Prop           : TSlimDocProperty;
+  PropsArr       : TDocVariantData;
   TemplateContent: String;
-  TemplatePath: String;
-  Method    : TSlimDocMethod;
-  Prop      : TSlimDocProperty;
+  TemplatePath   : String;
 
   function ProcessMember(Member: TSlimDocMember; FixtureId: String): TDocVariantData;
   var
-    LookupKey: String;
-    UsageList: TStringList;
-    HasUsage: Boolean;
     HasDescription: Boolean;
-    RowClass, ToggleCell, UsageRowId, UsageRowClass: String;
-    SyncStyle: String;
-    UsageLinksArr: TDocVariantData;
-    U: String;
-    LinkObj: TDocVariantData;
+    HasUsage      : Boolean;
+    LinkObj       : TDocVariantData;
+    LookupKey     : String;
+    RowClass      : String;
+    SyncStyle     : String;
+    ToggleCell    : String;
+    U             : String;
+    UsageLinksArr : TDocVariantData;
+    UsageList     : TStringList;
+    UsageRowClass : String;
+    UsageRowId    : String;
   begin
     Result.InitJson('{}', []);
 
