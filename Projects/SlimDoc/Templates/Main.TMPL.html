@@ -15,6 +15,7 @@
       color: #333;
       border-bottom: 2px solid #ddd;
       padding-bottom: 10px;
+      margin-top: 0;
     }
 
     h2 {
@@ -143,17 +144,19 @@
       margin-right: 5px;
     }
 
-    .options-link {
+    .options-toggle {
       margin-left: 10px;
-      color: #0078d7;
-      text-decoration: none;
+      color: #555;
       font-size: 0.9em;
       white-space: nowrap;
       cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
     }
 
-    .options-link:hover {
-      text-decoration: underline;
+    .options-toggle input {
+      margin-right: 5px;
     }
 
     .hidden-by-search {
@@ -502,15 +505,12 @@
         }
       }
     }
-    function toggleSearchOptions() {
+    function toggleSearchOptions(checkbox) {
       var options = document.getElementById("filterOptions");
-      var link = document.getElementById("optionsLink");
-      if (options.style.display === "none") {
+      if (checkbox.checked) {
         options.style.display = "flex";
-        link.textContent = "Hide Options";
       } else {
         options.style.display = "none";
-        link.textContent = "Options";
       }
     }
     window.onload = updateSearchOption;
@@ -660,7 +660,9 @@
     <div class="search-row">
       <span class="search-label">Slim Docs</span>
       <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
-      <a id="optionsLink" class="options-link" onclick="toggleSearchOptions()">Options</a>
+      <label class="options-toggle">
+        <input type="checkbox" onchange="toggleSearchOptions(this)"> Options
+      </label>
     </div>
     <div class="filter-options" id="filterOptions" style="display:none; margin-top: 10px;">
       <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
