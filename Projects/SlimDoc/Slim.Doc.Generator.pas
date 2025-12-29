@@ -29,9 +29,9 @@ type
 
   TSlimDocGenerator = class
   private
-    function  BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
+    function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean): String;
     function  FormatXmlComment(const AXml: String): String;
-    function  GenerateMemberData(Fixture: TSlimDocFixture; Member: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+    function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
   public
@@ -80,20 +80,20 @@ begin
   Result := Result.Replace('</returns>', '</div>', [rfReplaceAll, rfIgnoreCase]);
 end;
 
-function TSlimDocGenerator.BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
+function TSlimDocGenerator.BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean): String;
 var
   Fragment: String;
   Parts   : TArray<String>;
   Spaced  : String;
 begin
-  Fragment := 'text=' + MemberName;
-  Spaced := CamelCaseToSpaced(MemberName);
-  if Spaced <> MemberName then
+  Fragment := 'text=' + AMemberName;
+  Spaced := CamelCaseToSpaced(AMemberName);
+  if Spaced <> AMemberName then
   begin
     Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
     // Range match for interleaved calls: WriteVarValue -> text=Write,Value
     // Only for methods, to match reference HTML
-    if IsMethod and Spaced.Contains(' ') then
+    if AIsMethod and Spaced.Contains(' ') then
     begin
       Parts := Spaced.Split([' ']);
       if Length(Parts) >= 2 then
@@ -101,9 +101,9 @@ begin
     end;
   end;
 
-  if IsMethod and (MemberName.Length > 3) and MemberName.StartsWith('Set', True) then
+  if AIsMethod and (AMemberName.Length > 3) and AMemberName.StartsWith('Set', True) then
   begin
-    var PropName := MemberName.Substring(3);
+    var PropName := AMemberName.Substring(3);
     Fragment := Fragment + '&text=' + PropName;
 
     var SpacedProp := CamelCaseToSpaced(PropName);
@@ -119,18 +119,19 @@ begin
     end;
   end;
 
-  Result := Format('../%s#:~:%s', [PageName, Fragment]);
+  Result := Format('../%s#:~:%s', [APageName, Fragment]);
 end;
 
-function TSlimDocGenerator.GenerateMemberData(Fixture: TSlimDocFixture; Member: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+function TSlimDocGenerator.GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
 var
   HasDescription: Boolean;
   HasUsage      : Boolean;
   LinkObj       : TDocVariantData;
   LookupKey     : String;
+  MemberMethod  : TSlimDocMethod absolute AMember;
+  MemberProperty: TSlimDocProperty absolute AMember;
   RowClass      : String;
   SyncStyle     : String;
-  U             : String;
   UsageLinksArr : TDocVariantData;
   UsageList     : TStringList;
   UsageRowClass : String;
@@ -138,59 +139,62 @@ var
 begin
   Result.InitJson('{}', []);
 
-  LookupKey := Format('%s.%s', [Fixture.Name, Member.Name]).ToLower;
+  LookupKey := Format('%s.%s', [AFixture.Name, AMember.Name]).ToLower;
   HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
-  HasDescription := Member.Description <> '';
-  UsageRowId := Format('usage-%s-%s', [Fixture.Id, Member.Name]).Replace('.', '-');
+  HasDescription := AMember.Description <> '';
+  UsageRowId := Format('usage-%s-%s', [AFixture.Id, AMember.Name]).Replace('.', '-');
 
   RowClass := '';
-  if Member.IsInherited then RowClass := 'inherited-member';
+  if AMember.IsInherited then
+    RowClass := 'inherited-member';
 
   SyncStyle := '';
-  if SameText(Member.SyncMode, 'smUnsynchronized') then
+  if SameText(AMember.SyncMode, 'smUnsynchronized') then
     SyncStyle := 'color:#888'; // Added to style attribute in template
 
-  Result.AddValue('Name', Member.Name);
-  if RowClass <> '' then Result.AddValue('RowClass', RowClass);
+  Result.AddValue('Name', AMember.Name);
+  if RowClass <> '' then
+    Result.AddValue('RowClass', RowClass);
 
-  if Member is TSlimDocMethod then
-     Result.AddValue('ReturnType', TSlimDocMethod(Member).ReturnType)
-  else
-     Result.AddValue('ReturnType', ''); // Empty for properties
+  if AMember is TSlimDocMethod then
+  begin
+    Result.AddValue('ParamsString', MemberMethod.GetParamsString);
+    Result.AddValue('ReturnType', MemberMethod.ReturnType);
+  end
+  else if AMember is TSlimDocProperty then
+  begin
+    Result.AddValue('PropertyType', MemberProperty.PropertyType);
+    Result.AddValue('Access', MemberProperty.Access);
+    Result.AddValue('ReturnType', ''); // Empty for properties
+  end;
 
-  if Member is TSlimDocMethod then
-     Result.AddValue('ParamsString', TSlimDocMethod(Member).GetParamsString)
-  else if Member is TSlimDocProperty then
-     Result.AddValue('PropertyType', TSlimDocProperty(Member).PropertyType);
-
-  if Member is TSlimDocProperty then
-     Result.AddValue('Access', TSlimDocProperty(Member).Access);
-
-  Result.AddValue('SyncMode', Member.SyncMode);
-  if SyncStyle <> '' then Result.AddValue('SyncStyle', SyncStyle);
-  Result.AddValue('Origin', Member.Origin);
+  Result.AddValue('SyncMode', AMember.SyncMode);
+  if SyncStyle <> '' then
+    Result.AddValue('SyncStyle', SyncStyle);
+  Result.AddValue('Origin', AMember.Origin);
   Result.AddValue('HasUsageOrDesc', HasUsage or HasDescription);
   Result.AddValue('UsageRowId', UsageRowId);
 
   UsageRowClass := '';
-  if Member.IsInherited then UsageRowClass := 'inherited-member usage-row'
-  else UsageRowClass := 'usage-row';
+  if AMember.IsInherited then
+    UsageRowClass := 'inherited-member usage-row'
+  else
+    UsageRowClass := 'usage-row';
   Result.AddValue('UsageRowClass', UsageRowClass);
 
   if HasDescription then
-    Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description))
+    Result.AddValue('DescriptionHtml', FormatXmlComment(AMember.Description))
   else
     Result.AddValue('DescriptionHtml', false);
 
   Result.AddValue('HasUsage', HasUsage);
-
   if HasUsage then
   begin
     UsageLinksArr.InitJson('[]', []);
-    for U in UsageList do
+    for var U: String in UsageList do
     begin
       LinkObj.InitJson('{}', []);
-      LinkObj.AddValue('Link', BuildLink(U, Member.Name, Member is TSlimDocMethod));
+      LinkObj.AddValue('Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod));
       LinkObj.AddValue('PageName', U);
       UsageLinksArr.AddItem(Variant(LinkObj));
     end;
@@ -200,14 +204,14 @@ end;
 
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const ATemplateContent, AOutputFilePath: String): String;
 var
-  Doc            : TDocVariantData;
-  Fixture        : TSlimDocFixture;
-  FixtureObj     : TDocVariantData;
-  FixturesArr    : TDocVariantData;
-  Method         : TSlimDocMethod;
-  MethodsArr     : TDocVariantData;
-  Prop           : TSlimDocProperty;
-  PropsArr       : TDocVariantData;
+  Doc        : TDocVariantData;
+  Fixture    : TSlimDocFixture;
+  FixtureObj : TDocVariantData;
+  FixturesArr: TDocVariantData;
+  Method     : TSlimDocMethod;
+  MethodsArr : TDocVariantData;
+  Prop       : TSlimDocProperty;
+  PropsArr   : TDocVariantData;
 begin
   SortFixtures(AFixtures);
 
