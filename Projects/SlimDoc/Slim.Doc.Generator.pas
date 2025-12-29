@@ -145,7 +145,6 @@ var
   MemberMethod  : TSlimDocMethod absolute AMember;
   MemberProperty: TSlimDocProperty absolute AMember;
   RowClass      : String;
-  SyncStyle     : String;
   UsageLinksArr : TDocVariantData;
   UsageList     : TStringList;
   UsageRowClass : String;
@@ -161,10 +160,6 @@ begin
   RowClass := '';
   if AMember.IsInherited then
     RowClass := 'inherited-member';
-
-  SyncStyle := '';
-  if SameText(AMember.SyncMode, 'smUnsynchronized') then
-    SyncStyle := 'color:#888'; // Added to style attribute in template
 
   Result.AddValue('Name', AMember.Name);
   if RowClass <> '' then
@@ -183,8 +178,8 @@ begin
   end;
 
   Result.AddValue('SyncMode', AMember.SyncMode);
-  if SyncStyle <> '' then
-    Result.AddValue('SyncStyle', SyncStyle);
+  if SameText(AMember.SyncMode, 'smUnsynchronized') then
+    Result.AddValue('SyncClass', 'unsynchronized-member');
   Result.AddValue('Origin', AMember.Origin);
   Result.AddValue('HasUsageOrDesc', HasUsage or HasDescription);
   Result.AddValue('UsageRowId', UsageRowId);

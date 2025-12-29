@@ -163,6 +163,10 @@
       user-select: none;
     }
 
+    .unsynchronized-member {
+      color: #888;
+    }
+
     /* Usage Row Styles */
     .usage-row {
       background-color: #f0f0f0;
@@ -563,7 +567,7 @@
           <td>{{Name}}</td>
           <td>{{ParamsString}}</td>
           <td>{{ReturnType}}</td>
-          <td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td>
+          <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
           <td style="color:#888">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
@@ -613,7 +617,7 @@
           <td>{{Name}}</td>
           <td>{{PropertyType}}</td>
           <td>{{Access}}</td>
-          <td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td>
+          <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
           <td style="color:#888">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
