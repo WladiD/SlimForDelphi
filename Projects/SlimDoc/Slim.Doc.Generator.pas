@@ -29,7 +29,7 @@ type
 
   TSlimDocGenerator = class
   private
-    function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean): String;
+    function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean; AParamCount: Integer): String;
     function  FormatXmlComment(const AXml: String): String;
     function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
     function  HasInheritedMembers(AFixture: TSlimDocFixture): Boolean;
@@ -94,7 +94,7 @@ begin
   Result := Result.Replace('</returns>', '</div>', [rfReplaceAll, rfIgnoreCase]);
 end;
 
-function TSlimDocGenerator.BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean): String;
+function TSlimDocGenerator.BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean; AParamCount: Integer): String;
 var
   Fragment: String;
   Parts   : TArray<String>;
@@ -106,8 +106,8 @@ begin
   begin
     Fragment := Fragment + '&text=' + Spaced.Replace(' ', '%20');
     // Range match for interleaved calls: WriteVarValue -> text=Write,Value
-    // Only for methods, to match reference HTML
-    if AIsMethod and Spaced.Contains(' ') then
+    // Only for methods with at least 2 parameters, as these cause gaps in the HTML cells
+    if AIsMethod and (AParamCount >= 2) and Spaced.Contains(' ') then
     begin
       Parts := Spaced.Split([' ']);
       if Length(Parts) >= 2 then
@@ -124,7 +124,8 @@ begin
     if SpacedProp <> PropName then
     begin
       Fragment := Fragment + '&text=' + SpacedProp.Replace(' ', '%20');
-      if SpacedProp.Contains(' ') then
+      // Only for methods with at least 2 parameters, as these could potentially cause gaps
+      if SpacedProp.Contains(' ') and (AParamCount >= 2) then
       begin
         Parts := SpacedProp.Split([' ']);
         if Length(Parts) >= 2 then
@@ -149,6 +150,7 @@ var
   UsageList     : TStringList;
   UsageRowClass : String;
   UsageRowId    : String;
+  ParamCount    : Integer;
 begin
   Result.InitJson('{}', []);
 
@@ -165,8 +167,10 @@ begin
   if RowClass <> '' then
     Result.AddValue('RowClass', RowClass);
 
+  ParamCount := 0;
   if AMember is TSlimDocMethod then
   begin
+    ParamCount := MemberMethod.Parameters.Count;
     Result.AddValue('ParamsString', MemberMethod.GetParamsString);
     Result.AddValue('ReturnType', MemberMethod.ReturnType);
   end
@@ -203,7 +207,7 @@ begin
     for var U: String in UsageList do
     begin
       LinkObj.InitJson('{}', []);
-      LinkObj.AddValue('Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod));
+      LinkObj.AddValue('Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod, ParamCount));
       LinkObj.AddValue('PageName', U);
       UsageLinksArr.AddItem(Variant(LinkObj));
     end;
