@@ -42,6 +42,9 @@ type
     /// Returns the link to the generated documentation file after execution.
     /// </summary>
     property GeneratedLink: String read FGeneratedLink;
+    /// <summary>
+    /// The path to the Mustache template file used for the HTML generation.
+    /// </summary>
     property MainTemplate: String write FMainTemplatePath;
   end;
 

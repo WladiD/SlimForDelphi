@@ -18,6 +18,7 @@ uses
   DUnitX.TestFramework,
 
   Slim.Doc.Extractor,
+  Slim.Doc.Generator,
   Slim.Doc.Model,
   Slim.Fixture;
 
@@ -40,6 +41,13 @@ type
   end;
 
   TSimpleChildFixture = class(TSimpleBaseFixture)
+  end;
+
+  [TestFixture]
+  TTestSlimDocGenerator = class
+  public
+    [Test]
+    procedure TestDescriptionScoping;
   end;
 
   [TestFixture]
@@ -77,6 +85,54 @@ end;
 
 procedure TSampleFixture.SyncMethod;
 begin
+end;
+
+{ TTestSlimDocGenerator }
+
+procedure TTestSlimDocGenerator.TestDescriptionScoping;
+var
+  Fixture: TSlimDocFixture;
+  Gen: TSlimDocGenerator;
+  Prop: TSlimDocProperty;
+  Fixtures: TObjectList<TSlimDocFixture>;
+  Template: String;
+  OutputFile: String;
+  ResultContent: String;
+begin
+  Fixture := TSlimDocFixture.Create;
+  Fixture.Name := 'MyFixture';
+  Fixture.DelphiClass := 'TMyFixture';
+  Fixture.Description := '<summary>Class Description</summary>';
+
+  Prop := TSlimDocProperty.Create;
+  Prop.Name := 'MyProp';
+  // No Description set!
+  Fixture.Properties.Add(Prop);
+
+  Fixtures := TObjectList<TSlimDocFixture>.Create(True);
+  Fixtures.Add(Fixture);
+
+  Gen := TSlimDocGenerator.Create;
+  try
+    // Template using DescriptionHtml
+    Template := '{{#Fixtures}}FixtureDesc: {{DescriptionHtml}} {{#Properties}}PropDesc: {{DescriptionHtml}}{{/Properties}}{{/Fixtures}}';
+    OutputFile := TPath.GetTempFileName;
+    try
+      Gen.Generate(Fixtures, nil, Template, OutputFile);
+      ResultContent := TFile.ReadAllText(OutputFile);
+
+      // Should NOT contain the class description in the property section
+      Assert.IsFalse(ResultContent.Contains('PropDesc: <div class="xml-summary">Class Description</div>'), 'Property incorrectly inherited class description!');
+      
+      // Should contain empty property description
+      Assert.IsTrue(ResultContent.Contains('PropDesc: '), 'Property description should be empty');
+    finally
+      if TFile.Exists(OutputFile) then TFile.Delete(OutputFile);
+    end;
+  finally
+    Gen.Free;
+    Fixtures.Free;
+  end;
 end;
 
 { TTestSlimDocExtractor }
@@ -200,6 +256,9 @@ begin
 
     Assert.IsTrue(Docs.TryGetValue('GeneratedLink', Description), 'Should contain GeneratedLink');
     Assert.IsTrue(Description.Contains('Returns the link to the generated documentation'), 'Doc content mismatch');
+
+    Assert.IsTrue(Docs.TryGetValue('MainTemplate', Description), 'Should contain MainTemplate');
+    Assert.IsTrue(Description.Contains('Mustache template file'), 'MainTemplate doc content mismatch');
   finally
     Docs.Free;
     Extractor.Free;

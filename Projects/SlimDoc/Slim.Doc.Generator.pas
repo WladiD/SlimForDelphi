@@ -184,7 +184,9 @@ begin
   Result.AddValue('UsageRowClass', UsageRowClass);
 
   if HasDescription then
-    Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description));
+    Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description))
+  else
+    Result.AddValue('DescriptionHtml', '');
 
   Result.AddValue('HasUsage', HasUsage);
 
