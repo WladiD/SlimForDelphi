@@ -12,6 +12,7 @@ uses
 
   System.Classes,
   System.Generics.Collections,
+  System.IOUtils,
   System.SysUtils,
 
   Slim.Doc.Extractor,
@@ -29,6 +30,7 @@ type
   TSlimDocGeneratorFixture = class(TSlimFixture)
   private
     FGeneratedLink : String;
+    FMainTemplatePath: String;
     FRootSourcePath: String;
     FUsageMap      : TUsageMap;
   public
@@ -40,6 +42,7 @@ type
     /// Returns the link to the generated documentation file after execution.
     /// </summary>
     property GeneratedLink: String read FGeneratedLink;
+    property MainTemplate: String write FMainTemplatePath;
   end;
 
 implementation
@@ -104,7 +107,16 @@ var
   Extractor: TSlimDocExtractor;
   Fixtures : TObjectList<TSlimDocFixture>;
   Generator: TSlimDocGenerator;
+  Template : String;
 begin
+  if FMainTemplatePath = '' then
+    raise Exception.Create('MainTemplate property must be set before generating documentation.');
+
+  if not FileExists(FMainTemplatePath) then
+    raise Exception.CreateFmt('Template file not found: %s', [FMainTemplatePath]);
+
+  Template := TFile.ReadAllText(FMainTemplatePath, TEncoding.UTF8);
+
   Extractor := TSlimDocExtractor.Create;
   if FRootSourcePath <> '' then
     Extractor.RootSourcePath := FRootSourcePath;
@@ -113,7 +125,7 @@ begin
   try
     Fixtures := Extractor.ExtractAll;
     try
-      FGeneratedLink := Generator.Generate(Fixtures, FUsageMap, AFilePath);
+      FGeneratedLink := Generator.Generate(Fixtures, FUsageMap, Template, AFilePath);
       Result := FGeneratedLink;
     finally
       Fixtures.Free;

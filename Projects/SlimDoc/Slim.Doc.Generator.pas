@@ -35,7 +35,7 @@ type
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
   public
-    function Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
+    function Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const ATemplateContent, AOutputFilePath: String): String;
   end;
 
 implementation
@@ -202,7 +202,7 @@ begin
   end;
 end;
 
-function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
+function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const ATemplateContent, AOutputFilePath: String): String;
 var
   Doc            : TDocVariantData;
   Fixture        : TSlimDocFixture;
@@ -212,20 +212,8 @@ var
   MethodsArr     : TDocVariantData;
   Prop           : TSlimDocProperty;
   PropsArr       : TDocVariantData;
-  TemplateContent: String;
-  TemplatePath   : String;
 begin
   SortFixtures(AFixtures);
-
-  // Locate Template
-  if FileExists('Main.TMPL.html') then TemplatePath := 'Main.TMPL.html'
-  else if FileExists('Templates\Main.TMPL.html') then TemplatePath := 'Templates\Main.TMPL.html'
-  else if FileExists('..\Templates\Main.TMPL.html') then TemplatePath := '..\Templates\Main.TMPL.html'
-  else if FileExists('..\..\Projects\SlimDoc\Templates\Main.TMPL.html') then TemplatePath := '..\..\Projects\SlimDoc\Templates\Main.TMPL.html'
-  else if FileExists('..\Projects\SlimDoc\Templates\Main.TMPL.html') then TemplatePath := '..\Projects\SlimDoc\Templates\Main.TMPL.html'
-  else raise Exception.Create('Template Main.TMPL.html not found.');
-
-  TemplateContent := TFile.ReadAllText(TemplatePath, TEncoding.UTF8);
 
   Doc.InitJson('{}', []);
   FixturesArr.InitJson('[]', []);
@@ -281,7 +269,7 @@ begin
 
   Doc.AddValue('Fixtures', Variant(FixturesArr));
 
-  var Rendered := TSynMustache.Parse(RawUtf8(TemplateContent)).Render(Variant(Doc));
+  var Rendered := TSynMustache.Parse(RawUtf8(ATemplateContent)).Render(Variant(Doc));
   TFile.WriteAllText(AOutputFilePath, string(Rendered), TEncoding.UTF8);
 
   var LinkName := ExtractFileName(AOutputFilePath);
