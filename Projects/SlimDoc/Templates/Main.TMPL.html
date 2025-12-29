@@ -143,6 +143,19 @@
       margin-right: 5px;
     }
 
+    .options-link {
+      margin-left: 10px;
+      color: #0078d7;
+      text-decoration: none;
+      font-size: 0.9em;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .options-link:hover {
+      text-decoration: underline;
+    }
+
     .hidden-by-search {
       display: none !important;
     }
@@ -489,6 +502,17 @@
         }
       }
     }
+    function toggleSearchOptions() {
+      var options = document.getElementById("filterOptions");
+      var link = document.getElementById("optionsLink");
+      if (options.style.display === "none") {
+        options.style.display = "flex";
+        link.textContent = "Hide Options";
+      } else {
+        options.style.display = "none";
+        link.textContent = "Options";
+      }
+    }
     window.onload = updateSearchOption;
   </script>
 </head>
@@ -636,8 +660,9 @@
     <div class="search-row">
       <span class="search-label">Slim Docs</span>
       <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
+      <a id="optionsLink" class="options-link" onclick="toggleSearchOptions()">Options</a>
     </div>
-    <div class="filter-options">
+    <div class="filter-options" id="filterOptions" style="display:none; margin-top: 10px;">
       <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
       <label><input type="checkbox" id="chkNamespace" checked onchange="updateSearchOption()"> Namespaces</label>
       <label><input type="checkbox" id="chkMember" checked onchange="updateSearchOption()"> Methods/Properties</label>
