@@ -4,54 +4,254 @@
   <meta charset="utf-8">
   <title>Slim Fixture Documentation</title>
   <style>
-    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f9f9f9; padding-top: 110px; }
-    h1 { color: #333; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
-    h2 { color: #0078d7; margin-top: 30px; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }    
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-    th { background-color: #f2f2f2; color: #333; }
-    tr:nth-child(even) { background-color: #fcfcfc; }
-    .fixture { background-color: white; border: 1px solid #ccc; padding: 20px; margin-bottom: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .fixture-header { background-color: #e6f2ff; padding: 10px; font-weight: bold; font-size: 1.4em; border-radius: 5px; margin-bottom: 15px; border-left: 5px solid #0078d7; display: flex; justify-content: space-between; align-items: center; }
-    .namespace { color: #555; font-size: 0.7em; font-weight: normal; margin-left: 10px; }
-    .class-name { font-family: Consolas, monospace; color: #d63384; }
-    .toc { background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 30px; }
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+      padding-top: 110px;
+    }
+
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 10px;
+    }
+
+    h2 {
+      color: #0078d7;
+      margin-top: 30px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+      background-color: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      color: #333;
+    }
+
+    tr:nth-child(even) {
+      background-color: #fcfcfc;
+    }
+
+    .fixture {
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .fixture-header {
+      background-color: #e6f2ff;
+      padding: 10px;
+      font-weight: bold;
+      font-size: 1.4em;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border-left: 5px solid #0078d7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .namespace {
+      color: #555;
+      font-size: 0.7em;
+      font-weight: normal;
+      margin-left: 10px;
+    }
+
+    .class-name {
+      font-family: Consolas, monospace;
+      color: #d63384;
+    }
+
+    .toc {
+      background-color: white;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 30px;
+    }
 
     /* Search Bar Styles */
-    .search-container { position: fixed; top: 0; left: 0; right: 0; background-color: white; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000; display: flex; flex-direction: column; }
-    .search-row { display: flex; align-items: center; margin-bottom: 8px; }
-    #searchInput { flex-grow: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
-    #searchInput:focus { border-color: #0078d7; }
-    .search-label { margin-right: 15px; font-weight: bold; color: #555; }
-    .filter-options { display: flex; font-size: 0.9em; color: #555; gap: 15px; }
-    .filter-options label { cursor: pointer; display: flex; align-items: center; }
-    .filter-options input { margin-right: 5px; }
-    .hidden-by-search { display: none !important; }
+    .search-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: white;
+      padding: 10px 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    #searchInput {
+      flex-grow: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    #searchInput:focus {
+      border-color: #0078d7;
+    }
+
+    .search-label {
+      margin-right: 15px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .filter-options {
+      display: flex;
+      font-size: 0.9em;
+      color: #555;
+      gap: 15px;
+    }
+
+    .filter-options label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+
+    .filter-options input {
+      margin-right: 5px;
+    }
+
+    .hidden-by-search {
+      display: none !important;
+    }
 
     /* Styles for inherited members */
-    .inherited-member { display: none; color: #777; font-style: italic; background-color: #f8f8f8 !important; }
-    .inherited-toggle { font-size: 0.6em; font-weight: normal; margin-left: 20px; cursor: pointer; user-select: none; }
+    .inherited-member {
+      display: none;
+      color: #777;
+      font-style: italic;
+      background-color: #f8f8f8 !important;
+    }
+
+    .inherited-toggle {
+      font-size: 0.6em;
+      font-weight: normal;
+      margin-left: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
 
     /* Usage Row Styles */
-    .usage-row { background-color: #f0f0f0; }
-    .usage-content { padding: 5px 10px 5px 30px; font-size: 0.9em; color: #444; }
-    .usage-content strong { color: #222; }
-    .toggle-btn { cursor: pointer; color: #0078d7; font-weight: bold; user-select: none; display: inline-block; width: 16px; text-align: center; }
-    .usage-links a { display: inline-block; margin-right: 5px; margin-bottom: 3px; padding: 1px 5px; background-color: #fff; border-radius: 3px; font-size: 0.9em; color: #333; text-decoration: none; border: 1px solid #ccc; }
-    .usage-links a:hover { background-color: #e6f2ff; border-color: #0078d7; }
+    .usage-row {
+      background-color: #f0f0f0;
+    }
+
+    .usage-content {
+      padding: 5px 10px 5px 30px;
+      font-size: 0.9em;
+      color: #444;
+    }
+
+    .usage-content strong {
+      color: #222;
+    }
+
+    .toggle-btn {
+      cursor: pointer;
+      color: #0078d7;
+      font-weight: bold;
+      user-select: none;
+      display: inline-block;
+      width: 16px;
+      text-align: center;
+    }
+
+    .usage-links a {
+      display: inline-block;
+      margin-right: 5px;
+      margin-bottom: 3px;
+      padding: 1px 5px;
+      background-color: #fff;
+      border-radius: 3px;
+      font-size: 0.9em;
+      color: #333;
+      text-decoration: none;
+      border: 1px solid #ccc;
+    }
+
+    .usage-links a:hover {
+      background-color: #e6f2ff;
+      border-color: #0078d7;
+    }
 
     /* Description Styles */
-    .description-content { color: #555; }
-    .fixture-description { padding: 10px; margin-bottom: 20px; background-color: #f9f9f9; border-left: 4px solid #ddd; }
-    .member-description { padding: 5px 10px 5px 30px; }
-    
-    /* XML Doc Styles */
-    .xml-summary { margin-bottom: 8px; display: block; white-space: pre-wrap; }
-    .xml-param { margin-left: 10px; display: block; }
-    .xml-param-name { font-weight: bold; font-family: Consolas, monospace; color: #333; }
-    .xml-returns { margin-top: 8px; font-weight: bold; color: #0078d7; display: block; }
+    .description-content {
+      color: #555;
+    }
 
-    .highlight { background-color: #fff2a8; color: black; border-radius: 2px; }
+    .fixture-description {
+      padding: 10px;
+      margin-bottom: 20px;
+      background-color: #f9f9f9;
+      border-left: 4px solid #ddd;
+    }
+
+    .member-description {
+      padding: 5px 10px 5px 30px;
+    }
+
+    /* XML Doc Styles */
+    .xml-summary {
+      margin-bottom: 8px;
+      display: block;
+      white-space: pre-wrap;
+    }
+
+    .xml-param {
+      margin-left: 10px;
+      display: block;
+    }
+
+    .xml-param-name {
+      font-weight: bold;
+      font-family: Consolas, monospace;
+      color: #333;
+    }
+
+    .xml-returns {
+      margin-top: 8px;
+      font-weight: bold;
+      color: #0078d7;
+      display: block;
+    }
+
+    .highlight {
+      background-color: #fff2a8;
+      color: black;
+      border-radius: 2px;
+    }
   </style>
   <script>
     function removeHighlights() {
@@ -67,7 +267,7 @@
     function highlight(element, text) {
       if (!text || !element) return;
       text = text.toUpperCase();
-      
+
       var node = element.firstChild;
       while (node) {
         var next = node.nextSibling;
@@ -78,13 +278,13 @@
             var span = document.createElement("span");
             span.className = "highlight";
             span.textContent = val.substr(idx, text.length);
-            
+
             var after = node.splitText(idx);
             var remaining = after.splitText(text.length);
-            
+
             after.parentNode.replaceChild(span, after);
             node = remaining; // Continue searching in the remaining text
-            continue; 
+            continue;
           }
         } else if (node.nodeType === 1 && node.className !== "highlight" && node.tagName !== "SCRIPT") {
           highlight(node, text);
@@ -98,9 +298,9 @@
       var rows = container.querySelectorAll(".inherited-member");
       for (var i = 0; i < rows.length; i++) {
         if (rows[i].classList.contains("usage-row")) {
-           rows[i].style.display = "none"; 
+          rows[i].style.display = "none";
         } else {
-           rows[i].style.display = checkbox.checked ? "table-row" : "none";
+          rows[i].style.display = checkbox.checked ? "table-row" : "none";
         }
       }
     }
@@ -123,30 +323,30 @@
       var useMember = document.getElementById("chkMember").checked;
       var useComment = document.getElementById("chkComment").checked;
       var useUsage = document.getElementById("chkUsage").checked;
-      
+
       var parts = [];
       if (useFixture) parts.push("fixtures");
       if (useNamespace) parts.push("namespaces");
       if (useMember) parts.push("methods/properties");
       if (useComment) parts.push("comments");
       if (useUsage) parts.push("usage");
-      
+
       var text = "Search";
       if (parts.length > 0) {
-         text += " for " + parts.join(", ");
+        text += " for " + parts.join(", ");
       }
       text += "...";
-      
+
       document.getElementById("searchInput").placeholder = text;
       filterFixtures();
     }
 
     function filterFixtures() {
       removeHighlights();
-      
+
       var input = document.getElementById("searchInput");
       var filter = input.value.toUpperCase();
-      
+
       var useFixture = document.getElementById("chkFixture").checked;
       var useNamespace = document.getElementById("chkNamespace").checked;
       var useMember = document.getElementById("chkMember").checked;
@@ -159,7 +359,7 @@
       for (var i = 0; i < fixtures.length; i++) {
         var fixture = fixtures[i];
         var header = fixture.querySelector(".fixture-header");
-        
+
         // Fixture & Namespace
         var headerText = "";
         if (useFixture) headerText += (header.querySelector("span:first-child").firstChild.textContent || ""); // Name
@@ -167,15 +367,15 @@
 
         // Also check class name if useFixture
         if (useFixture) {
-           var classElem = fixture.querySelector(".class-name");
-           if (classElem) headerText += classElem.textContent;
+          var classElem = fixture.querySelector(".class-name");
+          if (classElem) headerText += classElem.textContent;
         }
         // Also check class comment if useComment
         if (useComment) {
-           var directDesc = fixture.querySelectorAll(":scope > .description-content");
-           for (var d = 0; d < directDesc.length; d++) {
-              headerText += directDesc[d].textContent;
-           }
+          var directDesc = fixture.querySelectorAll(":scope > .description-content");
+          for (var d = 0; d < directDesc.length; d++) {
+            headerText += directDesc[d].textContent;
+          }
         }
 
         var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;
@@ -195,34 +395,34 @@
 
           // Member Name
           if (useMember) {
-             var rowText = row.textContent || row.innerText;
-             if (rowText.toUpperCase().indexOf(filter) > -1) rowMatches = true;
+            var rowText = row.textContent || row.innerText;
+            if (rowText.toUpperCase().indexOf(filter) > -1) rowMatches = true;
           }
 
           // Comment & Usage
           if (hasUsageRow) {
-             // Description
-             if (useComment) {
-                var descDiv = usageRow.querySelector(".description-content");
-                if (descDiv && descDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
-             }
-             // Usage
-             if (useUsage) {
-                var usageDiv = usageRow.querySelector(".usage-content");
-                if (usageDiv && usageDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
-             }
+            // Description
+            if (useComment) {
+              var descDiv = usageRow.querySelector(".description-content");
+              if (descDiv && descDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+            }
+            // Usage
+            if (useUsage) {
+              var usageDiv = usageRow.querySelector(".usage-content");
+              if (usageDiv && usageDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+            }
           }
 
           if (filter === "") {
-             row.classList.remove("hidden-by-search");
-             if (hasUsageRow) {
-                usageRow.classList.remove("hidden-by-search");
-                usageRow.style.display = "none";
-                var btn = row.querySelector(".toggle-btn");
-                if (btn) btn.innerHTML = "&#9658;";
-             }
-             hasVisibleRow = true;
-             continue;
+            row.classList.remove("hidden-by-search");
+            if (hasUsageRow) {
+              usageRow.classList.remove("hidden-by-search");
+              usageRow.style.display = "none";
+              var btn = row.querySelector(".toggle-btn");
+              if (btn) btn.innerHTML = "&#9658;";
+            }
+            hasVisibleRow = true;
+            continue;
           }
 
           if (headerMatches || rowMatches || usageMatches) {
@@ -232,36 +432,36 @@
             if (rowMatches && filter.length > 0) highlight(row, filter);
 
             if (hasUsageRow) {
-               usageRow.classList.remove("hidden-by-search");
-               
-               if (usageMatches) {
-                 usageRow.style.display = "table-row";
-                 if (filter.length > 0) highlight(usageRow, filter);
-                 var btn = row.querySelector(".toggle-btn");
-                 if (btn) btn.innerHTML = "&#9660;";
-               } else {
-                 usageRow.style.display = "none";
-                 var btn = row.querySelector(".toggle-btn");
-                 if (btn) btn.innerHTML = "&#9658;";
-               }
+              usageRow.classList.remove("hidden-by-search");
+
+              if (usageMatches) {
+                usageRow.style.display = "table-row";
+                if (filter.length > 0) highlight(usageRow, filter);
+                var btn = row.querySelector(".toggle-btn");
+                if (btn) btn.innerHTML = "&#9660;";
+              } else {
+                usageRow.style.display = "none";
+                var btn = row.querySelector(".toggle-btn");
+                if (btn) btn.innerHTML = "&#9658;";
+              }
             }
           } else {
             row.classList.add("hidden-by-search");
             if (hasUsageRow) {
-               usageRow.classList.add("hidden-by-search");
-               usageRow.style.display = "none";
+              usageRow.classList.add("hidden-by-search");
+              usageRow.style.display = "none";
             }
           }
         }
 
         if (headerMatches && filter.length > 0) {
-           highlight(header, filter);
-           var classElem = fixture.querySelector(".class-name");
-           if (classElem) highlight(classElem, filter);
-           var directDesc = fixture.querySelectorAll(":scope > .description-content");
-           for (var d = 0; d < directDesc.length; d++) {
-              highlight(directDesc[d], filter);
-           }
+          highlight(header, filter);
+          var classElem = fixture.querySelector(".class-name");
+          if (classElem) highlight(classElem, filter);
+          var directDesc = fixture.querySelectorAll(":scope > .description-content");
+          for (var d = 0; d < directDesc.length; d++) {
+            highlight(directDesc[d], filter);
+          }
         }
 
         if (hasVisibleRow || headerMatches) {
@@ -288,7 +488,7 @@
   <div class="search-container">
     <div class="search-row">
       <span class="search-label">Slim Docs</span>
-      <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties..."> 
+      <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
     </div>
     <div class="filter-options">
       <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
@@ -298,43 +498,144 @@
       <label><input type="checkbox" id="chkUsage" checked onchange="updateSearchOption()"> Usage</label>
     </div>
   </div>
-  <h1>Registered Slim Fixtures</h1><div class="toc"><h2>Table of Contents</h2><ul>
-{{#Fixtures}}<li><a href="#{{Id}}">{{Name}}</a> <span style="color:#888">({{Namespace}})</span></li>{{/Fixtures}}</ul></div>
-{{#Fixtures}}
-<div class="fixture" id="{{Id}}"><div class="fixture-header"><span>{{Name}} <span class="namespace">{{Namespace}}</span></span>{{#HasInherited}}<label class="inherited-toggle"><input type="checkbox" onclick="toggleInherited(this, '{{Id}}')"> Show inherited members</label>{{/HasInherited}}</div><table style="width: auto; border: none; margin-bottom: 15px; background-color: transparent; box-shadow: none;"><tr>
-  <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Unit:</td>
-  <td style="border: none; padding: 2px 0;">{{UnitName}}</td>
-</tr><tr>
-  <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td>
-  <td style="border: none; padding: 2px 0;"><span class="class-name">{{{DelphiClass}}}</span></td>
-</tr></table>{{#DescriptionHtml}}<div class="description-content fixture-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}  <h3>Methods</h3>
-  <table>
-    <thead>
+
+  <h1>Registered Slim Fixtures</h1>
+
+  <div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+      {{#Fixtures}}
+      <li><a href="#{{Id}}">{{Name}}</a> <span style="color:#888">({{Namespace}})</span></li>
+      {{/Fixtures}}
+    </ul>
+  </div>
+
+  {{#Fixtures}}
+  <div class="fixture" id="{{Id}}">
+    <div class="fixture-header">
+      <span>{{Name}} <span class="namespace">{{Namespace}}</span></span>
+      {{#HasInherited}}
+      <label class="inherited-toggle">
+        <input type="checkbox" onclick="toggleInherited(this, '{{Id}}')"> Show inherited members
+      </label>
+      {{/HasInherited}}
+    </div>
+
+    <table style="width: auto; border: none; margin-bottom: 15px; background-color: transparent; box-shadow: none;">
       <tr>
-        <th style="width: 20px;"></th>
-        <th>Name</th>
-        <th>Parameters</th>
-        <th>Return Type</th>
-        <th>Sync Mode</th>
-        <th>Origin</th>
+        <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Unit:</td>
+        <td style="border: none; padding: 2px 0;">{{UnitName}}</td>
       </tr>
-    </thead>
-    <tbody>{{#Methods}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{#HasUsageOrDesc}}<span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>{{/HasUsageOrDesc}}</td><td>{{Name}}</td><td>{{ParamsString}}</td><td>{{ReturnType}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Methods}}</tbody></table>
-{{#HasProperties}}
-      <h3>Properties</h3>
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 20px;"></th>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Access</th>
-            <th>Sync Mode</th>
-            <th>Origin</th>
-          </tr>
-        </thead>
-        <tbody>{{#Properties}}<tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}><td>{{#HasUsageOrDesc}}<span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>{{/HasUsageOrDesc}}</td><td>{{Name}}</td><td>{{PropertyType}}</td><td>{{Access}}</td><td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td><td style="color:#888">{{Origin}}</td></tr>{{#HasUsageOrDesc}}<tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;"><td colspan="6">{{#DescriptionHtml}}<div class="description-content member-description">{{{DescriptionHtml}}}</div>{{/DescriptionHtml}}{{#HasUsage}}<div class="usage-content"><strong>Used in:</strong> <div class="usage-links">{{#UsageLinks}}<a href="{{{Link}}}" target="_blank">{{PageName}}</a>{{/UsageLinks}}</div></div>{{/HasUsage}}</td></tr>{{/HasUsageOrDesc}}{{/Properties}}</tbody></table>
-{{/HasProperties}}
-</div>
-{{/Fixtures}}
-</body></html>
+      <tr>
+        <td style="border: none; padding: 2px 10px 2px 0; font-weight: bold;">Delphi Class:</td>
+        <td style="border: none; padding: 2px 0;"><span class="class-name">{{{DelphiClass}}}</span></td>
+      </tr>
+    </table>
+
+    {{#DescriptionHtml}}
+    <div class="description-content fixture-description">{{{DescriptionHtml}}}</div>
+    {{/DescriptionHtml}}
+
+    <h3>Methods</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20px;"></th>
+          <th>Name</th>
+          <th>Parameters</th>
+          <th>Return Type</th>
+          <th>Sync Mode</th>
+          <th>Origin</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#Methods}}
+        <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
+          <td>
+            {{#HasUsageOrDesc}}
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            {{/HasUsageOrDesc}}
+          </td>
+          <td>{{Name}}</td>
+          <td>{{ParamsString}}</td>
+          <td>{{ReturnType}}</td>
+          <td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td>
+          <td style="color:#888">{{Origin}}</td>
+        </tr>
+        {{#HasUsageOrDesc}}
+        <tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;">
+          <td colspan="6">
+            {{#DescriptionHtml}}
+            <div class="description-content member-description">{{{DescriptionHtml}}}</div>
+            {{/DescriptionHtml}}
+            {{#HasUsage}}
+            <div class="usage-content">
+              <strong>Used in:</strong>
+              <div class="usage-links">
+                {{#UsageLinks}}
+                <a href="{{{Link}}}" target="_blank">{{PageName}}</a>
+                {{/UsageLinks}}
+              </div>
+            </div>
+            {{/HasUsage}}
+          </td>
+        </tr>
+        {{/HasUsageOrDesc}}
+        {{/Methods}}
+      </tbody>
+    </table>
+
+    {{#HasProperties}}
+    <h3>Properties</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20px;"></th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Access</th>
+          <th>Sync Mode</th>
+          <th>Origin</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#Properties}}
+        <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
+          <td>
+            {{#HasUsageOrDesc}}
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            {{/HasUsageOrDesc}}
+          </td>
+          <td>{{Name}}</td>
+          <td>{{PropertyType}}</td>
+          <td>{{Access}}</td>
+          <td{{#SyncStyle}} style="{{SyncStyle}}"{{/SyncStyle}}>{{SyncMode}}</td>
+          <td style="color:#888">{{Origin}}</td>
+        </tr>
+        {{#HasUsageOrDesc}}
+        <tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;">
+          <td colspan="6">
+            {{#DescriptionHtml}}
+            <div class="description-content member-description">{{{DescriptionHtml}}}</div>
+            {{/DescriptionHtml}}
+            {{#HasUsage}}
+            <div class="usage-content">
+              <strong>Used in:</strong>
+              <div class="usage-links">
+                {{#UsageLinks}}
+                <a href="{{{Link}}}" target="_blank">{{PageName}}</a>
+                {{/UsageLinks}}
+              </div>
+            </div>
+            {{/HasUsage}}
+          </td>
+        </tr>
+        {{/HasUsageOrDesc}}
+        {{/Properties}}
+      </tbody>
+    </table>
+    {{/HasProperties}}
+  </div>
+  {{/Fixtures}}
+</body>
+</html>
