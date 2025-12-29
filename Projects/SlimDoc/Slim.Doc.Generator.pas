@@ -31,6 +31,7 @@ type
   private
     function  BuildLink(const PageName, MemberName: String; IsMethod: Boolean): String;
     function  FormatXmlComment(const AXml: String): String;
+    function  GenerateMemberData(Fixture: TSlimDocFixture; Member: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
   public
@@ -121,6 +122,86 @@ begin
   Result := Format('../%s#:~:%s', [PageName, Fragment]);
 end;
 
+function TSlimDocGenerator.GenerateMemberData(Fixture: TSlimDocFixture; Member: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+var
+  HasDescription: Boolean;
+  HasUsage      : Boolean;
+  LinkObj       : TDocVariantData;
+  LookupKey     : String;
+  RowClass      : String;
+  SyncStyle     : String;
+  ToggleCell    : String;
+  U             : String;
+  UsageLinksArr : TDocVariantData;
+  UsageList     : TStringList;
+  UsageRowClass : String;
+  UsageRowId    : String;
+begin
+  Result.InitJson('{}', []);
+
+  LookupKey := Format('%s.%s', [Fixture.Name, Member.Name]).ToLower;
+  HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
+  HasDescription := Member.Description <> '';
+  UsageRowId := Format('usage-%s-%s', [Fixture.Id, Member.Name]).Replace('.', '-');
+
+  ToggleCell := '';
+  if HasUsage or HasDescription then
+    ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
+
+  RowClass := '';
+  if Member.IsInherited then RowClass := 'inherited-member';
+
+  SyncStyle := '';
+  if SameText(Member.SyncMode, 'smUnsynchronized') then
+    SyncStyle := 'color:#888'; // Added to style attribute in template
+
+  Result.AddValue('Name', Member.Name);
+  if RowClass <> '' then Result.AddValue('RowClass', RowClass);
+  Result.AddValue('ToggleCell', ToggleCell);
+
+  if Member is TSlimDocMethod then
+     Result.AddValue('ReturnType', TSlimDocMethod(Member).ReturnType)
+  else
+     Result.AddValue('ReturnType', ''); // Empty for properties
+
+  if Member is TSlimDocMethod then
+     Result.AddValue('ParamsString', TSlimDocMethod(Member).GetParamsString)
+  else if Member is TSlimDocProperty then
+     Result.AddValue('PropertyType', TSlimDocProperty(Member).PropertyType);
+
+  if Member is TSlimDocProperty then
+     Result.AddValue('Access', TSlimDocProperty(Member).Access);
+
+  Result.AddValue('SyncMode', Member.SyncMode);
+  if SyncStyle <> '' then Result.AddValue('SyncStyle', SyncStyle);
+  Result.AddValue('Origin', Member.Origin);
+  Result.AddValue('HasUsageOrDesc', HasUsage or HasDescription);
+  Result.AddValue('UsageRowId', UsageRowId);
+
+  UsageRowClass := '';
+  if Member.IsInherited then UsageRowClass := 'inherited-member usage-row'
+  else UsageRowClass := 'usage-row';
+  Result.AddValue('UsageRowClass', UsageRowClass);
+
+  if HasDescription then
+    Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description));
+
+  Result.AddValue('HasUsage', HasUsage);
+
+  if HasUsage then
+  begin
+    UsageLinksArr.InitJson('[]', []);
+    for U in UsageList do
+    begin
+      LinkObj.InitJson('{}', []);
+      LinkObj.AddValue('Link', BuildLink(U, Member.Name, Member is TSlimDocMethod));
+      LinkObj.AddValue('PageName', U);
+      UsageLinksArr.AddItem(Variant(LinkObj));
+    end;
+    Result.AddValue('UsageLinks', Variant(UsageLinksArr));
+  end;
+end;
+
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const AOutputFilePath: String): String;
 var
   Doc            : TDocVariantData;
@@ -133,87 +214,6 @@ var
   PropsArr       : TDocVariantData;
   TemplateContent: String;
   TemplatePath   : String;
-
-  function ProcessMember(Member: TSlimDocMember; FixtureId: String): TDocVariantData;
-  var
-    HasDescription: Boolean;
-    HasUsage      : Boolean;
-    LinkObj       : TDocVariantData;
-    LookupKey     : String;
-    RowClass      : String;
-    SyncStyle     : String;
-    ToggleCell    : String;
-    U             : String;
-    UsageLinksArr : TDocVariantData;
-    UsageList     : TStringList;
-    UsageRowClass : String;
-    UsageRowId    : String;
-  begin
-    Result.InitJson('{}', []);
-
-    LookupKey := Format('%s.%s', [Fixture.Name, Member.Name]).ToLower;
-    HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
-    HasDescription := Member.Description <> '';
-    UsageRowId := Format('usage-%s-%s', [FixtureId, Member.Name]).Replace('.', '-');
-
-    ToggleCell := '';
-    if HasUsage or HasDescription then
-      ToggleCell := Format('<span class="toggle-btn" onclick="toggleUsage(this, ''%s'')">&#9658;</span>', [UsageRowId]);
-
-    RowClass := '';
-    if Member.IsInherited then RowClass := 'inherited-member';
-
-    SyncStyle := '';
-    if SameText(Member.SyncMode, 'smUnsynchronized') then
-      SyncStyle := 'color:#888'; // Added to style attribute in template
-
-    Result.AddValue('Name', Member.Name);
-    if RowClass <> '' then Result.AddValue('RowClass', RowClass);
-    Result.AddValue('ToggleCell', ToggleCell);
-
-    if Member is TSlimDocMethod then
-       Result.AddValue('ReturnType', TSlimDocMethod(Member).ReturnType)
-    else
-       Result.AddValue('ReturnType', ''); // Empty for properties
-
-    if Member is TSlimDocMethod then
-       Result.AddValue('ParamsString', TSlimDocMethod(Member).GetParamsString)
-    else if Member is TSlimDocProperty then
-       Result.AddValue('PropertyType', TSlimDocProperty(Member).PropertyType);
-
-    if Member is TSlimDocProperty then
-       Result.AddValue('Access', TSlimDocProperty(Member).Access);
-
-    Result.AddValue('SyncMode', Member.SyncMode);
-    if SyncStyle <> '' then Result.AddValue('SyncStyle', SyncStyle);
-    Result.AddValue('Origin', Member.Origin);
-    Result.AddValue('HasUsageOrDesc', HasUsage or HasDescription);
-    Result.AddValue('UsageRowId', UsageRowId);
-
-    UsageRowClass := '';
-    if Member.IsInherited then UsageRowClass := 'inherited-member usage-row'
-    else UsageRowClass := 'usage-row';
-    Result.AddValue('UsageRowClass', UsageRowClass);
-
-    if HasDescription then
-      Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description));
-
-    Result.AddValue('HasUsage', HasUsage);
-
-    if HasUsage then
-    begin
-      UsageLinksArr.InitJson('[]', []);
-      for U in UsageList do
-      begin
-        LinkObj.InitJson('{}', []);
-        LinkObj.AddValue('Link', BuildLink(U, Member.Name, Member is TSlimDocMethod));
-        LinkObj.AddValue('PageName', U);
-        UsageLinksArr.AddItem(Variant(LinkObj));
-      end;
-      Result.AddValue('UsageLinks', Variant(UsageLinksArr));
-    end;
-  end;
-
 begin
   SortFixtures(AFixtures);
 
@@ -262,7 +262,7 @@ begin
     MethodsArr.InitJson('[]', []);
     SortMembers(TList<TSlimDocMember>(Fixture.Methods));
     for Method in Fixture.Methods do
-      MethodsArr.AddItem(Variant(ProcessMember(Method, Fixture.Id)));
+      MethodsArr.AddItem(Variant(GenerateMemberData(Fixture, Method, AUsageMap)));
     FixtureObj.AddValue('Methods', Variant(MethodsArr));
 
     // Properties
@@ -272,7 +272,7 @@ begin
       PropsArr.InitJson('[]', []);
       SortMembers(TList<TSlimDocMember>(Fixture.Properties));
       for Prop in Fixture.Properties do
-        PropsArr.AddItem(Variant(ProcessMember(Prop, Fixture.Id)));
+        PropsArr.AddItem(Variant(GenerateMemberData(Fixture, Prop, AUsageMap)));
       FixtureObj.AddValue('Properties', Variant(PropsArr));
     end;
 
