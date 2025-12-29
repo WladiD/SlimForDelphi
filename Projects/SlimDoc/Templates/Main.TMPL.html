@@ -8,7 +8,7 @@
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       padding: 20px;
       background-color: #f9f9f9;
-      padding-top: 110px;
+      padding-bottom: 110px;
     }
 
     h1 {
@@ -90,12 +90,12 @@
     /* Search Bar Styles */
     .search-container {
       position: fixed;
-      top: 0;
+      bottom: 0;
       left: 0;
       right: 0;
       background-color: white;
       padding: 10px 20px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
       z-index: 1000;
       display: flex;
       flex-direction: column;
@@ -493,20 +493,6 @@
   </script>
 </head>
 <body>
-  <div class="search-container">
-    <div class="search-row">
-      <span class="search-label">Slim Docs</span>
-      <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
-    </div>
-    <div class="filter-options">
-      <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
-      <label><input type="checkbox" id="chkNamespace" checked onchange="updateSearchOption()"> Namespaces</label>
-      <label><input type="checkbox" id="chkMember" checked onchange="updateSearchOption()"> Methods/Properties</label>
-      <label><input type="checkbox" id="chkComment" checked onchange="updateSearchOption()"> Comments</label>
-      <label><input type="checkbox" id="chkUsage" checked onchange="updateSearchOption()"> Usage</label>
-    </div>
-  </div>
-
   <h1>Registered Slim Fixtures</h1>
 
   <div class="toc">
@@ -645,5 +631,19 @@
     {{/HasProperties}}
   </div>
   {{/Fixtures}}
+
+  <div class="search-container">
+    <div class="search-row">
+      <span class="search-label">Slim Docs</span>
+      <input type="text" id="searchInput" onkeyup="filterFixtures()" placeholder="Search for fixtures, namespaces, methods or properties...">
+    </div>
+    <div class="filter-options">
+      <label><input type="checkbox" id="chkFixture" checked onchange="updateSearchOption()"> Fixture Names</label>
+      <label><input type="checkbox" id="chkNamespace" checked onchange="updateSearchOption()"> Namespaces</label>
+      <label><input type="checkbox" id="chkMember" checked onchange="updateSearchOption()"> Methods/Properties</label>
+      <label><input type="checkbox" id="chkComment" checked onchange="updateSearchOption()"> Comments</label>
+      <label><input type="checkbox" id="chkUsage" checked onchange="updateSearchOption()"> Usage</label>
+    </div>
+  </div>
 </body>
 </html>
