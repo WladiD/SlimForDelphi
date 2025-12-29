@@ -34,6 +34,7 @@ You can invoke the generator using the `SlimDoc.Generator` fixture (implemented 
 ```slim
 !3 Documentation
 |script                |!-SlimDoc.Generator-!                                                                      |
+|main template         |!-..\..\Projects\SlimDoc\Templates\Main.TMPL.html-!                                        |
 |show                  |analyze usage       |!-..\..\FitNesse\FitNesseRoot-!                                       |
 |include xml comments  |!-..\..\Projects\SlimDoc-!                                                                 |
 |generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
@@ -41,10 +42,11 @@ You can invoke the generator using the `SlimDoc.Generator` fixture (implemented 
 ```
 
 **Steps:**
-1.  **analyze usage**: (Optional) Scans the provided directory path for fixture usage.
-2.  **include xml comments**: (Optional) Scans the source code in the provided directory for XML comments (`/// ...`).
-3.  **generate documentation**: Generates the HTML file at the specified path.
-4.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
+1.  **main template**: (Mandatory) Sets the path to the HTML/Mustache template file.
+2.  **analyze usage**: (Optional) Scans the provided directory path for fixture usage.
+3.  **include xml comments**: (Optional) Scans the source code in the provided directory for XML comments (`/// ...`).
+4.  **generate documentation**: Generates the HTML file at the specified path.
+5.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
 
 ## Project Structure
 
