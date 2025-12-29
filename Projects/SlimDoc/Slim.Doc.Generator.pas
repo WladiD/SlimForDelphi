@@ -180,7 +180,7 @@ begin
   if HasDescription then
     Result.AddValue('DescriptionHtml', FormatXmlComment(Member.Description))
   else
-    Result.AddValue('DescriptionHtml', '');
+    Result.AddValue('DescriptionHtml', false);
 
   Result.AddValue('HasUsage', HasUsage);
 
@@ -232,7 +232,9 @@ begin
     FixtureObj.AddValue('DelphiClass', ClassDecl);
 
     if Fixture.Description <> '' then
-      FixtureObj.AddValue('DescriptionHtml', FormatXmlComment(Fixture.Description));
+      FixtureObj.AddValue('DescriptionHtml', FormatXmlComment(Fixture.Description))
+    else
+      FixtureObj.AddValue('DescriptionHtml', false);
 
     var HasInherited := False;
     for Method in Fixture.Methods do
