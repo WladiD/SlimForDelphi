@@ -32,6 +32,7 @@ type
     function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean): String;
     function  FormatXmlComment(const AXml: String): String;
     function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+    function  HasInheritedMembers(AFixture: TSlimDocFixture): Boolean;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
   public
@@ -41,6 +42,19 @@ type
 implementation
 
 { TSlimDocGenerator }
+
+function TSlimDocGenerator.HasInheritedMembers(AFixture: TSlimDocFixture): Boolean;
+begin
+  for var M: TSlimDocMethod in AFixture.Methods do
+    if M.IsInherited then
+      Exit(True);
+
+  for var P: TSlimDocProperty in AFixture.Properties do
+    if P.IsInherited then
+      Exit(True);
+
+  Result := False;
+end;
 
 procedure TSlimDocGenerator.SortFixtures(AFixtures: TList<TSlimDocFixture>);
 begin
@@ -240,13 +254,7 @@ begin
     else
       FixtureObj.AddValue('DescriptionHtml', false);
 
-    var HasInherited := False;
-    for Method in Fixture.Methods do
-      if Method.IsInherited then begin HasInherited := True; Break; end;
-    if not HasInherited then
-      for Prop in Fixture.Properties do
-        if Prop.IsInherited then begin HasInherited := True; Break; end;
-    FixtureObj.AddValue('HasInherited', HasInherited);
+    FixtureObj.AddValue('HasInherited', HasInheritedMembers(Fixture));
 
     // Methods
     MethodsArr.InitJson('[]', []);
@@ -271,10 +279,10 @@ begin
 
   Doc.AddValue('Fixtures', Variant(FixturesArr));
 
-  var Rendered := TSynMustache.Parse(RawUtf8(ATemplateContent)).Render(Variant(Doc));
-  TFile.WriteAllText(AOutputFilePath, string(Rendered), TEncoding.UTF8);
+  var Rendered: UTF8String := TSynMustache.Parse(RawUtf8(ATemplateContent)).Render(Variant(Doc));
+  TFile.WriteAllText(AOutputFilePath, String(Rendered), TEncoding.UTF8);
 
-  var LinkName := ExtractFileName(AOutputFilePath);
+  var LinkName: String := ExtractFileName(AOutputFilePath);
   Result := Format('<a href="files/%s" target="_blank">Open Documentation</a>', [LinkName]);
 end;
 
