@@ -91,13 +91,13 @@ end;
 
 procedure TTestSlimDocGenerator.TestDescriptionScoping;
 var
-  Fixture: TSlimDocFixture;
-  Gen: TSlimDocGenerator;
-  Prop: TSlimDocProperty;
-  Fixtures: TObjectList<TSlimDocFixture>;
-  Template: String;
-  OutputFile: String;
+  Fixture      : TSlimDocFixture;
+  Fixtures     : TObjectList<TSlimDocFixture>;
+  Gen          : TSlimDocGenerator;
+  OutputFile   : String;
+  Prop         : TSlimDocProperty;
   ResultContent: String;
+  Template     : String;
 begin
   Fixture := TSlimDocFixture.Create;
   Fixture.Name := 'MyFixture';
