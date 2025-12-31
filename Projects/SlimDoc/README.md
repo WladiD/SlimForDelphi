@@ -33,20 +33,22 @@ You can invoke the generator using the `SlimDoc.Generator` fixture (implemented 
 
 ```slim
 !3 Documentation
-|script                |!-SlimDoc.Generator-!                                                                      |
-|main template         |!-..\..\Projects\SlimDoc\Templates\Main.TMPL.html-!                                        |
-|show                  |analyze usage       |!-..\..\FitNesse\FitNesseRoot-!                                       |
-|include xml comments  |!-..\..\Projects\SlimDoc-!                                                                 |
-|generate documentation|!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
-|check                 |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
+|script                   |!-SlimDoc.Generator-!                                                                      |
+|main template            |!-..\..\Projects\SlimDoc\Templates\Main.TMPL.html-!                                        |
+|show                     |analyze usage            |!-..\..\FitNesse\FitNesseRoot-!                                  |
+|include source code path |!-..\..\Projects\SlimDoc-!                                                                 |
+|exclude source code path |!-..\..\Projects\SlimDoc\Templates-!                                                       |
+|generate documentation   |!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
+|check                    |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
 ```
 
 **Steps:**
 1.  **main template**: (Mandatory) Sets the path to the HTML/Mustache template file.
 2.  **analyze usage**: (Optional) Scans the provided directory path for fixture usage.
-3.  **include xml comments**: (Optional) Scans the source code in the provided directory for XML comments (`/// ...`).
-4.  **generate documentation**: Generates the HTML file at the specified path.
-5.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
+3.  **include source code path**: (Optional) Adds a directory to scan recursively for Delphi source files (`.pas`) to extract XML comments. Can be called multiple times.
+4.  **exclude source code path**: (Optional) Adds a directory to exclude from the source code scan. Useful for skipping libraries or generated code. Can be called multiple times.
+5.  **generate documentation**: Generates the HTML file at the specified path.
+6.  **generated link**: Returns an HTML link to the generated file, which can be clicked directly in the FitNesse result.
 
 ## Project Structure
 

@@ -56,6 +56,8 @@ type
     [Test]
     procedure TestExtraction;
     [Test]
+    procedure TestIncludeExcludePaths;
+    [Test]
     procedure TestInheritanceChain;
   end;
 
@@ -136,6 +138,68 @@ begin
 end;
 
 { TTestSlimDocExtractor }
+
+procedure TTestSlimDocExtractor.TestIncludeExcludePaths;
+
+  procedure CreatePascalFile(const APath, ADesc: String);
+  begin
+    TDirectory.CreateDirectory(TPath.GetDirectoryName(APath));
+    TFile.WriteAllText(APath, Format('''
+      unit Test.SlimDoc.Extractor;
+      interface
+      type
+        /// <summary>%s</summary>
+        TSampleFixture = class
+        end;
+      implementation
+      end.
+      ''', [ADesc]));
+  end;
+
+var
+  Doc       : TSlimDocFixture;
+  Extractor : TSlimDocExtractor;
+  IgnoredDir: String;
+  IgnoredSub: String;
+  RootDir   : String;
+  ValidDir  : String;
+
+begin
+  RootDir := TPath.Combine(TPath.GetTempPath, 'SlimDocTest_' + TGUID.NewGuid.ToString);
+  ValidDir := TPath.Combine(RootDir, 'Valid');
+  IgnoredDir := TPath.Combine(RootDir, 'Ignored');
+  IgnoredSub := TPath.Combine(IgnoredDir, 'Sub');
+
+  Extractor := nil;
+  Doc := nil;
+  try
+    // 1. Setup Directories and Files
+    CreatePascalFile(TPath.Combine(ValidDir, 'Test.SlimDoc.Extractor.pas'), 'Valid Description');
+    // Same unit name in ignored path
+    CreatePascalFile(TPath.Combine(IgnoredSub, 'Test.SlimDoc.Extractor.pas'), 'Ignored Description');
+
+    // 2. Setup Extractor
+    Extractor := TSlimDocExtractor.Create;
+    Extractor.AddIncludePath(RootDir);      // Include Root (recursive)
+    Extractor.AddExcludePath(IgnoredDir);   // Exclude Ignored (recursive)
+
+    // 3. Extract
+    Doc := Extractor.ExtractClass(TSampleFixture);
+    Assert.IsNotNull(Doc, 'Doc should be extracted');
+
+    // 4. Assertions
+    // It should pick the Valid one because IgnoredDir is excluded
+    Assert.IsTrue(Doc.Description.Contains('Valid Description'),
+      Format('Description mismatch. Expected "Valid Description" but got "%s". Exclude logic might be failing.',
+      [Doc.Description]));
+    Assert.IsFalse(Doc.Description.Contains('Ignored Description'), 'Should not contain ignored description');
+  finally
+    Doc.Free;
+    Extractor.Free;
+    if TDirectory.Exists(RootDir) then
+      TDirectory.Delete(RootDir, True);
+  end;
+end;
 
 procedure TTestSlimDocExtractor.TestInheritanceChain;
 var
@@ -251,8 +315,11 @@ begin
     Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.AnalyzeUsage', Description), 'Should contain AnalyzeUsage');
     Assert.IsTrue(Description.Contains('Scans the FitNesse root directory'), 'Doc content mismatch');
 
-    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.IncludeXmlComments', Description), 'Should contain IncludeXmlComments');
-    Assert.IsTrue(Description.Contains('Configures the root path to search for source files'), 'Doc content mismatch');
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.IncludeSourceCodePath', Description), 'Should contain IncludeSourceCodePath');
+    Assert.IsTrue(Description.Contains('Adds a root path to search for source files'), 'Doc content mismatch');
+
+    Assert.IsTrue(Docs.TryGetValue('TSlimDocGeneratorFixture.ExcludeSourceCodePath', Description), 'Should contain ExcludeSourceCodePath');
+    Assert.IsTrue(Description.Contains('Adds a path to the exclusion list'), 'Doc content mismatch');
 
     Assert.IsTrue(Docs.TryGetValue('GeneratedLink', Description), 'Should contain GeneratedLink');
     Assert.IsTrue(Description.Contains('Returns the link to the generated documentation'), 'Doc content mismatch');

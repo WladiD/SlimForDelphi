@@ -29,22 +29,22 @@ type
   [SlimFixture('Generator', 'SlimDoc')]
   TSlimDocGeneratorFixture = class(TSlimFixture)
   private
+    FExcludePaths  : TStringList;
     FGeneratedLink : String;
+    FIncludePaths  : TStringList;
     FMainTemplatePath: String;
-    FRootSourcePath: String;
     FUsageMap      : TUsageMap;
+    function CreateExtractor: TSlimDocExtractor;
   public
+    procedure AfterConstruction; override;
     destructor Destroy; override;
-    function GenerateDocumentation(const AFilePath: String): String;
-    function AnalyzeUsage(const AFitNesseRoot: String): String;
-    function IncludeXmlComments(const ARootSourcePath: String): Boolean;
-    /// <summary>
-    /// Returns the link to the generated documentation file after execution.
-    /// </summary>
+    function  AnalyzeUsage(const AFitNesseRoot: String): String;
+    procedure ExcludeSourceCodePath(const APath: String);
+    function  GenerateDocumentation(const AFilePath: String): String;
+    procedure IncludeSourceCodePath(const APath: String);
+    /// <summary>Returns the link to the generated documentation file after execution.</summary>
     property GeneratedLink: String read FGeneratedLink;
-    /// <summary>
-    /// The path to the Mustache template file used for the HTML generation.
-    /// </summary>
+    /// <summary>The path to the Mustache template file used for the HTML generation.</summary>
     property MainTemplate: String write FMainTemplatePath;
   end;
 
@@ -52,9 +52,21 @@ implementation
 
 { TSlimDocGeneratorFixture }
 
+procedure TSlimDocGeneratorFixture.AfterConstruction;
+begin
+  inherited;
+  FExcludePaths := TStringList.Create;
+  FExcludePaths.Sorted := True;
+  FIncludePaths := TStringList.Create;
+  FIncludePaths.Sorted := True;
+  FIncludePaths.Duplicates := dupIgnore;
+end;
+
 destructor TSlimDocGeneratorFixture.Destroy;
 begin
   FUsageMap.Free;
+  FIncludePaths.Free;
+  FExcludePaths.Free;
   inherited;
 end;
 
@@ -70,34 +82,49 @@ var
   Fixtures : TObjectList<TSlimDocFixture>;
 begin
   FreeAndNil(FUsageMap);
-  Extractor := TSlimDocExtractor.Create;
-  if FRootSourcePath <> '' then
-    Extractor.RootSourcePath := FRootSourcePath;
-
+  Fixtures := nil;
+  Extractor := nil;
   Analyzer := TSlimUsageAnalyzer.Create;
   try
+    Extractor := CreateExtractor;
     Fixtures := Extractor.ExtractAll;
-    try
-      FUsageMap := Analyzer.Analyze(AFitNesseRoot, Fixtures);
-      Result := Format('Analyzed files in %s. Found usage for %d unique methods.', [AFitNesseRoot, FUsageMap.Count]);
-    finally
-      Fixtures.Free;
-    end;
+    FUsageMap := Analyzer.Analyze(AFitNesseRoot, Fixtures);
+    Result := Format('Analyzed files in %s. Found usage for %d unique methods.', [AFitNesseRoot, FUsageMap.Count]);
   finally
+    Fixtures.Free;
     Extractor.Free;
     Analyzer.Free;
   end;
 end;
 
-/// <summary>
-/// Configures the root path to search for source files to extract XML comments.
-/// </summary>
-/// <param name="ARootSourcePath">The absolute path to the source code root directory.</param>
-/// <returns>True if the path was accepted.</returns>
-function TSlimDocGeneratorFixture.IncludeXmlComments(const ARootSourcePath: String): Boolean;
+function TSlimDocGeneratorFixture.CreateExtractor: TSlimDocExtractor;
+var
+  Path: String;
 begin
-  FRootSourcePath := ARootSourcePath;
-  Result := True;
+  Result := TSlimDocExtractor.Create;
+  for Path in FIncludePaths do
+    Result.AddIncludePath(Path);
+  for Path in FExcludePaths do
+    Result.AddExcludePath(Path);
+end;
+
+/// <summary>
+/// Adds a path to the exclusion list for source code scanning.
+/// </summary>
+/// <param name="APath">The path to exclude.</param>
+procedure TSlimDocGeneratorFixture.ExcludeSourceCodePath(const APath: String);
+begin
+  FExcludePaths.Add(APath);
+end;
+
+/// <summary>
+/// Adds a root path to search for source files to extract XML comments.
+/// Can be called multiple times to include multiple directories.
+/// </summary>
+/// <param name="APath">The absolute path to a source code root directory.</param>
+procedure TSlimDocGeneratorFixture.IncludeSourceCodePath(const APath: String);
+begin
+  FIncludePaths.Add(APath);
 end;
 
 /// <summary>
@@ -114,26 +141,20 @@ var
 begin
   if FMainTemplatePath = '' then
     raise Exception.Create('MainTemplate property must be set before generating documentation.');
-
   if not FileExists(FMainTemplatePath) then
     raise Exception.CreateFmt('Template file not found: %s', [FMainTemplatePath]);
 
   Template := TFile.ReadAllText(FMainTemplatePath, TEncoding.UTF8);
-
-  Extractor := TSlimDocExtractor.Create;
-  if FRootSourcePath <> '' then
-    Extractor.RootSourcePath := FRootSourcePath;
-
+  Fixtures := nil;
+  Extractor := nil;
   Generator := TSlimDocGenerator.Create;
   try
+    Extractor := CreateExtractor;
     Fixtures := Extractor.ExtractAll;
-    try
-      FGeneratedLink := Generator.Generate(Fixtures, FUsageMap, Template, AFilePath);
-      Result := FGeneratedLink;
-    finally
-      Fixtures.Free;
-    end;
+    FGeneratedLink := Generator.Generate(Fixtures, FUsageMap, Template, AFilePath);
+    Result := FGeneratedLink;
   finally
+    Fixtures.Free;
     Extractor.Free;
     Generator.Free;
   end;

@@ -13,6 +13,7 @@ uses
   System.Classes,
   System.Contnrs,
   System.Generics.Collections,
+  System.Generics.Defaults,
   System.IOUtils,
   System.RegularExpressions,
   System.Rtti,
@@ -27,14 +28,20 @@ type
 
   TSlimDocExtractor = class
   private
-    FRootSourcePath: String;
+    FExcludePaths: TStringList;
+    FIncludePaths: TStringList;
+    FUnitMap     : TDictionary<String, String>;
+    procedure EnsureUnitMap;
     function  GetSyncModeStr(AMember: TRttiMember; AInstance: TSlimFixture): String;
     procedure InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName: String);
     function  IsStandardNoise(const AMethodName: String): Boolean;
   public
-    function ExtractAll: TObjectList<TSlimDocFixture>;
-    function ExtractClass(AClass: TClass): TSlimDocFixture;
-    property RootSourcePath: String read FRootSourcePath write FRootSourcePath;
+    constructor Create;
+    destructor Destroy; override;
+    procedure AddExcludePath(const APath: String);
+    procedure AddIncludePath(const APath: String);
+    function  ExtractAll: TObjectList<TSlimDocFixture>;
+    function  ExtractClass(AClass: TClass): TSlimDocFixture;
   end;
 
   TSlimXmlDocExtractor = class
@@ -59,6 +66,74 @@ begin
 end;
 
 { TSlimDocExtractor }
+
+constructor TSlimDocExtractor.Create;
+begin
+  inherited;
+  FExcludePaths := TStringList.Create;
+  FExcludePaths.Sorted := True;
+  FIncludePaths := TStringList.Create;
+  FIncludePaths.Sorted := True;
+  FIncludePaths.Duplicates := dupIgnore;
+  FUnitMap := TDictionary<String, String>.Create(System.Generics.Defaults.TStringComparer.Ordinal);
+end;
+
+destructor TSlimDocExtractor.Destroy;
+begin
+  FUnitMap.Free;
+  FIncludePaths.Free;
+  FExcludePaths.Free;
+  inherited;
+end;
+
+procedure TSlimDocExtractor.AddExcludePath(const APath: String);
+begin
+  FExcludePaths.Add(IncludeTrailingPathDelimiter(APath));
+end;
+
+procedure TSlimDocExtractor.AddIncludePath(const APath: String);
+begin
+  FIncludePaths.Add(IncludeTrailingPathDelimiter(APath));
+end;
+
+procedure TSlimDocExtractor.EnsureUnitMap;
+var
+  FileName: String;
+  Files   : TStringDynArray;
+  Skip    : Boolean;
+begin
+  if (FUnitMap.Count > 0) or
+     FIncludePaths.IsEmpty then
+    Exit;
+
+  for var Path: String in FIncludePaths do
+  begin
+    if not TDirectory.Exists(Path) then
+      Continue;
+
+    Files := TDirectory.GetFiles(Path, '*.pas', TSearchOption.soAllDirectories);
+    for var FilePath: String in Files do
+    begin
+      Skip := False;
+      for var ExcludePath: String in FExcludePaths do
+      begin
+        if FilePath.StartsWith(ExcludePath, True) then
+        begin
+          Skip := True;
+          Break;
+        end;
+      end;
+
+      if not Skip then
+      begin
+        FileName := TPath.GetFileNameWithoutExtension(FilePath);
+        // Assuming filename matches unit name
+        if not FUnitMap.ContainsKey(FileName) then
+          FUnitMap.Add(FileName, FilePath);
+      end;
+    end;
+  end;
+end;
 
 function TSlimDocExtractor.IsStandardNoise(const AMethodName: String): Boolean;
 begin
@@ -226,7 +301,7 @@ begin
       Result.Properties.Add(DocProp);
     end;
 
-    if (FRootSourcePath <> '') and (Result.UnitName <> '') then
+    if Result.UnitName <> '' then
       InjectXmlDocs(Result, Result.UnitName);
   finally
     FixtureInstance.Free;
@@ -238,15 +313,15 @@ procedure TSlimDocExtractor.InjectXmlDocs(ADoc: TSlimDocFixture; const AUnitName
 var
   Description   : String;
   Docs          : TDictionary<String, String>;
-  Files         : TStringDynArray;
   FullMemberName: String;
   SourceFile    : String;
   XmlExtractor  : TSlimXmlDocExtractor;
 begin
-  Files := TDirectory.GetFiles(FRootSourcePath, AUnitName + '.pas', TSearchOption.soAllDirectories);
-  if Length(Files) = 0 then
+  EnsureUnitMap;
+
+  if not FUnitMap.TryGetValue(AUnitName, SourceFile) then
     Exit;
-  SourceFile := Files[0];
+
   Docs := nil;
   XmlExtractor := TSlimXmlDocExtractor.Create;
   try
