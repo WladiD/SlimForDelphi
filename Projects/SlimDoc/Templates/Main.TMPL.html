@@ -409,6 +409,7 @@
       for (var i = 0; i < fixtures.length; i++) {
         var fixture = fixtures[i];
         var header = fixture.querySelector(".fixture-header");
+        var inheritedCheckbox = header.querySelector(".inherited-toggle input");
 
         // Fixture & Namespace
         var headerText = "";
@@ -432,6 +433,7 @@
 
         var rows = fixture.querySelectorAll("tbody tr");
         var hasVisibleRow = false;
+        var hasLocalMatch = headerMatches;
         var hasInheritedMatch = false;
 
         for (var j = 0; j < rows.length; j++) {
@@ -441,13 +443,31 @@
           var usageRow = row.nextElementSibling;
           var hasUsageRow = usageRow && usageRow.classList.contains("usage-row");
 
+          if (filter === "") {
+            row.classList.remove("hidden-by-search");
+            if (hasUsageRow) {
+              usageRow.classList.remove("hidden-by-search");
+              usageRow.style.display = "none";
+              var btn = row.querySelector(".toggle-btn");
+              if (btn) btn.innerHTML = "&#9658;";
+            }
+            hasVisibleRow = true;
+            continue;
+          }
+
           var rowMatches = false;
           var usageMatches = false;
+          var memberNameMatches = false;
 
-          // Member Name
+          // Member Name & Full Row
           if (useMember) {
             var rowText = row.textContent || row.innerText;
-            if (rowText.toUpperCase().indexOf(filter) > -1) rowMatches = true;
+            if (rowText.toUpperCase().indexOf(filter) > -1) {
+              rowMatches = true;
+              // Check if name specifically matches (usually 2nd cell)
+              var nameCell = row.cells[1];
+              if (nameCell && nameCell.textContent.toUpperCase().indexOf(filter) > -1) memberNameMatches = true;
+            }
           }
 
           // Comment & Usage
@@ -464,29 +484,16 @@
             }
           }
 
-          if (filter === "") {
-            row.classList.remove("hidden-by-search");
-            if (hasUsageRow) {
-              usageRow.classList.remove("hidden-by-search");
-              usageRow.style.display = "none";
-              var btn = row.querySelector(".toggle-btn");
-              if (btn) btn.innerHTML = "&#9658;";
-            }
-
-            var inheritedCheckbox = header.querySelector(".inherited-toggle input");
-            if (inheritedCheckbox && inheritedCheckbox.checked) {
-              inheritedCheckbox.checked = false;
-              toggleInherited(inheritedCheckbox, fixture.id);
-            }
-
-            hasVisibleRow = true;
-            continue;
-          }
-
           if (headerMatches || rowMatches || usageMatches) {
             row.classList.remove("hidden-by-search");
             hasVisibleRow = true;
-            if (row.classList.contains("inherited-member")) hasInheritedMatch = true;
+
+            // Track match types
+            if (row.classList.contains("inherited-member")) {
+              if (memberNameMatches || usageMatches) hasInheritedMatch = true;
+            } else {
+              if (rowMatches || usageMatches) hasLocalMatch = true;
+            }
 
             if (rowMatches && filter.length > 0) highlight(row, filter);
 
@@ -513,10 +520,11 @@
           }
         }
 
-        if (hasInheritedMatch) {
-          var inheritedCheckbox = header.querySelector(".inherited-toggle input");
-          if (inheritedCheckbox && !inheritedCheckbox.checked) {
-            inheritedCheckbox.checked = true;
+        // Auto-toggle inherited members only if there are NO local matches but inherited matches
+        if (inheritedCheckbox) {
+          var shouldBeChecked = (filter === "") ? false : (hasInheritedMatch && !hasLocalMatch);
+          if (inheritedCheckbox.checked !== shouldBeChecked) {
+            inheritedCheckbox.checked = shouldBeChecked;
             toggleInherited(inheritedCheckbox, fixture.id);
           }
         }
