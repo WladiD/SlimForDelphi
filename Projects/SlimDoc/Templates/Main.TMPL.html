@@ -86,6 +86,14 @@
       font-weight: bold;
     }
 
+    .muted {
+      color: #888;
+    }
+
+    .col-toggle {
+      width: 20px;
+    }
+
     .namespace {
       color: #555;
       font-size: 0.7em;
@@ -424,6 +432,7 @@
 
         var rows = fixture.querySelectorAll("tbody tr");
         var hasVisibleRow = false;
+        var hasInheritedMatch = false;
 
         for (var j = 0; j < rows.length; j++) {
           var row = rows[j];
@@ -463,6 +472,13 @@
               var btn = row.querySelector(".toggle-btn");
               if (btn) btn.innerHTML = "&#9658;";
             }
+
+            var inheritedCheckbox = header.querySelector(".inherited-toggle input");
+            if (inheritedCheckbox && inheritedCheckbox.checked) {
+              inheritedCheckbox.checked = false;
+              toggleInherited(inheritedCheckbox, fixture.id);
+            }
+
             hasVisibleRow = true;
             continue;
           }
@@ -470,6 +486,7 @@
           if (headerMatches || rowMatches || usageMatches) {
             row.classList.remove("hidden-by-search");
             hasVisibleRow = true;
+            if (row.classList.contains("inherited-member")) hasInheritedMatch = true;
 
             if (rowMatches && filter.length > 0) highlight(row, filter);
 
@@ -493,6 +510,14 @@
               usageRow.classList.add("hidden-by-search");
               usageRow.style.display = "none";
             }
+          }
+        }
+
+        if (hasInheritedMatch) {
+          var inheritedCheckbox = header.querySelector(".inherited-toggle input");
+          if (inheritedCheckbox && !inheritedCheckbox.checked) {
+            inheritedCheckbox.checked = true;
+            toggleInherited(inheritedCheckbox, fixture.id);
           }
         }
 
@@ -541,7 +566,7 @@
     <h2>Table of Contents</h2>
     <ul>
       {{#Fixtures}}
-      <li><a href="#{{Id}}">{{Name}}</a> <span style="color:#888">({{Namespace}})</span></li>
+      <li><a href="#{{Id}}">{{Name}}</a> <span class="muted">({{Namespace}})</span></li>
       {{/Fixtures}}
     </ul>
   </div>
@@ -576,7 +601,7 @@
     <table>
       <thead>
         <tr>
-          <th style="width: 20px;"></th>
+          <th class="col-toggle"></th>
           <th>Name</th>
           <th>Parameters</th>
           <th>Return Type</th>
@@ -596,7 +621,7 @@
           <td>{{ParamsString}}</td>
           <td>{{ReturnType}}</td>
           <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
-          <td>{{Origin}}</td>
+          <td class="muted">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
         <tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;">
@@ -626,7 +651,7 @@
     <table>
       <thead>
         <tr>
-          <th style="width: 20px;"></th>
+          <th class="col-toggle"></th>
           <th>Name</th>
           <th>Type</th>
           <th>Access</th>
@@ -646,7 +671,7 @@
           <td>{{PropertyType}}</td>
           <td>{{Access}}</td>
           <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
-          <td>{{Origin}}</td>
+          <td class="muted">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
         <tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;">
