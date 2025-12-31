@@ -18,6 +18,7 @@ uses
   System.SysUtils,
 
   mormot.core.base,
+  mormot.core.data,
   mormot.core.mustache,
   mormot.core.variants,
 
@@ -31,7 +32,7 @@ type
   private
     function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean; AParamCount: Integer): String;
     function  FormatXmlComment(const AXml: String): String;
-    function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+    function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): Variant;
     function  HasInheritedMembers(AFixture: TSlimDocFixture): Boolean;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
@@ -137,22 +138,21 @@ begin
   Result := Format('../%s#:~:%s', [APageName, Fragment]);
 end;
 
-function TSlimDocGenerator.GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): TDocVariantData;
+function TSlimDocGenerator.GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): Variant;
 var
   HasDescription: Boolean;
   HasUsage      : Boolean;
-  LinkObj       : TDocVariantData;
   LookupKey     : String;
   MemberMethod  : TSlimDocMethod absolute AMember;
   MemberProperty: TSlimDocProperty absolute AMember;
   RowClass      : String;
-  UsageLinksArr : TDocVariantData;
   UsageList     : TStringList;
   UsageRowClass : String;
   UsageRowId    : String;
   ParamCount    : Integer;
+  vUsageLinks   : Variant;
 begin
-  Result.InitJson('{}', []);
+  Result := _Obj(['Name', AMember.Name]);
 
   LookupKey := Format('%s.%s', [AFixture.Name, AMember.Name]).ToLower;
   HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
@@ -163,81 +163,71 @@ begin
   if AMember.IsInherited then
     RowClass := 'inherited-member';
 
-  Result.AddValue('Name', AMember.Name);
   if RowClass <> '' then
-    Result.AddValue('RowClass', RowClass);
+    TDocVariantData(Result).AddValue('RowClass', RowClass);
 
   ParamCount := 0;
   if AMember is TSlimDocMethod then
   begin
     ParamCount := MemberMethod.Parameters.Count;
-    Result.AddValue('ParamsString', MemberMethod.GetParamsString);
-    Result.AddValue('ReturnType', MemberMethod.ReturnType);
+    TDocVariantData(Result).AddValue('ParamsString', MemberMethod.GetParamsString);
+    TDocVariantData(Result).AddValue('ReturnType', MemberMethod.ReturnType);
   end
   else if AMember is TSlimDocProperty then
   begin
-    Result.AddValue('PropertyType', MemberProperty.PropertyType);
-    Result.AddValue('Access', MemberProperty.Access);
-    Result.AddValue('ReturnType', ''); // Empty for properties
+    TDocVariantData(Result).AddValue('PropertyType', MemberProperty.PropertyType);
+    TDocVariantData(Result).AddValue('Access', MemberProperty.Access);
+    TDocVariantData(Result).AddValue('ReturnType', ''); // Empty for properties
   end;
 
-  Result.AddValue('SyncMode', AMember.SyncMode);
+  TDocVariantData(Result).AddValue('SyncMode', AMember.SyncMode);
   if SameText(AMember.SyncMode, 'smUnsynchronized') then
-    Result.AddValue('SyncClass', 'unsynchronized-member');
-  Result.AddValue('Origin', AMember.Origin);
-  Result.AddValue('HasUsageOrDesc', HasUsage or HasDescription);
-  Result.AddValue('UsageRowId', UsageRowId);
+    TDocVariantData(Result).AddValue('SyncClass', 'unsynchronized-member');
+  TDocVariantData(Result).AddValue('Origin', AMember.Origin);
+  TDocVariantData(Result).AddValue('HasUsageOrDesc', HasUsage or HasDescription);
+  TDocVariantData(Result).AddValue('UsageRowId', UsageRowId);
 
   UsageRowClass := '';
   if AMember.IsInherited then
     UsageRowClass := 'inherited-member usage-row'
   else
     UsageRowClass := 'usage-row';
-  Result.AddValue('UsageRowClass', UsageRowClass);
+  TDocVariantData(Result).AddValue('UsageRowClass', UsageRowClass);
 
   if HasDescription then
-    Result.AddValue('DescriptionHtml', FormatXmlComment(AMember.Description))
+    TDocVariantData(Result).AddValue('DescriptionHtml', FormatXmlComment(AMember.Description))
   else
-    Result.AddValue('DescriptionHtml', false);
+    TDocVariantData(Result).AddValue('DescriptionHtml', false);
 
-  Result.AddValue('HasUsage', HasUsage);
+  TDocVariantData(Result).AddValue('HasUsage', HasUsage);
   if HasUsage then
   begin
-    UsageLinksArr.InitJson('[]', []);
+    vUsageLinks := _Arr([]);
     for var U: String in UsageList do
-    begin
-      LinkObj.InitJson('{}', []);
-      LinkObj.AddValue('Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod, ParamCount));
-      LinkObj.AddValue('PageName', U);
-      UsageLinksArr.AddItem(Variant(LinkObj));
-    end;
-    Result.AddValue('UsageLinks', Variant(UsageLinksArr));
+      vUsageLinks.Add(_Obj(['Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod, ParamCount),
+                            'PageName', U]));
+    TDocVariantData(Result).AddValue('UsageLinks', vUsageLinks);
   end;
 end;
 
 function TSlimDocGenerator.Generate(AFixtures: TList<TSlimDocFixture>; AUsageMap: TUsageMap; const ATemplateContent, AOutputFilePath: String): String;
 var
-  Doc        : TDocVariantData;
-  Fixture    : TSlimDocFixture;
-  FixtureObj : TDocVariantData;
-  FixturesArr: TDocVariantData;
-  Method     : TSlimDocMethod;
-  MethodsArr : TDocVariantData;
-  Prop       : TSlimDocProperty;
-  PropsArr   : TDocVariantData;
+  vDoc        : Variant;
+  Fixture     : TSlimDocFixture;
+  vFixtureObj : Variant;
+  vFixturesArr: Variant;
+  Method      : TSlimDocMethod;
+  vMethodsArr : Variant;
+  Prop        : TSlimDocProperty;
+  vPropsArr   : Variant;
 begin
   SortFixtures(AFixtures);
 
-  Doc.InitJson('{}', []);
-  FixturesArr.InitJson('[]', []);
+  vFixturesArr := _Arr([]);
 
   for Fixture in AFixtures do
   begin
-    FixtureObj.InitJson('{}', []);
-    FixtureObj.AddValue('Id', Fixture.Id);
-    FixtureObj.AddValue('Name', Fixture.Name);
-    FixtureObj.AddValue('Namespace', Fixture.Namespace);
-    FixtureObj.AddValue('UnitName', Fixture.UnitName);
+    vFixtureObj := _Obj(['Id', Fixture.Id, 'Name', Fixture.Name, 'Namespace', Fixture.Namespace, 'UnitName', Fixture.UnitName]);
 
     var ClassDecl := Fixture.DelphiClass;
     if (Fixture.InheritanceChain.Count > 0) then
@@ -246,39 +236,39 @@ begin
       for var I := 1 to Fixture.InheritanceChain.Count - 1 do
         ClassDecl := ClassDecl + ' &lt; ' + Fixture.InheritanceChain[I];
     end;
-    FixtureObj.AddValue('DelphiClass', ClassDecl);
+    TDocVariantData(vFixtureObj).AddValue('DelphiClass', ClassDecl);
 
     if Fixture.Description <> '' then
-      FixtureObj.AddValue('DescriptionHtml', FormatXmlComment(Fixture.Description))
+      TDocVariantData(vFixtureObj).AddValue('DescriptionHtml', FormatXmlComment(Fixture.Description))
     else
-      FixtureObj.AddValue('DescriptionHtml', false);
+      TDocVariantData(vFixtureObj).AddValue('DescriptionHtml', false);
 
-    FixtureObj.AddValue('HasInherited', HasInheritedMembers(Fixture));
+    TDocVariantData(vFixtureObj).AddValue('HasInherited', HasInheritedMembers(Fixture));
 
     // Methods
-    MethodsArr.InitJson('[]', []);
+    vMethodsArr := _Arr([]);
     SortMembers(TList<TSlimDocMember>(Fixture.Methods));
     for Method in Fixture.Methods do
-      MethodsArr.AddItem(Variant(GenerateMemberData(Fixture, Method, AUsageMap)));
-    FixtureObj.AddValue('Methods', Variant(MethodsArr));
+      vMethodsArr.Add(GenerateMemberData(Fixture, Method, AUsageMap));
+    TDocVariantData(vFixtureObj).AddValue('Methods', vMethodsArr);
 
     // Properties
     if Fixture.Properties.Count > 0 then
     begin
-      FixtureObj.AddValue('HasProperties', True);
-      PropsArr.InitJson('[]', []);
+      TDocVariantData(vFixtureObj).AddValue('HasProperties', True);
+      vPropsArr := _Arr([]);
       SortMembers(TList<TSlimDocMember>(Fixture.Properties));
       for Prop in Fixture.Properties do
-        PropsArr.AddItem(Variant(GenerateMemberData(Fixture, Prop, AUsageMap)));
-      FixtureObj.AddValue('Properties', Variant(PropsArr));
+        vPropsArr.Add(GenerateMemberData(Fixture, Prop, AUsageMap));
+      TDocVariantData(vFixtureObj).AddValue('Properties', vPropsArr);
     end;
 
-    FixturesArr.AddItem(Variant(FixtureObj));
+    vFixturesArr.Add(vFixtureObj);
   end;
 
-  Doc.AddValue('Fixtures', Variant(FixturesArr));
+  vDoc := _Obj(['Fixtures', vFixturesArr]);
 
-  var Rendered: UTF8String := TSynMustache.Parse(RawUtf8(ATemplateContent)).Render(Variant(Doc));
+  var Rendered: UTF8String := TSynMustache.Parse(RawUtf8(ATemplateContent)).Render(vDoc);
   TFile.WriteAllText(AOutputFilePath, String(Rendered), TEncoding.UTF8);
 
   var LinkName: String := ExtractFileName(AOutputFilePath);
