@@ -86,6 +86,10 @@
       font-weight: bold;
     }
 
+    .fixture-ns {
+      color: #888;
+    }
+
     .muted {
       color: #888;
     }
@@ -574,7 +578,7 @@
     <h2>Table of Contents</h2>
     <ul>
       {{#Fixtures}}
-      <li><a href="#{{Id}}">{{Name}}</a> <span class="muted">({{Namespace}})</span></li>
+      <li><a href="#{{Id}}">{{Name}}</a> <span class="fixture-ns">({{Namespace}})</span></li>
       {{/Fixtures}}
     </ul>
   </div>
