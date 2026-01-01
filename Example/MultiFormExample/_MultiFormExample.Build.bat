@@ -3,7 +3,7 @@ chcp 65001 > nul
 setlocal
 pushd %~dp0
 
-call ..\_BuildBase.bat "MultiFormExample.dproj" %1
+call ..\..\Lib\WDDelphiTools\_BuildBase.bat "MultiFormExample.dproj" %1
 
 if %ERRORLEVEL% neq 0 (
     popd

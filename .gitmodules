@@ -1,6 +1,6 @@
 [submodule "Lib/WDDelphiTools"]
 	path = Lib/WDDelphiTools
-	url = https://github.com/WladiD/WDDelphiTools
+	url = https://github.com/WladiD/WDDelphiTools.git
 [submodule "Lib/mORMot"]
 	path = Lib/mORMot
 	url = https://github.com/synopse/mORMot2.git
