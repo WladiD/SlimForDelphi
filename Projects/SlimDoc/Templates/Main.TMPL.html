@@ -100,7 +100,6 @@
 
     .namespace {
       color: #555;
-      font-size: 0.7em;
       font-weight: normal;
       margin-left: 10px;
     }
@@ -306,6 +305,29 @@
       color: black;
       border-radius: 2px;
     }
+
+    .fixture-name-clickable {
+      cursor: pointer;
+    }
+
+    .fixture-name-clickable:hover {
+      text-decoration: underline;
+    }
+
+    .filter-icon {
+      display: none;
+      margin-left: 8px;
+      font-size: 0.9em;
+      color: #0078d7;
+      text-decoration: none !important;
+      display: inline-block;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .fixture-name-clickable:hover .filter-icon {
+      transform: scale(1.3);
+      color: #005a9e;
+    }
   </style>
   <script>
     function removeHighlights() {
@@ -345,6 +367,16 @@
         }
         node = next;
       }
+    }
+
+    function setSearch(text) {
+      var input = document.getElementById("searchInput");
+      if (input.value === text) {
+        input.value = "";
+      } else {
+        input.value = text;
+      }
+      filterFixtures();
     }
 
     function toggleInherited(checkbox, fixtureId) {
@@ -415,9 +447,21 @@
         var header = fixture.querySelector(".fixture-header");
         var inheritedCheckbox = header.querySelector(".inherited-toggle input");
 
+        // Update filter icon visibility
+        var icon = fixture.querySelector(".filter-icon");
+        if (icon) {
+          icon.style.display = (filter.length > 0) ? "inline-block" : "none";
+        }
+
         // Fixture & Namespace
         var headerText = "";
-        if (useFixture) headerText += (header.querySelector("span:first-child").firstChild.textContent || ""); // Name
+        var nameSpan = header.querySelector(".fixture-name-clickable");
+        if (useFixture) {
+           if (nameSpan)
+             headerText += (nameSpan.textContent || ""); // Correctly get full text
+           else
+             headerText += (header.querySelector("span:first-child").firstChild.textContent || ""); 
+        }
         if (useNamespace) headerText += (header.querySelector(".namespace").textContent || "");
 
         // Also check class name if useFixture
@@ -534,7 +578,12 @@
         }
 
         if (headerMatches && filter.length > 0) {
-          highlight(header, filter);
+          var clickableName = header.querySelector(".fixture-name-clickable");
+          if (clickableName)
+            highlight(clickableName, filter);
+          else
+            highlight(header, filter);
+
           var classElem = fixture.querySelector(".class-name");
           if (classElem) highlight(classElem, filter);
           var directDesc = fixture.querySelectorAll(":scope > .description-content");
@@ -544,13 +593,9 @@
         }
 
         // Hide/Show sections based on visible rows
-        // Note: We need to check if ANY row in the table body is visible.
-        // We look for tables following the h3 headers.
-
         var sections = ['Constructors', 'Methods', 'Properties'];
         for (var s = 0; s < sections.length; s++) {
           var sectionName = sections[s];
-          // Find h3 with section name
           var h3s = fixture.querySelectorAll('h3');
           for (var h = 0; h < h3s.length; h++) {
             if (h3s[h].textContent === sectionName) {
@@ -566,11 +611,6 @@
                    }
                  }
 
-                 // Logic for hiding sections:
-                 // 1. If visibleRows > 0, show the section.
-                 // 2. If visibleRows == 0, hide the section to reduce noise.
-                 // Note: If headerMatches is true, all rows are considered visible (not 'hidden-by-search'),
-                 // so visibleRows will be > 0 and the section will be shown automatically.
                  if (visibleRows > 0) {
                    h3s[h].style.display = '';
                    table.style.display = '';
@@ -626,7 +666,7 @@
   {{#Fixtures}}
   <div class="fixture" id="{{Id}}">
     <div class="fixture-header">
-      <span>{{Name}} <span class="namespace">{{Namespace}}</span></span>
+      <span class="fixture-name-clickable" onclick="setSearch('{{Name}}')" title="Filter by this fixture"><span class="namespace">{{Namespace}}.</span>{{Name}} <span class="filter-icon">&#128269;</span></span> 
       {{#HasInherited}}
       <label class="inherited-toggle">
         <input type="checkbox" onclick="toggleInherited(this, '{{Id}}')"> Show inherited members
