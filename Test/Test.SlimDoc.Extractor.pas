@@ -247,14 +247,19 @@ begin
     Assert.AreEqual('test', Doc.Namespace);
     Assert.AreEqual('TSampleFixture', Doc.DelphiClass);
 
-    // Check Methods (Should have Create, MethodOne, MethodTwo, SyncMethod)
-    if Doc.Methods.Count <> 4 then
+    // Check Methods (Should have MethodOne, MethodTwo, SyncMethod - NO Create)
+    if Doc.Methods.Count <> 3 then
     begin
       var Msg := 'Extracted methods: ';
       for var M: TSlimDocMethod in Doc.Methods do
         Msg := Msg + M.Name + ', ';
-      Assert.AreEqual(4, Doc.Methods.Count, Msg);
+      Assert.AreEqual(3, Doc.Methods.Count, Msg);
     end;
+
+    // Check Constructors (Should have Create)
+    Assert.AreEqual(1, Doc.Constructors.Count, 'Should have 1 constructor');
+    Assert.AreEqual('Create', Doc.Constructors[0].Name);
+    Assert.AreEqual(1, Doc.Constructors[0].Parameters.Count);
 
     // Look for specific method
     Method := GetDocMethod('MethodTwo');
@@ -268,10 +273,9 @@ begin
     Assert.IsNotNull(Method);
     Assert.AreEqual('smSynchronized', Method.SyncMode);
 
-    // Check constructor
+    // Check constructor NOT in methods
     Method := GetDocMethod('Create');
-    Assert.IsNotNull(Method);
-    Assert.AreEqual(1, Method.Parameters.Count);
+    Assert.IsNull(Method, 'Create should not be in Methods list');
 
     // Check Property
     Assert.AreEqual(1, Doc.Properties.Count);

@@ -272,7 +272,10 @@ begin
       for var Param: TRttiParameter in Method.GetParameters do
         DocMethod.Parameters.Add(TSlimDocParameter.Create(Param.Name, Param.ParamType.Name));
 
-      Result.Methods.Add(DocMethod);
+      if Method.IsConstructor then
+        Result.Constructors.Add(DocMethod)
+      else
+        Result.Methods.Add(DocMethod);
     end;
 
     for var Prop: TRttiProperty in RType.GetProperties do
@@ -331,14 +334,31 @@ begin
 
     for var M: TSlimDocMethod in ADoc.Methods do
     begin
+      if M.IsInherited then
+        Continue;
+
       FullMemberName := Format('%s.%s', [ADoc.DelphiClass, M.Name]);
       if Docs.TryGetValue(FullMemberName, Description) or
          Docs.TryGetValue(M.Name, Description) then
         M.Description := Description;
     end;
 
+    for var C: TSlimDocMethod in ADoc.Constructors do
+    begin
+      if C.IsInherited then
+        Continue;
+
+      FullMemberName := Format('%s.%s', [ADoc.DelphiClass, C.Name]);
+      if Docs.TryGetValue(FullMemberName, Description) or
+         Docs.TryGetValue(C.Name, Description) then
+        C.Description := Description;
+    end;
+
     for var P: TSlimDocProperty in ADoc.Properties do
     begin
+      if P.IsInherited then
+        Continue;
+
       FullMemberName := Format('%s.%s', [ADoc.DelphiClass, P.Name]);
       if Docs.TryGetValue(FullMemberName, Description) or
          Docs.TryGetValue(P.Name, Description) then

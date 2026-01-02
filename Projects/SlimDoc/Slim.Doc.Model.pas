@@ -53,6 +53,7 @@ type
     Description     : String;
     InheritanceChain: TStringList;
     Methods         : TObjectList<TSlimDocMethod>;
+    Constructors    : TObjectList<TSlimDocMethod>;
     Name            : String;
     Namespace       : String;
     Properties      : TObjectList<TSlimDocProperty>;
@@ -105,6 +106,7 @@ begin
   inherited Create;
   InheritanceChain := TStringList.Create;
   Methods := TObjectList<TSlimDocMethod>.Create;
+  Constructors := TObjectList<TSlimDocMethod>.Create;
   Properties := TObjectList<TSlimDocProperty>.Create;
 end;
 
@@ -112,6 +114,7 @@ destructor TSlimDocFixture.Destroy;
 begin
   InheritanceChain.Free;
   Methods.Free;
+  Constructors.Free;
   Properties.Free;
   inherited;
 end;

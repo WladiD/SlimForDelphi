@@ -609,6 +609,43 @@
     <div class="description-content fixture-description">{{{DescriptionHtml}}}</div>
     {{/DescriptionHtml}}
 
+    {{#HasConstructors}}
+    <h3>Constructors</h3>
+    <table>
+      <thead>
+        <tr>
+          <th class="col-toggle"></th>
+          <th>Name</th>
+          <th>Parameters</th>
+          <th>Origin</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#Constructors}}
+        <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
+          <td>
+            {{#HasUsageOrDesc}}
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            {{/HasUsageOrDesc}}
+          </td>
+          <td>{{Name}}</td>
+          <td>{{ParamsString}}</td>
+          <td class="muted">{{Origin}}</td>
+        </tr>
+        {{#HasUsageOrDesc}}
+        <tr class="{{UsageRowClass}}" id="{{UsageRowId}}" style="display:none;">
+          <td colspan="4">
+            {{#DescriptionHtml}}
+            <div class="description-content member-description">{{{DescriptionHtml}}}</div>
+            {{/DescriptionHtml}}
+          </td>
+        </tr>
+        {{/HasUsageOrDesc}}
+        {{/Constructors}}
+      </tbody>
+    </table>
+    {{/HasConstructors}}
+
     <h3>Methods</h3>
     <table>
       <thead>

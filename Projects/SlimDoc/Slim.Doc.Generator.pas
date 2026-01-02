@@ -32,7 +32,7 @@ type
   private
     function  BuildLink(const APageName, AMemberName: String; AIsMethod: Boolean; AParamCount: Integer): String;
     function  FormatXmlComment(const AXml: String): String;
-    function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): Variant;
+    function  GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap; var AIdCounter: Integer): Variant;
     function  HasInheritedMembers(AFixture: TSlimDocFixture): Boolean;
     procedure SortFixtures(AFixtures: TList<TSlimDocFixture>);
     procedure SortMembers(AList: TList<TSlimDocMember>);
@@ -138,7 +138,7 @@ begin
   Result := Format('../%s#:~:%s', [APageName, Fragment]);
 end;
 
-function TSlimDocGenerator.GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap): Variant;
+function TSlimDocGenerator.GenerateMemberData(AFixture: TSlimDocFixture; AMember: TSlimDocMember; AUsageMap: TUsageMap; var AIdCounter: Integer): Variant;
 var
   Data          : TDocVariantData absolute Result;
   HasDescription: Boolean;
@@ -158,7 +158,9 @@ begin
   LookupKey := Format('%s.%s', [AFixture.Name, AMember.Name]).ToLower;
   HasUsage := Assigned(AUsageMap) and AUsageMap.TryGetValue(LookupKey, UsageList);
   HasDescription := AMember.Description <> '';
-  UsageRowId := Format('usage-%s-%s', [AFixture.Id, AMember.Name]).Replace('.', '-');
+
+  Inc(AIdCounter);
+  UsageRowId := Format('usage-%s-%s-%d', [AFixture.Id, AMember.Name, AIdCounter]).Replace('.', '-');
 
   RowClass := '';
   if AMember.IsInherited then
@@ -218,6 +220,7 @@ var
   Fixture    : Variant;
   FixtureData: TDocVariantData absolute Fixture;
   FixturesArr: Variant;
+  IdCounter  : Integer;
   Method     : TSlimDocMethod;
   MethodsArr : Variant;
   Prop       : TSlimDocProperty;
@@ -225,6 +228,7 @@ var
 begin
   SortFixtures(AFixtures);
   FixturesArr := _Arr([]);
+  IdCounter := 0;
 
   for var LoopFixture: TSlimDocFixture in AFixtures do
   begin
@@ -250,11 +254,24 @@ begin
 
     FixtureData.AddValue('HasInherited', HasInheritedMembers(LoopFixture));
 
+    // Constructors
+    if LoopFixture.Constructors.Count > 0 then
+    begin
+      FixtureData.AddValue('HasConstructors', True);
+      var CtorsArr := _Arr([]);
+      // Sort constructors if multiple? Usually just one or overloaded Creates.
+      SortMembers(TList<TSlimDocMember>(LoopFixture.Constructors)); 
+      for Method in LoopFixture.Constructors do
+        // Pass nil for UsageMap as requested: Usage should not be considered for constructors
+        CtorsArr.Add(GenerateMemberData(LoopFixture, Method, nil, IdCounter)); 
+      FixtureData.AddValue('Constructors', CtorsArr);
+    end;
+
     // Methods
     MethodsArr := _Arr([]);
     SortMembers(TList<TSlimDocMember>(LoopFixture.Methods));
     for Method in LoopFixture.Methods do
-      MethodsArr.Add(GenerateMemberData(LoopFixture, Method, AUsageMap));
+      MethodsArr.Add(GenerateMemberData(LoopFixture, Method, AUsageMap, IdCounter));
     FixtureData.AddValue('Methods', MethodsArr);
 
     // Properties
@@ -264,7 +281,7 @@ begin
       PropsArr := _Arr([]);
       SortMembers(TList<TSlimDocMember>(LoopFixture.Properties));
       for Prop in LoopFixture.Properties do
-        PropsArr.Add(GenerateMemberData(LoopFixture, Prop, AUsageMap));
+        PropsArr.Add(GenerateMemberData(LoopFixture, Prop, AUsageMap, IdCounter));
       FixtureData.AddValue('Properties', PropsArr);
     end;
 
