@@ -65,6 +65,8 @@ type
     [Test]
     procedure TestInterleavedMethodUsage;
     [Test]
+    procedure TestAssignmentSyntaxInterleaved;
+    [Test]
     procedure TestMyFormReproduction;
     [Test]
     procedure TestScenarioUsage;
@@ -598,6 +600,41 @@ begin
     List := UsageMap['myfixture.clicktoolbarbuttononformwithicon'];
     Assert.AreEqual(1, List.Count);
     Assert.AreEqual('Interleaved', List[0]);
+  finally
+    UsageMap.Free;
+  end;
+end;
+
+procedure TTestSlimUsageAnalyzer.TestAssignmentSyntaxInterleaved;
+var
+  List    : TStringList;
+  UsageMap: TUsageMap;
+begin
+  // 1. Valid Assignment: $Result=
+  // This fails if the analyzer doesn't skip the assignment cell
+  CreateWikiFile('AssignmentInterleaved.wiki', '''
+    | script                       | MyFixture                                 |
+    | $Result=                     | Click Toolbar Button On Form | $Form | With Icon | ADD |
+    ''');
+
+  // 2. Invalid Assignment (e.g. note=) - should NOT be skipped
+  CreateWikiFile('FalseAssignment.wiki', '''
+    | script                       | MyFixture                                 |
+    | note=                        | Click Toolbar Button On Form | $Form | With Icon | ADD |
+    ''');
+
+  UsageMap := FAnalyzer.Analyze(FTempDir, FFixtures);
+  try
+    Assert.IsTrue(UsageMap.ContainsKey('myfixture.clicktoolbarbuttononformwithicon'),
+      'Should find usage for interleaved method call with assignment');
+    List := UsageMap['myfixture.clicktoolbarbuttononformwithicon'];
+
+    // Should contain AssignmentInterleaved
+    Assert.IsTrue(List.IndexOf('AssignmentInterleaved') >= 0, 'AssignmentInterleaved should match');
+
+    // Should NOT contain FalseAssignment because "note=" is treated as part of the method call (param or name part)
+    // and thus "Click Toolbar..." is shifted/mismatched.
+    Assert.IsFalse(List.IndexOf('FalseAssignment') >= 0, 'FalseAssignment should NOT match because "note=" is not a valid assignment');
   finally
     UsageMap.Free;
   end;

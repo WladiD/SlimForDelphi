@@ -543,6 +543,46 @@
           }
         }
 
+        // Hide/Show sections based on visible rows
+        // Note: We need to check if ANY row in the table body is visible.
+        // We look for tables following the h3 headers.
+
+        var sections = ['Constructors', 'Methods', 'Properties'];
+        for (var s = 0; s < sections.length; s++) {
+          var sectionName = sections[s];
+          // Find h3 with section name
+          var h3s = fixture.querySelectorAll('h3');
+          for (var h = 0; h < h3s.length; h++) {
+            if (h3s[h].textContent === sectionName) {
+              var table = h3s[h].nextElementSibling;
+              if (table && table.tagName === 'TABLE') {
+                 var visibleRows = 0;
+                 var bodyRows = table.querySelectorAll('tbody tr');
+                 for (var r = 0; r < bodyRows.length; r++) {
+                   if (!bodyRows[r].classList.contains('hidden-by-search') && 
+                       !bodyRows[r].classList.contains('usage-row') &&
+                       bodyRows[r].style.display !== 'none') {
+                     visibleRows++;
+                   }
+                 }
+
+                 // Logic for hiding sections:
+                 // 1. If visibleRows > 0, show the section.
+                 // 2. If visibleRows == 0, hide the section to reduce noise.
+                 // Note: If headerMatches is true, all rows are considered visible (not 'hidden-by-search'),
+                 // so visibleRows will be > 0 and the section will be shown automatically.
+                 if (visibleRows > 0) {
+                   h3s[h].style.display = '';
+                   table.style.display = '';
+                 } else {
+                   h3s[h].style.display = 'none';
+                   table.style.display = 'none';
+                 }
+              }
+            }
+          }
+        }
+
         if (hasVisibleRow || headerMatches) {
           fixture.style.display = "";
         } else {

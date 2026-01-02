@@ -379,13 +379,18 @@ begin
   if Length(Cells) = 0 then
     Exit;
 
+  // Check if first cell is assignment ($Var=)
+  var StartIdx := 0;
+  if (Length(Cells) > 0) and Cells[0].StartsWith('$') and Cells[0].EndsWith('=') then
+    StartIdx := 1;
+
   // Build a "compact" version of the row for matching.
   // Standard Slim logic for script tables:
   // | method | arg1 | arg2 | -> "method"
   // | method | arg1 | extra | arg2 | -> "method extra"
-  // We'll build a combined string from alternate cells: 0, 2, 4...
+  // We'll build a combined string from alternate cells: 0, 2, 4... (or 1, 3, 5 if assignment)
   var Combined := '';
-  var I := 0;
+  var I := StartIdx;
   while I < Length(Cells) do
   begin
     if not Combined.IsEmpty then
