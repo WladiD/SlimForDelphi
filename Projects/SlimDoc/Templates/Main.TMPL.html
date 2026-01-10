@@ -432,6 +432,8 @@
 
       var input = document.getElementById("searchInput");
       var filter = input.value.toUpperCase();
+      var cleanFilter = filter.replace(/\s+/g, "");
+      var useClean = (cleanFilter.length > 0 && cleanFilter !== filter);
 
       var useFixture = document.getElementById("chkFixture").checked;
       var useNamespace = document.getElementById("chkNamespace").checked;
@@ -478,6 +480,9 @@
         }
 
         var headerMatches = headerText.toUpperCase().indexOf(filter) > -1;
+        if (!headerMatches && useClean) {
+          headerMatches = headerText.toUpperCase().indexOf(cleanFilter) > -1;
+        }
 
         var rows = fixture.querySelectorAll("tbody tr");
         var hasVisibleRow = false;
@@ -510,11 +515,16 @@
           // Member Name & Full Row
           if (useMember) {
             var rowText = row.textContent || row.innerText;
-            if (rowText.toUpperCase().indexOf(filter) > -1) {
+            if (rowText.toUpperCase().indexOf(filter) > -1 || (useClean && rowText.toUpperCase().indexOf(cleanFilter) > -1)) {
               rowMatches = true;
               // Check if name specifically matches (usually 2nd cell)
               var nameCell = row.cells[1];
-              if (nameCell && nameCell.textContent.toUpperCase().indexOf(filter) > -1) memberNameMatches = true;
+              if (nameCell) {
+                var nameText = nameCell.textContent.toUpperCase();
+                if (nameText.indexOf(filter) > -1 || (useClean && nameText.indexOf(cleanFilter) > -1)) {
+                  memberNameMatches = true;
+                }
+              }
             }
           }
 
@@ -523,12 +533,18 @@
             // Description
             if (useComment) {
               var descDiv = usageRow.querySelector(".description-content");
-              if (descDiv && descDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+              if (descDiv) {
+                var descText = descDiv.textContent.toUpperCase();
+                if (descText.indexOf(filter) > -1 || (useClean && descText.indexOf(cleanFilter) > -1)) usageMatches = true;
+              }
             }
             // Usage
             if (useUsage) {
               var usageDiv = usageRow.querySelector(".usage-content");
-              if (usageDiv && usageDiv.textContent.toUpperCase().indexOf(filter) > -1) usageMatches = true;
+              if (usageDiv) {
+                var usageText = usageDiv.textContent.toUpperCase();
+                if (usageText.indexOf(filter) > -1 || (useClean && usageText.indexOf(cleanFilter) > -1)) usageMatches = true;
+              }
             }
           }
 
@@ -543,14 +559,20 @@
               if (rowMatches || usageMatches) hasLocalMatch = true;
             }
 
-            if (rowMatches && filter.length > 0) highlight(row, filter);
+            if (rowMatches && filter.length > 0) {
+              highlight(row, filter);
+              if (useClean) highlight(row, cleanFilter);
+            }
 
             if (hasUsageRow) {
               usageRow.classList.remove("hidden-by-search");
 
               if (usageMatches) {
                 usageRow.style.display = "table-row";
-                if (filter.length > 0) highlight(usageRow, filter);
+                if (filter.length > 0) {
+                  highlight(usageRow, filter);
+                  if (useClean) highlight(usageRow, cleanFilter);
+                }
                 var btn = row.querySelector(".toggle-btn");
                 if (btn) btn.innerHTML = "&#9660;";
               } else {
@@ -579,16 +601,23 @@
 
         if (headerMatches && filter.length > 0) {
           var clickableName = header.querySelector(".fixture-name-clickable");
-          if (clickableName)
+          if (clickableName) {
             highlight(clickableName, filter);
-          else
+            if (useClean) highlight(clickableName, cleanFilter);
+          } else {
             highlight(header, filter);
+            if (useClean) highlight(header, cleanFilter);
+          }
 
           var classElem = fixture.querySelector(".class-name");
-          if (classElem) highlight(classElem, filter);
+          if (classElem) {
+            highlight(classElem, filter);
+            if (useClean) highlight(classElem, cleanFilter);
+          }
           var directDesc = fixture.querySelectorAll(":scope > .description-content");
           for (var d = 0; d < directDesc.length; d++) {
             highlight(directDesc[d], filter);
+            if (useClean) highlight(directDesc[d], cleanFilter);
           }
         }
 
@@ -632,9 +661,13 @@
 
       for (var k = 0; k < tocLinks.length; k++) {
         var link = tocLinks[k];
-        if (link.textContent.toUpperCase().indexOf(filter) > -1) {
+        var linkText = link.textContent.toUpperCase();
+        if (linkText.indexOf(filter) > -1 || (useClean && linkText.indexOf(cleanFilter) > -1)) {
           link.style.display = "";
-          if (filter.length > 0) highlight(link, filter);
+          if (filter.length > 0) {
+            highlight(link, filter);
+            if (useClean) highlight(link, cleanFilter);
+          }
         } else {
           link.style.display = "none";
         }
