@@ -568,9 +568,9 @@
           }
         }
 
-        // Auto-toggle inherited members only if there are NO local matches but inherited matches
+        // Auto-toggle inherited members if there are NO local matches but inherited matches, OR if the fixture header matches
         if (inheritedCheckbox) {
-          var shouldBeChecked = (filter === "") ? false : (hasInheritedMatch && !hasLocalMatch);
+          var shouldBeChecked = (filter === "") ? false : ((hasInheritedMatch && !hasLocalMatch) || headerMatches);
           if (inheritedCheckbox.checked !== shouldBeChecked) {
             inheritedCheckbox.checked = shouldBeChecked;
             toggleInherited(inheritedCheckbox, fixture.id);
