@@ -109,6 +109,15 @@
       color: #d63384;
     }
 
+    .code-text {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    .member-name {
+      font-weight: bold;
+    }
+
     .toc {
       background-color: white;
       padding: 20px;
@@ -196,7 +205,6 @@
     .inherited-member {
       display: none;
       color: #777;
-      font-style: italic;
       background-color: #f8f8f8 !important;
     }
 
@@ -741,8 +749,8 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td>{{Name}}</td>
-          <td>{{ParamsString}}</td>
+          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text">{{ParamsString}}</td>
           <td class="muted">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
@@ -779,9 +787,9 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td>{{Name}}</td>
-          <td>{{ParamsString}}</td>
-          <td>{{ReturnType}}</td>
+          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text">{{ParamsString}}</td>
+          <td class="code-text">{{ReturnType}}</td>
           <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
           <td class="muted">{{Origin}}</td>
         </tr>
@@ -829,8 +837,8 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td>{{Name}}</td>
-          <td>{{PropertyType}}</td>
+          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text">{{PropertyType}}</td>
           <td>{{Access}}</td>
           <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
           <td class="muted">{{Origin}}</td>
