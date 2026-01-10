@@ -98,6 +98,12 @@
       width: 20px;
     }
 
+    .col-sync {
+      width: 1%;
+      white-space: nowrap;
+      text-align: center !important;
+    }
+
     .namespace {
       color: #555;
       font-weight: normal;
@@ -116,6 +122,22 @@
 
     .member-name {
       font-weight: bold;
+    }
+
+    .sync-cell {
+      text-align: center;
+      font-size: 1.2em;
+      font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", "Android Emoji", sans-serif;
+    }
+
+    .sync-cell[title='smUnsynchronized']::after {
+      content: "⚡";
+    }
+    .sync-cell[title='smSynchronized']::after {
+      content: "🛡";
+    }
+    .sync-cell[title='smSynchronizedAndDelayed']::after {
+      content: "⏳";
     }
 
     .toc {
@@ -775,7 +797,7 @@
           <th>Name</th>
           <th>Parameters</th>
           <th>Return Type</th>
-          <th>Sync Mode</th>
+          <th class="col-sync">Sync Mode</th>
           <th>Origin</th>
         </tr>
       </thead>
@@ -790,7 +812,7 @@
           <td class="code-text member-name">{{Name}}</td>
           <td class="code-text">{{ParamsString}}</td>
           <td class="code-text">{{ReturnType}}</td>
-          <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
+          <td class="sync-cell {{SyncClass}}" title="{{SyncMode}}"></td>
           <td class="muted">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
@@ -825,7 +847,7 @@
           <th>Name</th>
           <th>Type</th>
           <th>Access</th>
-          <th>Sync Mode</th>
+          <th class="col-sync">Sync Mode</th>
           <th>Origin</th>
         </tr>
       </thead>
@@ -840,7 +862,7 @@
           <td class="code-text member-name">{{Name}}</td>
           <td class="code-text">{{PropertyType}}</td>
           <td>{{Access}}</td>
-          <td{{#SyncClass}} class="{{SyncClass}}"{{/SyncClass}}>{{SyncMode}}</td>
+          <td class="sync-cell {{SyncClass}}" title="{{SyncMode}}"></td>
           <td class="muted">{{Origin}}</td>
         </tr>
         {{#HasUsageOrDesc}}
