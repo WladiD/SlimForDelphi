@@ -236,7 +236,8 @@ begin
       'Id', LoopFixture.Id,
       'Name', LoopFixture.Name,
       'Namespace', LoopFixture.Namespace,
-      'UnitName', LoopFixture.UnitName]);
+      'UnitName', LoopFixture.UnitName,
+      'OpenUnitLink', LoopFixture.OpenUnitLink]);
 
     var ClassDecl := LoopFixture.DelphiClass;
     if (LoopFixture.InheritanceChain.Count > 0) then

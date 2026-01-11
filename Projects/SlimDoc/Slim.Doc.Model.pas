@@ -58,6 +58,7 @@ type
     Namespace       : String;
     Properties      : TObjectList<TSlimDocProperty>;
     UnitName        : String;
+    OpenUnitLink    : String;
     constructor Create;
     destructor Destroy; override;
     function Id: String;

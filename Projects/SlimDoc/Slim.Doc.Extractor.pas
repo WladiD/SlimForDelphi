@@ -15,6 +15,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
+  System.NetEncoding,
   System.RegularExpressions,
   System.Rtti,
   System.SysUtils,
@@ -305,7 +306,13 @@ begin
     end;
 
     if Result.UnitName <> '' then
+    begin
+      EnsureUnitMap;
+      if FUnitMap.ContainsKey(Result.UnitName) then
+        Result.OpenUnitLink := Format('dpt://openunit/?file=%s', [TNetEncoding.URL.Encode(FUnitMap[Result.UnitName])]);
+
       InjectXmlDocs(Result, Result.UnitName);
+    end;
   finally
     FixtureInstance.Free;
     Ctx.Free;

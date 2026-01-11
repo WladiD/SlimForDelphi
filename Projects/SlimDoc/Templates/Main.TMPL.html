@@ -740,7 +740,10 @@
     <table class="fixture-info">
       <tr>
         <td>Unit:</td>
-        <td>{{UnitName}}</td>
+        <td>
+          {{#OpenUnitLink}}<a href="{{{OpenUnitLink}}}" title="Open unit in IDE">{{UnitName}}</a>{{/OpenUnitLink}}
+          {{^OpenUnitLink}}{{UnitName}}{{/OpenUnitLink}}
+        </td>
       </tr>
       <tr>
         <td>Delphi Class:</td>
