@@ -33,5 +33,6 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 |main template           |!-..\..\Projects\SlimDoc\Templates\Main.TMPL.html-!                                        |
 |show                    |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                             |
 |include source code path|!-..\..\Projects\SlimDoc-!                                                                 |
+|include source code path|!-..\..\Example\MultiFormExample-!                                                         |
 |generate documentation  |!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
 |check                   |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|

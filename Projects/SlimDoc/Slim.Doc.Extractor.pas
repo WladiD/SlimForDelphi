@@ -89,12 +89,12 @@ end;
 
 procedure TSlimDocExtractor.AddExcludePath(const APath: String);
 begin
-  FExcludePaths.Add(IncludeTrailingPathDelimiter(APath));
+  FExcludePaths.Add(IncludeTrailingPathDelimiter(TPath.GetFullPath(APath)));
 end;
 
 procedure TSlimDocExtractor.AddIncludePath(const APath: String);
 begin
-  FIncludePaths.Add(IncludeTrailingPathDelimiter(APath));
+  FIncludePaths.Add(IncludeTrailingPathDelimiter(TPath.GetFullPath(APath)));
 end;
 
 procedure TSlimDocExtractor.EnsureUnitMap;
