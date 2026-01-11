@@ -774,7 +774,10 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text member-name">
+            {{#SourceLink}}<a href="{{{SourceLink}}}" title="Go to implementation">{{Name}}</a>{{/SourceLink}}
+            {{^SourceLink}}{{Name}}{{/SourceLink}}
+          </td>
           <td class="code-text">{{ParamsString}}</td>
           <td class="muted">{{Origin}}</td>
         </tr>
@@ -812,7 +815,10 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text member-name">
+            {{#SourceLink}}<a href="{{{SourceLink}}}" title="Go to implementation">{{Name}}</a>{{/SourceLink}}
+            {{^SourceLink}}{{Name}}{{/SourceLink}}
+          </td>
           <td class="code-text">{{ParamsString}}</td>
           <td class="code-text">{{ReturnType}}</td>
           <td class="sync-cell {{SyncClass}}" title="{{SyncMode}}"></td>
@@ -862,7 +868,10 @@
             <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
             {{/HasUsageOrDesc}}
           </td>
-          <td class="code-text member-name">{{Name}}</td>
+          <td class="code-text member-name">
+            {{#SourceLink}}<a href="{{{SourceLink}}}" title="Go to implementation">{{Name}}</a>{{/SourceLink}}
+            {{^SourceLink}}{{Name}}{{/SourceLink}}
+          </td>
           <td class="code-text">{{PropertyType}}</td>
           <td>{{Access}}</td>
           <td class="sync-cell {{SyncClass}}" title="{{SyncMode}}"></td>

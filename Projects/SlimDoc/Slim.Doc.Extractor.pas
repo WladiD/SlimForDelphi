@@ -270,6 +270,12 @@ begin
       else
         DocMethod.ReturnType := 'void';
 
+      DocMethod.DeclaringClass := Method.Parent.Name;
+      var MemberUnitName := Method.Parent.AsInstance.MetaclassType.UnitName;
+      EnsureUnitMap;
+      if FUnitMap.ContainsKey(MemberUnitName) then
+        DocMethod.UnitPath := FUnitMap[MemberUnitName];
+
       for var Param: TRttiParameter in Method.GetParameters do
         DocMethod.Parameters.Add(TSlimDocParameter.Create(Param.Name, Param.ParamType.Name));
 
@@ -294,6 +300,12 @@ begin
         DocProp.Origin := 'Self';
       DocProp.SyncMode := GetSyncModeStr(Prop, FixtureInstance);
 
+      DocProp.DeclaringClass := Prop.Parent.Name;
+      var MemberUnitName := Prop.Parent.AsInstance.MetaclassType.UnitName;
+      EnsureUnitMap;
+      if FUnitMap.ContainsKey(MemberUnitName) then
+        DocProp.UnitPath := FUnitMap[MemberUnitName];
+
       var LIsReadable: Boolean:=Prop.IsReadable;
       var LIsWritable: Boolean:=Prop.IsWritable;
       if LIsReadable and LIsWritable then
@@ -309,7 +321,10 @@ begin
     begin
       EnsureUnitMap;
       if FUnitMap.ContainsKey(Result.UnitName) then
-        Result.OpenUnitLink := Format('dpt://openunit/?file=%s', [TNetEncoding.URL.Encode(FUnitMap[Result.UnitName])]);
+      begin
+        Result.UnitPath := FUnitMap[Result.UnitName];
+        Result.OpenUnitLink := Format('dpt://openunit/?file=%s', [TNetEncoding.URL.Encode(Result.UnitPath)]);
+      end;
 
       InjectXmlDocs(Result, Result.UnitName);
     end;

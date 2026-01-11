@@ -14,6 +14,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
+  System.NetEncoding,
   System.RegularExpressions,
   System.SysUtils,
 
@@ -212,6 +213,14 @@ begin
         'Link', BuildLink(U, AMember.Name, AMember is TSlimDocMethod, ParamCount),
         'PageName', U]));
     Data.AddValue('UsageLinks', UsageLinks);
+  end;
+
+  if AMember.UnitPath <> '' then
+  begin
+    Data.AddValue('SourceLink', Format('dpt://openunit/?file=%s&member=%s.%s',
+      [TNetEncoding.URL.Encode(AMember.UnitPath),
+       TNetEncoding.URL.Encode(AMember.DeclaringClass),
+       TNetEncoding.URL.Encode(AMember.Name)]));
   end;
 end;
 

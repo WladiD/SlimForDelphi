@@ -25,11 +25,13 @@ type
 
   TSlimDocMember = class
   public
+    DeclaringClass: String;
     Description: String;
     IsInherited: Boolean;
     Name       : String;
     Origin     : String;
     SyncMode   : String;
+    UnitPath   : String;
   end;
 
   TSlimDocMethod = class(TSlimDocMember)
@@ -58,6 +60,7 @@ type
     Namespace       : String;
     Properties      : TObjectList<TSlimDocProperty>;
     UnitName        : String;
+    UnitPath        : String;
     OpenUnitLink    : String;
     constructor Create;
     destructor Destroy; override;
