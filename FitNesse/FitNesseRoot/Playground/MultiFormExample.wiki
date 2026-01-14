@@ -3,7 +3,7 @@ Help: Multi Form Example
 ---
 !define TEST_SYSTEM {slim}
 !define slim.port {0}
-!define COMMAND_PATTERN {..\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat}
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Example\MultiFormExample\_MultiFormExample.BuildAndRun.bat}
 
 The veterans...
 
@@ -30,9 +30,9 @@ Here are the employees at !-OurCompany-! who all came together from !-OtherCompa
 
 !3 Documentation
 |script                  |!-SlimDoc.Generator-!                                                                      |
-|main template           |!-..\..\Projects\SlimDoc\Templates\Main.TMPL.html-!                                        |
-|show                    |analyze usage |!-..\..\FitNesse\FitNesseRoot-!                                             |
-|include source code path|!-..\..\Projects\SlimDoc-!                                                                 |
-|include source code path|!-..\..\Example\MultiFormExample-!                                                         |
-|generate documentation  |!-..\..\FitNesse\FitNesseRoot\files\SlimFixturesDocs.html-!                                |
+|main template           |${PROJECT_ROOT}!-\Projects\SlimDoc\Templates\Main.TMPL.html-!                              |
+|show                    |analyze usage |${FITNESSE_ROOT}                                                            |
+|include source code path|${PROJECT_ROOT}!-\Projects\SlimDoc-!                                                       |
+|include source code path|${PROJECT_ROOT}!-\Example\MultiFormExample-!                                               |
+|generate documentation  |${FITNESSE_ROOT}!-\files\SlimFixturesDocs.html-!                                |
 |check                   |generated link|<a href="files/SlimFixturesDocs.html" target="_blank">Open Documentation</a>|
