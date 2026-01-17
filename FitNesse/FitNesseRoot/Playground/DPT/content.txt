@@ -1,6 +1,9 @@
 !define TEST_SYSTEM {slim}
 !define slim.host {localhost}
 !define slim.port {9000}
+
+This suite will only works if the Repo https://github.com/WladiD/SlimForDelphi is checked out 
+under this path '''C:\WC\WDDelphiTools'''.
 !define COMMAND_PATTERN {C:\WC\WDDelphiTools\Projects\DPT\_DPT.BuildAndRunSlimServer.bat}
 
 !1 DPT Test Suite
