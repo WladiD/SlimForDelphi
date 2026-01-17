@@ -1,6 +1,7 @@
 __recovery
 __history
 Win??
+*.dcu
 
 /Test/*.local
 /Test/*.identcache
