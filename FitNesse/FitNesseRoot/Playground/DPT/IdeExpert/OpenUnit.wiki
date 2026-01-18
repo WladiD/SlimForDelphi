@@ -1,9 +1,6 @@
 ---
 Test
 ---
-!define TEST_SYSTEM {slim}
-!define slim.port {9012}
-!define COMMAND_PATTERN {C:\WC\WDDelphiTools\Projects\DptIdeExpert\_ConnectToIde.bat %p}
 
 !1 IDE Open Unit Tests
 

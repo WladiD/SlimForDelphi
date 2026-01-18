@@ -1,0 +1,7 @@
+---
+Suite
+---
+!define slim.port {9012}
+!define COMMAND_PATTERN {C:\WC\WDDelphiTools\Projects\DptIdeExpert\_ConnectToIde.bat %p}
+
+!contents -R2 -g -p -f -h

@@ -1,7 +1,6 @@
 !define TEST_SYSTEM {slim}
 !define slim.host {localhost}
 !define slim.port {9000}
-!define COMMAND_PATTERN {C:\WC\WDDelphiTools\Projects\DPT\_DPT.BuildAndRunSlimServer.bat}
 
 !1 Requirements
  * Check out https://github.com/WladiD/SlimForDelphi to ''C:\WC\WDDelphiTools'' or another location, and adjust the COMMAND_PATTERN above.

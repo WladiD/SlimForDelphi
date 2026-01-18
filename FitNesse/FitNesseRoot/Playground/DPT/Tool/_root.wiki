@@ -1,0 +1,6 @@
+---
+Suite
+---
+!define COMMAND_PATTERN {C:\WC\WDDelphiTools\Projects\DPT\_DPT.BuildAndRunSlimServer.bat}
+
+!contents -R2 -g -p -f -h
