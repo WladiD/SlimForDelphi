@@ -1,0 +1,7 @@
+---
+Static
+---
+!2 Cleanup
+
+|script|TDptControl|
+|stop server       |

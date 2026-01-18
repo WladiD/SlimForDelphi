@@ -1,0 +1,11 @@
+---
+Test
+---
+!1 Print Path Tests
+
+|TDptPrintPathFixture                                                        |
+|Delphi Version|Path Type |Path?                                             |
+|D11           |BDSPath   |C:\Program Files (x86)\Embarcadero\Studio\22.0    |
+|D11           |BDSBINPath|C:\Program Files (x86)\Embarcadero\Studio\22.0\bin|
+|D12           |BDSPath   |C:\Program Files (x86)\Embarcadero\Studio\23.0    |
+|D12           |BDSBINPath|C:\Program Files (x86)\Embarcadero\Studio\23.0\bin|

@@ -14,8 +14,3 @@ Test
 |D11           |!-C:\WC\WDDelphiTools\Projects\DPT\DPT.Fixtures.pas-!|    |TDptControl.Echo|true           |
 |D12           |!-C:\WC\WDDelphiTools\WDDT.DelayedMethod.pas-!       |60  |                |true           |
 |D12           |!-C:\WC\WDDelphiTools\Projects\DPT\DPT.Fixtures.pas-!|    |TDptControl.Echo|true           |
-
-!2 Cleanup
-
-|script|TDptControl|
-|stop server       |
