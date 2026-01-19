@@ -426,10 +426,10 @@
       if (!row) return;
       if (row.style.display === "none") {
         row.style.display = "table-row";
-        btn.innerHTML = "&#9660;";
+        btn.innerHTML = "⮟";
       } else {
         row.style.display = "none";
-        btn.innerHTML = "&#9658;";
+        btn.innerHTML = "⮞";
       }
     }
 
@@ -532,7 +532,7 @@
               usageRow.classList.remove("hidden-by-search");
               usageRow.style.display = "none";
               var btn = row.querySelector(".toggle-btn");
-              if (btn) btn.innerHTML = "&#9658;";
+              if (btn) btn.innerHTML = "⮞";
             }
             hasVisibleRow = true;
             continue;
@@ -604,11 +604,11 @@
                   if (useClean) highlight(usageRow, cleanFilter);
                 }
                 var btn = row.querySelector(".toggle-btn");
-                if (btn) btn.innerHTML = "&#9660;";
+                if (btn) btn.innerHTML = "⮟";
               } else {
                 usageRow.style.display = "none";
                 var btn = row.querySelector(".toggle-btn");
-                if (btn) btn.innerHTML = "&#9658;";
+                if (btn) btn.innerHTML = "⮞";
               }
             }
           } else {
@@ -771,7 +771,7 @@
         <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
           <td>
             {{#HasUsageOrDesc}}
-            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">⮞</span>
             {{/HasUsageOrDesc}}
           </td>
           <td class="code-text member-name">
@@ -812,7 +812,7 @@
         <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
           <td>
             {{#HasUsageOrDesc}}
-            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">⮞</span>
             {{/HasUsageOrDesc}}
           </td>
           <td class="code-text member-name">
@@ -865,7 +865,7 @@
         <tr{{#RowClass}} class="{{RowClass}}"{{/RowClass}}>
           <td>
             {{#HasUsageOrDesc}}
-            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">&#9658;</span>
+            <span class="toggle-btn" onclick="toggleUsage(this, '{{UsageRowId}}')">⮞</span>
             {{/HasUsageOrDesc}}
           </td>
           <td class="code-text member-name">
