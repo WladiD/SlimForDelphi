@@ -2,6 +2,7 @@
 !3 ''The fully integrated stand-alone acceptance testing framework and wiki.''
 
   * [[Playground][Playground]]
+  * [[WDProject][WDProject]]
 
 
 !note Release ${FITNESSE_VERSION}
