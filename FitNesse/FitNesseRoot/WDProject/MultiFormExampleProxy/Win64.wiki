@@ -5,7 +5,7 @@ Test
 !define TARGET_PLATFORM {Win64}
 !define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat ${TARGET_PLATFORM}}
 
-!include -c .Playground.MultiFormExampleProxy.MultiFormExampleProxyBase
+!include -c <MultiFormExampleProxy.MultiFormExampleProxyBase
 
 |script        |!-SlimProxy.Core-!                                |
 |start process;|cmd.exe|!-/c taskkill /IM MultiFormExample.exe /F-!|
