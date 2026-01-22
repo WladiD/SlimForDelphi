@@ -19,18 +19,18 @@ var
   LParam: String;
 begin
   Result := False;
+  // 1. Check for explicit --SlimPort= parameter (Highest Priority)
   for I := 1 to ParamCount do
   begin
     LParam := ParamStr(I);
-    if LParam.StartsWith('--SlimPort=', True) then
-    begin
-      if TryStrToInt(LParam.Substring(Length('--SlimPort=')), APort) then
-      begin
-        Result := True;
-        Exit;
-      end;
-    end;
+    if LParam.StartsWith('--SlimPort=', True) and
+       TryStrToInt(LParam.Substring(Length('--SlimPort=')), APort) then
+      Exit(True);
   end;
+
+  // 2. Check LAST parameter for plain integer (Standard FitNesse behavior)
+  // Only if no explicit flag was found.
+  Result := (ParamCount >= 1) and TryStrToInt(ParamStr(ParamCount), APort);
 end;
 
 end.

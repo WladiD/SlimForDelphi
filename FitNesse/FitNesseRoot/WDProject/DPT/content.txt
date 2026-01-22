@@ -3,7 +3,7 @@
 !define slim.port {9000}
 
 !1 Requirements
- * Check out https://github.com/WladiD/SlimForDelphi to ''C:\WC\WDDelphiTools'' or another location, and adjust the COMMAND_PATTERN above.
+ * Check out https://github.com/WladiD/WDDelphiTools.git on the same level as the repo of !-SlimForDelphi-!
 
 
 !1 DPT Test Suite
