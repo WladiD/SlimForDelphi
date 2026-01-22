@@ -1,9 +1,8 @@
 ---
 Test
 ---
-
 !1 IDE Open Unit Tests
 
-|TDptIdeOpenUnitFixture                                    |
-|Unit Path                                 |Line|Open Unit?|
-|C:\WC\WDDelphiTools\WDDT.DelayedMethod.pas|60  |true      |
+|TDptIdeOpenUnitFixture                             |
+|Unit Path                          |Line|Open Unit?|
+|${WDDT_ROOT}\WDDT.DelayedMethod.pas|60  |true      |

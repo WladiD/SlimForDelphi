@@ -3,4 +3,8 @@ Suite
 ---
 !define COMMAND_PATTERN {${WDDT_ROOT}\Projects\DPT\_DPT.BuildAndRunSlimServer.bat}
 
+!1 Requirements
+ * Delphi 11 must be installed
+ * Delphi 12 must be installed
+
 !contents -R2 -g -p -f -h

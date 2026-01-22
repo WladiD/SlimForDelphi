@@ -2,6 +2,8 @@
 Suite
 ---
 !define slim.port {9012}
-!define COMMAND_PATTERN {${WDDT_ROOT}\Projects\DptIdeExpert\_ConnectToIde.bat %p}
+
+!1 Requirements
+ * Delphi 12 with registered !-DptIdeExpert-! (see https://github.com/WladiD/WDDelphiTools/tree/master/Projects/DptIdeExpert ) must be started manually
 
 !contents -R2 -g -p -f -h
