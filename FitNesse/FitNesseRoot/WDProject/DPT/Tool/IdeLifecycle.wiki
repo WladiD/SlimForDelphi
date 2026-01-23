@@ -1,0 +1,21 @@
+---
+Test
+---
+!1 IDE Lifecycle Tests
+
+This test verifies the Start and Stop commands for the Delphi IDE.
+It is important to run these sequentially as they affect the system state (process).
+
+!2 Start IDE
+|script            |TDptIdeLifecycleFixture|
+|set Delphi Version|D12                    |
+|check             |Start Ide     |true    |
+|set Delphi Version|D11                    |
+|check             |Start Ide     |true    |
+
+!2 Stop IDE
+|script            |TDptIdeLifecycleFixture|
+|set Delphi Version|D12                    |
+|check             |Stop Ide     |true     |
+|set Delphi Version|D11                    |
+|check             |Stop Ide     |true     |
