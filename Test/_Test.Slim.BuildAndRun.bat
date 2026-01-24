@@ -7,34 +7,8 @@ set "BUILD_PLATFORM=Win32"
 if /I "%~1"=="Win32" set "BUILD_PLATFORM=Win32"
 if /I "%~1"=="Win64" set "BUILD_PLATFORM=Win64"
 
-REM Static path to Delphi 12!
-set "RSVARS_PATH=C:\Program Files (x86)\Embarcadero\Studio\23.0\bin\rsvars.bat"
-
-for %%i in ("%RSVARS_PATH%\..\..") do set "PRODUCTVERSION=%%~nxi"
-
-if not defined PRODUCTVERSION (
-    echo ERROR: Could not determine PRODUCTVERSION from RSVARS_PATH.
-    popd
-    exit /b 1
-)
-
-echo Setting up Delphi environment...
-call "%RSVARS_PATH%"
-
-if %ERRORLEVEL% neq 0 (
-    echo ERROR: Failed to set up Delphi environment.
-    popd
-    exit /b %ERRORLEVEL%
-)
-
-echo.
-echo BDS environment variable is: "%BDS%"
-echo PRODUCTVERSION is: "%PRODUCTVERSION%"
-echo Target Platform is: "%BUILD_PLATFORM%"
-echo.
-
-echo Building Test.Slim project...
-msbuild "Test.Slim.dproj" /t:Build /p:Configuration=Debug;Platform=%BUILD_PLATFORM%;PRODUCTVERSION=%PRODUCTVERSION%;DCC_Define=DEBUG
+echo Building Test.Slim project using DPT...
+..\Lib\WDDelphiTools\Projects\DPT\DPT.exe RECENT Build "Test.Slim.dproj" %BUILD_PLATFORM% Debug "/p:DCC_Define=DEBUG"
 
 set BUILD_ERROR=%ERRORLEVEL%
 if %BUILD_ERROR% neq 0 (
