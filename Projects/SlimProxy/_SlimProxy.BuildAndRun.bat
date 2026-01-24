@@ -23,7 +23,7 @@ if /I "%~1"=="Win32" (
 )
 
 REM Build
-call ..\..\Lib\WDDelphiTools\_BuildBase.bat "SlimProxy.dproj" %TARGET_PLATFORM%
+call _SlimProxy.Build.bat %TARGET_PLATFORM%
 if %ERRORLEVEL% neq 0 (
     popd
     exit /b %ERRORLEVEL%
