@@ -2,6 +2,8 @@
 Suite
 ---
 !define COMMAND_PATTERN {${WDDT_ROOT}\Projects\DPT\_DPT.BuildAndRunSlimServer.bat}
+!define slim.port {0}
+!define slim.pool.size {1}
 
 !1 Requirements
  * Delphi 11 must be installed

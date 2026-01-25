@@ -1,7 +1,5 @@
 !define TEST_SYSTEM {slim}
 !define slim.host {localhost}
-!define slim.port {9000}
-!define slim.pool.size {1}
 
 !1 Requirements
  * Check out https://github.com/WladiD/WDDelphiTools.git on the same level as the repo of !-SlimForDelphi-!
