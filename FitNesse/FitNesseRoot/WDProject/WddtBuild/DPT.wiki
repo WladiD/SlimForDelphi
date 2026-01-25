@@ -11,7 +11,6 @@ Test
 |show  |last output                                        |
 |ensure|output contains          |Build successful         |
 
-
 !4 !-BuildAndRun-! DPT (Smart Build)
 
 |script|!-SlimProxy.Process-!                                    |
@@ -19,3 +18,24 @@ Test
 |check |last exit code               |0                          |
 |show  |last output                                              |
 |ensure|output contains              |Skipping build             |
+
+!4 DPT instruction screen
+
+|script|!-SlimProxy.Process-!                  |
+|run   |${WDDT_ROOT}\Projects\DPT\DPT.exe      |
+|check |last exit code |0                      |
+|show  |last output                            |
+|ensure|output contains|!-Build-!              |
+|ensure|output contains|!-BuildAndRun-!        |
+|ensure|output contains|!-IsPackageRegistered-!|
+|ensure|output contains|!-OpenUnit-!           |
+
+!4 DPT instruction screen for !-BuildAndRun-! action
+
+|script|!-SlimProxy.Process-!                                 |
+|run   |${WDDT_ROOT}\Projects\DPT\DPT.exe help !-BuildAndRun-!|
+|check |last exit code         |0                             |
+|show  |last output                                           |
+|ensure|output contains        |!-BuildAndRun-!               |
+|ensure|output contains        |!---OnlyIfChanged-!           |
+|reject|output contains        |!-IsPackageRegistered-!       |
