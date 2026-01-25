@@ -1,0 +1,12 @@
+---
+Test
+---
+!3 !-TmplCodeGen-! Build Verification
+
+!4 Build !-TmplCodeGen-!
+
+|script|!-SlimProxy.Process-!                                                     |
+|run   |cmd.exe /c ${WDDT_ROOT}\Projects\TmplCodeGen\Source\_TmplCodeGen.Build.bat|
+|check |last exit code                      |0                                    |
+|show  |last output                                                               |
+|ensure|output contains                     |Build successful                     |

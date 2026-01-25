@@ -1,6 +1,9 @@
 ---
 Suite
 ---
+!define TEST_SYSTEM {slim}
+!define slim.host {localhost}
+
 !include -setup .Vars
 
 !contents -R2 -g -p -f -h
