@@ -1,9 +1,10 @@
 ---
 Suite
 ---
-!define slim.port {9012}
+!define SLIM_PORT {0}
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
 
 !1 Requirements
- * Delphi 12 with registered !-DptIdeExpert-! (see https://github.com/WladiD/WDDelphiTools/tree/master/Projects/DptIdeExpert ) must be started manually
+ * Delphi 12 with registered !-DptIdeExpert-! (see https://github.com/WladiD/WDDelphiTools/tree/master/Projects/DptIdeExpert )
 
 !contents -R2 -g -p -f -h
