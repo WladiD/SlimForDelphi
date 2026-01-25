@@ -4,7 +4,7 @@
 // Licensed under the MIT license. See included LICENSE file for details.
 // ======================================================================
 
-unit Slim.Proxy.Fixtures;
+unit Slim.Proxy.Core.Fixture;
 
 interface
 
@@ -27,12 +27,18 @@ type
     procedure ConnectToTarget(const AName, AHost: String; APort: Integer);
     procedure DisconnectTarget(const AName: String);
     procedure StartProcess(const APath, AArgs: String);
+    procedure StopProxy;
     procedure SwitchToTarget(const AName: String);
   end;
 
 implementation
 
 { TSlimProxyCoreFixture }
+
+procedure TSlimProxyCoreFixture.StopProxy;
+begin
+  SlimProxyStopRequested := True;
+end;
 
 procedure TSlimProxyCoreFixture.StartProcess(const APath, AArgs: String);
 var

@@ -2,6 +2,7 @@
 Suite
 ---
 !define TEST_SYSTEM {slim}
+!define SLIM_PORT {0}
 !define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
 
 !1 WD Delphi Tools Build Verification

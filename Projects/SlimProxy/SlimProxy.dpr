@@ -1,5 +1,5 @@
 ﻿// ======================================================================
-// Copyright (c) 2025 Waldemar Derr. All rights reserved.
+// Copyright (c) 2026 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
 // ======================================================================
@@ -19,7 +19,8 @@ uses
   Slim.Exec,
   Slim.Logger,
   Slim.Proxy,
-  Slim.Proxy.Fixtures,
+  Slim.Proxy.Core.Fixture,
+  Slim.Proxy.Process.Fixture,
   Slim.Proxy.Interfaces,
   Slim.Server;
 
@@ -71,6 +72,11 @@ begin
       // Wait loop - simply sleep until terminated
       while LServer.Active do
       begin
+        if SlimProxyStopRequested then
+        begin
+          LServer.Active := False;
+          Break;
+        end;
         Sleep(1000);
       end;
     finally

@@ -2,6 +2,9 @@ unit Slim.Proxy.Interfaces;
 
 interface
 
+var
+  SlimProxyStopRequested: Boolean = False;
+
 type
 
   ISlimProxyExecutor = interface
