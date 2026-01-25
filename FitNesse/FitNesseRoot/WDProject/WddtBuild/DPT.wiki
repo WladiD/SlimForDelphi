@@ -1,0 +1,19 @@
+---
+Test
+---
+!3 DPT Build Verification
+
+!4 Build DPT (Force Build)
+
+|script |!-SlimProxy.Process-!|
+|run|cmd.exe /c ${WDDT_ROOT}\Projects\DPT\_DPT.Build.bat|
+|ensure|output contains|Build successful|
+|check|last exit code|0|
+
+!4 !-BuildAndRun-! DPT (Smart Build)
+
+|script |!-SlimProxy.Process-!|
+|run|cmd.exe /c ${WDDT_ROOT}\Projects\DPT\_DPT.BuildAndRun.bat|
+|check|last exit code|0|
+|show|last output|
+|ensure|output contains|Skipping build|

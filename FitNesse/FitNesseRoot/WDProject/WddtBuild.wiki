@@ -1,0 +1,11 @@
+---
+Suite
+---
+!define TEST_SYSTEM {slim}
+!define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
+
+!1 WD Delphi Tools Build Verification
+
+This suite executes the build scripts of the WDDelphiTools projects and verifies their output.
+
+!contents -R2 -g -p -f -h

@@ -1,0 +1,20 @@
+---
+Test
+---
+!3 !-DcuCompileTimes-! Build Verification
+
+!4 Build (Force Build)
+
+|script |!-SlimProxy.Process-!|
+|run|cmd.exe /c ${WDDT_ROOT}\Projects\DcuCompileTimes\_DcuCompileTimes.Build.bat|
+|ensure|output contains|Build successful|
+|check|last exit code|0|
+
+!4 !-BuildAndRun-! (Smart Build)
+
+|script |!-SlimProxy.Process-!|
+|run|cmd.exe /c ${WDDT_ROOT}\Projects\DcuCompileTimes\_DcuCompileTimes.BuildAndRun.bat|
+|check|last exit code|0|
+|show|last output|
+|ensure|output contains|Skipping build|
+|ensure|output contains|Total time|
