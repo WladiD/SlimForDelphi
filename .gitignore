@@ -30,4 +30,4 @@ Win??
 /FitNesse/FitNesseRoot/**/20[0-9][0-9]*.zip
 /FitNesse/FitNesseRoot/RecentChanges.wiki
 /FitNesse/FitNesseRoot/RerunLastFailures_*.wiki
-/FitNesse/FitNesseRoot/Vars.wiki
+/FitNesse/FitNesseRoot/**/Vars.wiki
