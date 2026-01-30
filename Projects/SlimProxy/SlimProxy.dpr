@@ -21,6 +21,7 @@ uses
   Slim.Proxy,
   Slim.Proxy.Core.Fixture,
   Slim.Proxy.Process.Fixture,
+  Slim.Proxy.VirtualBox.Fixture,
   Slim.Proxy.Interfaces,
   Slim.Server;
 

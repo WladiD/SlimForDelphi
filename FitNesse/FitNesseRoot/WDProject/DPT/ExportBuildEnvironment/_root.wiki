@@ -1,0 +1,38 @@
+---
+Test
+---
+!define SLIM_PORT {0}
+!define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
+!define SLIM_PROXY_LOCAL_PATH {${PROJECT_ROOT}\Projects\SlimProxy\Win32\Debug\SlimProxy.exe}
+!define VM_SLIM_PORT {9002}
+
+Following vars should be defined on the Vars page.
+!define VM_NAME {UNDEFINED}
+!define VM_USER_NAME {UNDEFINED}
+!define VM_USER_PASS {UNDEFINED}
+!define VM_HOST_SHARE_PATH {UNDEFINED}
+!include -setup >Vars
+
+!3 DPT: Export Build Environment
+
+!4 Export Environment
+
+|script|!-SlimProxy.Process-!|
+|run|cmd.exe /c "cd /d ${WDDT_ROOT}\Projects\DPT && _DPT.BuildAndRun.bat D12 !-ExportBuildEnvironment-! ${VM_HOST_SHARE_PATH}\Delphi12BuildEnvironment"|
+|check|last exit code|0|
+|show|last output|
+
+!4 Control VM with !-SlimProxy-!.!-VirtualBox-!
+
+|script|!-SlimProxy.VirtualBox-!|
+|ensure|start vm|${VM_NAME}|
+|ensure|copy to guest;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|${SLIM_PROXY_LOCAL_PATH}|C:\Users\${VM_USER_NAME}\SlimProxy.exe|
+|note|ensure|guest execute;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|C:\Windows\System32\netsh.exe|advfirewall firewall add rule name="Allow !-SlimProxy-!" dir=in action=allow protocol=TCP localport=${VM_SLIM_PORT}|false|
+|ensure|guest execute;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|C:\Windows\System32\cmd.exe|/c C:\Users\${VM_USER_NAME}\SlimProxy.exe !---SlimPort-!=${VM_SLIM_PORT}|true|
+|$VM_IP=|get vm ip|${VM_NAME}|
+
+!4 Connect to VM
+
+|script|!-SlimProxy.Core-!|
+|connect to target;|VM|$VM_IP|${VM_SLIM_PORT}|
+|switch to target|VM|
