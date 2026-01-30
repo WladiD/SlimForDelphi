@@ -20,7 +20,7 @@ uses
   Slim.Exec,
   Slim.List,
   Slim.Proxy,
-  Slim.Proxy.Fixtures,
+  Slim.Proxy.Core.Fixture,
   Slim.Proxy.Interfaces,
 
   Test.SlimExec;
