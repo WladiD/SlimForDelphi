@@ -1,5 +1,5 @@
 ---
-Test
+Static
 ---
 |script|!-SlimProxy.Core-!|
 |Stop Proxy               |

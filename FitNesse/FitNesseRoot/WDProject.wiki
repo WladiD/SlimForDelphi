@@ -1,5 +1,5 @@
 ---
-Suite
+Static
 ---
 !define TEST_SYSTEM {slim}
 !define slim.host {localhost}
