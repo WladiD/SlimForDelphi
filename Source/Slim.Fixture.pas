@@ -210,9 +210,13 @@ end;
 
 destructor TSlimFixture.Destroy;
 begin
-  FDelayedException.Free;
-  FDelayedEvent.Free;
-  inherited;
+  try
+    CheckAndRaiseDelayedException;
+  finally
+    FDelayedException.Free;
+    FDelayedEvent.Free;
+    inherited;
+  end;
 end;
 
 function TSlimFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
@@ -288,15 +292,14 @@ begin
 end;
 
 procedure TSlimFixture.CheckAndRaiseDelayedException;
+var
+  LDelayedException: Exception;
 begin
   if Assigned(FDelayedException) then
   begin
-    try
-      raise FDelayedException;
-    except
-      FDelayedException := nil;
-      raise;
-    end;
+    LDelayedException := FDelayedException;
+    FDelayedException := nil;
+    raise LDelayedException;
   end;
 end;
 

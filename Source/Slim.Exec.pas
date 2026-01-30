@@ -49,6 +49,7 @@ type
     FImportedNamespaces: TStringList;
   public
     destructor Destroy; override;
+    procedure Clear;
     procedure InitAllMembers;
     procedure InitMembers(AContextMembers: TContextMembers);
     procedure SetInstances(AInstances: TSlimFixtureDictionary; AOwnIt: Boolean);
@@ -156,6 +157,7 @@ type
     function ExecuteStmt(ARawStmt: TSlimList; AContext: TSlimStatementContext): TSlimList;
   public
     constructor Create(AContext: TSlimStatementContext); virtual;
+    destructor  Destroy; override;
     function Execute(ARawStmts: TSlimList): TSlimList; virtual;
     property Logger: ISlimLogger read FLogger write FLogger;
     property ManageInstances: Boolean read FManageInstances write FManageInstances;
@@ -214,6 +216,13 @@ begin
     FreeAndNil(FImportedNamespaces);
   FOwnedMembers := [];
   inherited;
+end;
+
+procedure TSlimStatementContext.Clear;
+begin
+  FSymbols.Clear;
+  FInstances.Clear;
+  FImportedNamespaces.Clear;
 end;
 
 procedure TSlimStatementContext.InitAllMembers;
@@ -770,6 +779,12 @@ begin
   inherited Create;
   FContext := AContext;
   FManageInstances := True;
+end;
+
+destructor TSlimExecutor.Destroy;
+begin
+  FContext.Clear;
+  inherited Destroy;
 end;
 
 function TSlimExecutor.QueryInterface(const IID: TGUID; out Obj): HResult;
