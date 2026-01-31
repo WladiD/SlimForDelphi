@@ -13,6 +13,12 @@ Following vars should be defined on the Vars page.
 !define VM_HOST_SHARE_PATH {UNDEFINED}
 !include -setup >Vars
 
+
+!2 Requirements
+ * UAC must be disabled in VM
+  * Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+  * Value: EnableLUA = 0
+
 !3 DPT: Export Build Environment
 
 !4 Export Environment
@@ -22,20 +28,12 @@ Following vars should be defined on the Vars page.
 |check |last exit code                                                                 |0                                                                 |
 |show  |last output                                                                                                                                       |
 
-!4 Control VM with !-SlimProxy-!.!-VirtualBox-!
+!4 Run !-InitD12BuildEnvironment.bat-! in VM
 
 |script     |!-SlimProxy.VirtualBox-!                                                                                                                                                                                                                     |
 |VM Name    |${VM_NAME}                                                                                                                                                                                                                                   |
 |VM User    |${VM_USER_NAME}                                                                                                                                                                                                                              |
 |VM Password|${VM_USER_PASS}                                                                                                                                                                                                                              |
 |ensure     |Start VM                                                                                                                                                                                                                                     |
-|ensure     |Copy To Guest;|${SLIM_PROXY_LOCAL_PATH}   |C:\Users\${VM_USER_NAME}\SlimProxy.exe                                                                                                                                                            |
-|note       |ensure        |Guest Execute;             |C:\Windows\System32\netsh.exe                                           |advfirewall firewall add rule name="Allow !-SlimProxy-!" dir=in action=allow protocol=TCP localport=${VM_SLIM_PORT}|false|
-|ensure     |Guest Execute;|C:\Windows\System32\cmd.exe|/c C:\Users\${VM_USER_NAME}\SlimProxy.exe !---SlimPort-!=${VM_SLIM_PORT}|true                                                                                                                     |
-|$VM_IP=    |Get VM IP                                                                                                                                                                                                                                    |
-
-!4 Connect to VM
-
-|script            |!-SlimProxy.Core-!       |
-|connect to target;|VM|$VM_IP|${VM_SLIM_PORT}|
-|switch to target  |VM                       |
+|ensure     |Guest Execute Cmd And Wait;|Z:\Delphi12BuildEnvironment\InitD12BuildEnvironment.bat --Unattended|
+|show       |Last Guest Execute Output|

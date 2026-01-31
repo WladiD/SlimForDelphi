@@ -25,17 +25,24 @@ type
   [SlimFixture('VirtualBox', 'SlimProxy')]
   TSlimProxyVirtualBoxFixture = class(TSlimProxyBaseFixture)
   private
+    FLastGuestExecuteOutput: String;
     FVBoxManagePath: String;
     FVmName: String;
     FVmPassword: String;
     FVmUser: String;
-    function ExecuteVBoxManage(const Args: String; out Output: String): Integer;
+    function ExecuteVBoxManage(const AArgs: String; out AOutput: String): Integer;
+    function GuestExecuteInternal(const AProgramPath, AArguments: String; AWait: Boolean): Boolean;
+    function GuestExecuteCmdInternal(const ACmdLine: String; AWait: Boolean): Boolean;
   public
-    constructor Create;
-    function  CopyToGuest(const HostPath, GuestPath: String): Boolean;
+    procedure AfterConstruction; override;
+    function  CopyToGuest(const AHostPath, AGuestPath: String): Boolean;
     function  GetVmIp: String;
-    function  GuestExecute(const ProgramPath, Arguments: String; NoWait: Boolean): Boolean;
+    function  GuestExecute(const AProgramPath, AArguments: String): Boolean;
+    function  GuestExecuteAndWait(const AProgramPath, AArguments: String): Boolean;
+    function  GuestExecuteCmd(const ACmdLine: String): Boolean;
+    function  GuestExecuteCmdAndWait(const ACmdLine: String): Boolean;
     function  StartVm: Boolean;
+    property  LastGuestExecuteOutput: String read FLastGuestExecuteOutput;
     property  VBoxManagePath: String read FVBoxManagePath write FVBoxManagePath;
     property  VmName: String read FVmName write FVmName;
     property  VmPassword: String read FVmPassword write FVmPassword;
@@ -46,12 +53,12 @@ implementation
 
 { TSlimProxyVirtualBoxFixture }
 
-constructor TSlimProxyVirtualBoxFixture.Create;
+procedure TSlimProxyVirtualBoxFixture.AfterConstruction;
 begin
   FVBoxManagePath := 'C:\Program Files\Oracle\VirtualBox\VBoxManage.exe';
 end;
 
-function TSlimProxyVirtualBoxFixture.ExecuteVBoxManage(const Args: String; out Output: String): Integer;
+function TSlimProxyVirtualBoxFixture.ExecuteVBoxManage(const AArgs: String; out AOutput: String): Integer;
 var
   Buffer    : Array[0..4095] of AnsiChar;
   BytesAvail: DWORD;
@@ -66,7 +73,7 @@ var
   WaitRes   : DWORD;
 begin
   Result := -1;
-  Output := '';
+  AOutput := '';
 
   SA.nLength := SizeOf(TSecurityAttributes);
   SA.bInheritHandle := True;
@@ -83,7 +90,7 @@ begin
     SI.hStdOutput := hWrite;
     SI.hStdError := hWrite;
 
-    Cmd := Format('"%s" %s', [VBoxManagePath, Args]);
+    Cmd := Format('"%s" %s', [VBoxManagePath, AArgs]);
     UniqueString(Cmd);
 
     if not CreateProcess(nil, PChar(Cmd), nil, nil, True, 0, nil, nil, SI, PI) then
@@ -108,7 +115,7 @@ begin
           end;
         until WaitRes <> WAIT_TIMEOUT;
 
-        Output := StrStream.DataString;
+        AOutput := StrStream.DataString;
       finally
         StrStream.Free;
       end;
@@ -155,10 +162,37 @@ begin
   Result := '';
 end;
 
-function TSlimProxyVirtualBoxFixture.GuestExecute(const ProgramPath, Arguments: String; NoWait: Boolean): Boolean;
-var
-  Args, Output: String;
+function TSlimProxyVirtualBoxFixture.GuestExecute(const AProgramPath, AArguments: String): Boolean;
 begin
+  Result := GuestExecuteInternal(AProgramPath, AArguments, false);
+end;
+
+function TSlimProxyVirtualBoxFixture.GuestExecuteAndWait(const AProgramPath, AArguments: String): Boolean;
+begin
+  Result := GuestExecuteInternal(AProgramPath, AArguments, true);
+end;
+
+function TSlimProxyVirtualBoxFixture.GuestExecuteCmd(const ACmdLine: String): Boolean;
+begin
+  Result := GuestExecuteCmdInternal(ACmdLine, false);
+end;
+
+function TSlimProxyVirtualBoxFixture.GuestExecuteCmdAndWait(const ACmdLine: String): Boolean;
+begin
+  Result := GuestExecuteCmdInternal(ACmdLine, true);
+end;
+
+function TSlimProxyVirtualBoxFixture.GuestExecuteCmdInternal(const ACmdLine: String; AWait: Boolean): Boolean;
+begin
+  Result := GuestExecuteInternal('cmd.exe', '/c "' + ACmdLine + '"', AWait);
+end;
+
+function TSlimProxyVirtualBoxFixture.GuestExecuteInternal(const AProgramPath, AArguments: String; AWait: Boolean): Boolean;
+var
+  Args: String;
+begin
+  FLastGuestExecuteOutput := '';
+
   if FVmName = '' then
     raise ESlim.Create('VmName not set');
   if FVmUser = '' then
@@ -166,21 +200,21 @@ begin
 
   Args := Format('guestcontrol "%s" ', [FVmName]);
 
-  if NoWait then
-    Args := Args + 'start ' // Use 'start' for async
+  if AWait then
+    Args := Args + 'run '  // Use 'run' for sync
   else
-    Args := Args + 'run ';  // Use 'run' for sync
+    Args := Args + 'start '; // Use 'start' for async
 
   Args := Args + Format('--username "%s" --password "%s" --exe "%s"',
-    [FVmUser, FVmPassword, ProgramPath]);
+    [FVmUser, FVmPassword, AProgramPath]);
 
-  if Arguments <> '' then
-    Args := Args + ' -- ' + Arguments;
+  if AArguments <> '' then
+    Args := Args + ' -- ' + AArguments;
 
-  Result := ExecuteVBoxManage(Args, Output) = 0;
+  Result := ExecuteVBoxManage(Args, FLastGuestExecuteOutput) = 0;
 end;
 
-function TSlimProxyVirtualBoxFixture.CopyToGuest(const HostPath, GuestPath: String): Boolean;
+function TSlimProxyVirtualBoxFixture.CopyToGuest(const AHostPath, AGuestPath: String): Boolean;
 var
   Output: String;
 begin
@@ -190,7 +224,7 @@ begin
     raise ESlim.Create('VmUser not set');
 
   Result := ExecuteVBoxManage(Format('guestcontrol "%s" copyto --username "%s" --password "%s" --target-directory "%s" "%s"',
-    [FVmName, FVmUser, FVmPassword, GuestPath, HostPath]), Output) = 0;
+    [FVmName, FVmUser, FVmPassword, AGuestPath, AHostPath]), Output) = 0;
 end;
 
 initialization

@@ -1,4 +1,4 @@
-unit Slim.CmdUtils;
+﻿unit Slim.CmdUtils;
 
 interface
 
@@ -18,7 +18,6 @@ var
   I: Integer;
   LParam: String;
 begin
-  Result := False;
   // 1. Check for explicit --SlimPort= parameter (Highest Priority)
   for I := 1 to ParamCount do
   begin
