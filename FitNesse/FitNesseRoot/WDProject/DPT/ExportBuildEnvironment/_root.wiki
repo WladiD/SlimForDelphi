@@ -17,22 +17,25 @@ Following vars should be defined on the Vars page.
 
 !4 Export Environment
 
-|script|!-SlimProxy.Process-!|
-|run|cmd.exe /c "cd /d ${WDDT_ROOT}\Projects\DPT && _DPT.BuildAndRun.bat D12 !-ExportBuildEnvironment-! ${VM_HOST_SHARE_PATH}\Delphi12BuildEnvironment"|
-|check|last exit code|0|
-|show|last output|
+|script|!-SlimProxy.Process-!                                                                                                                             |
+|run   |cmd.exe /c "cd /d ${WDDT_ROOT}\Projects\DPT && _DPT.BuildAndRun.bat D12 !-ExportBuildEnvironment-! ${VM_HOST_SHARE_PATH}\Delphi12BuildEnvironment"|
+|check |last exit code                                                                 |0                                                                 |
+|show  |last output                                                                                                                                       |
 
 !4 Control VM with !-SlimProxy-!.!-VirtualBox-!
 
-|script|!-SlimProxy.VirtualBox-!|
-|ensure|start vm|${VM_NAME}|
-|ensure|copy to guest;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|${SLIM_PROXY_LOCAL_PATH}|C:\Users\${VM_USER_NAME}\SlimProxy.exe|
-|note|ensure|guest execute;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|C:\Windows\System32\netsh.exe|advfirewall firewall add rule name="Allow !-SlimProxy-!" dir=in action=allow protocol=TCP localport=${VM_SLIM_PORT}|false|
-|ensure|guest execute;|${VM_NAME}|${VM_USER_NAME}|${VM_USER_PASS}|C:\Windows\System32\cmd.exe|/c C:\Users\${VM_USER_NAME}\SlimProxy.exe !---SlimPort-!=${VM_SLIM_PORT}|true|
-|$VM_IP=|get vm ip|${VM_NAME}|
+|script     |!-SlimProxy.VirtualBox-!                                                                                                                                                                                                                     |
+|VM Name    |${VM_NAME}                                                                                                                                                                                                                                   |
+|VM User    |${VM_USER_NAME}                                                                                                                                                                                                                              |
+|VM Password|${VM_USER_PASS}                                                                                                                                                                                                                              |
+|ensure     |Start VM                                                                                                                                                                                                                                     |
+|ensure     |Copy To Guest;|${SLIM_PROXY_LOCAL_PATH}   |C:\Users\${VM_USER_NAME}\SlimProxy.exe                                                                                                                                                            |
+|note       |ensure        |Guest Execute;             |C:\Windows\System32\netsh.exe                                           |advfirewall firewall add rule name="Allow !-SlimProxy-!" dir=in action=allow protocol=TCP localport=${VM_SLIM_PORT}|false|
+|ensure     |Guest Execute;|C:\Windows\System32\cmd.exe|/c C:\Users\${VM_USER_NAME}\SlimProxy.exe !---SlimPort-!=${VM_SLIM_PORT}|true                                                                                                                     |
+|$VM_IP=    |Get VM IP                                                                                                                                                                                                                                    |
 
 !4 Connect to VM
 
-|script|!-SlimProxy.Core-!|
+|script            |!-SlimProxy.Core-!       |
 |connect to target;|VM|$VM_IP|${VM_SLIM_PORT}|
-|switch to target|VM|
+|switch to target  |VM                       |
