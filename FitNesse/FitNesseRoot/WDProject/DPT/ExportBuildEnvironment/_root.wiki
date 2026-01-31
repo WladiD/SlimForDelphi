@@ -11,6 +11,7 @@ Following vars should be defined on the Vars page.
 !define VM_USER_NAME {UNDEFINED}
 !define VM_USER_PASS {UNDEFINED}
 !define VM_HOST_SHARE_PATH {UNDEFINED}
+!define VM_SHARE_PATH {UNDEFINED}
 !include -setup >Vars
 
 
@@ -35,5 +36,8 @@ Following vars should be defined on the Vars page.
 |VM User    |${VM_USER_NAME}                                                                                                                                                                                                                              |
 |VM Password|${VM_USER_PASS}                                                                                                                                                                                                                              |
 |ensure     |Start VM                                                                                                                                                                                                                                     |
-|ensure     |Guest Execute Cmd And Wait;|Z:\Delphi12BuildEnvironment\InitD12BuildEnvironment.bat --Unattended|
+|ensure     |Wait For Guest|120|
+|ensure     |Guest Execute Cmd And Wait;|${VM_SHARE_PATH}\Delphi12BuildEnvironment\InitD12BuildEnvironment.bat --Unattended|
+|show       |Last Guest Execute Output|
+|ensure     |Guest Execute Cmd And Wait;|cd /d "${VM_SHARE_PATH}\Delphi12BuildEnvironment" && !-DPT.exe D12 BuildAndRun InitD12BuildEnvironment.dpr-!|
 |show       |Last Guest Execute Output|

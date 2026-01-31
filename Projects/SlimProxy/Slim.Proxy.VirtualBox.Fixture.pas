@@ -31,6 +31,7 @@ type
     FVmPassword: String;
     FVmUser: String;
     function ExecuteVBoxManage(const AArgs: String; out AOutput: String): Integer;
+    function GetVmState: String;
     function GuestExecuteInternal(const AProgramPath, AArguments: String; AWait: Boolean): Boolean;
     function GuestExecuteCmdInternal(const ACmdLine: String; AWait: Boolean): Boolean;
   public
@@ -42,6 +43,7 @@ type
     function  GuestExecuteCmd(const ACmdLine: String): Boolean;
     function  GuestExecuteCmdAndWait(const ACmdLine: String): Boolean;
     function  StartVm: Boolean;
+    function  WaitForGuest(ATimeoutSeconds: Integer): Boolean;
     property  LastGuestExecuteOutput: String read FLastGuestExecuteOutput;
     property  VBoxManagePath: String read FVBoxManagePath write FVBoxManagePath;
     property  VmName: String read FVmName write FVmName;
@@ -130,17 +132,105 @@ begin
   end;
 end;
 
+function TSlimProxyVirtualBoxFixture.GetVmState: String;
+var
+  Output: String;
+  Lines : TStringList;
+  Line  : String;
+begin
+  Result := 'unknown';
+  if FVmName = '' then Exit;
+
+  if ExecuteVBoxManage(Format('showvminfo "%s" --machinereadable', [FVmName]), Output) = 0 then
+  begin
+    Lines := TStringList.Create;
+    try
+      Lines.Text := Output;
+      for Line in Lines do
+      begin
+        // Look for: VMState="running"
+        if StartsText('VMState=', Line) then
+        begin
+          Result := StringReplace(Line, 'VMState=', '', []);
+          Result := StringReplace(Result, '"', '', [rfReplaceAll]);
+          Break;
+        end;
+      end;
+    finally
+      Lines.Free;
+    end;
+  end;
+end;
+
 function TSlimProxyVirtualBoxFixture.StartVm: Boolean;
 var
   Output: String;
+  State : String;
 begin
   if FVmName = '' then
     raise ESlim.Create('VMName not set');
 
-  // Try to start via 'StartVm'
-  Result := ExecuteVBoxManage(Format('StartVm "%s"', [FVmName]), Output) = 0;
-  if not Result and (Pos('is already locked', Output) > 0) then
-    Result := True;
+  State := GetVmState;
+  if SameText(State, 'running') then
+    Exit(True);
+
+  // Try to start via 'startvm' (lowercase)
+  Result := ExecuteVBoxManage(Format('startvm "%s"', [FVmName]), Output) = 0;
+
+  // Verify state again if start command failed or succeeded, to be sure
+  if not Result then
+  begin
+     // Double check if it became running in the meantime or if the error was misleading
+     State := GetVmState;
+     if SameText(State, 'running') then
+       Result := True;
+  end;
+end;
+
+function TSlimProxyVirtualBoxFixture.WaitForGuest(ATimeoutSeconds: Integer): Boolean;
+var
+  StartTick : DWORD;
+  Output    : String;
+  HasVersion: Boolean;
+  HasIp     : Boolean;
+begin
+  if FVmName = '' then
+    raise ESlim.Create('VMName not set');
+
+  StartTick := GetTickCount;
+  Result := False;
+
+  while (GetTickCount - StartTick) < (ATimeoutSeconds * 1000) do
+  begin
+    HasVersion := False;
+    HasIp := False;
+
+    // 1. Check Guest Additions Version
+    if ExecuteVBoxManage(Format('guestproperty get "%s" "/VirtualBox/GuestAdd/Version"', [FVmName]), Output) = 0 then
+    begin
+       if StartsText('Value: ', Output) and (Trim(Copy(Output, 8, Length(Output))) <> '') then
+         HasVersion := True;
+    end;
+
+    // 2. Check IP Address
+    if GetVmIp <> '' then
+      HasIp := True;
+
+    // 3. Active Check: Try to execute a simple command
+    if HasVersion and HasIp then
+    begin
+       // If basic checks pass, try to run a command.
+       // We use 'ver' as a lightweight command.
+       // If this succeeds, the execution service is ready.
+       if GuestExecuteCmdInternal('ver', True) then
+       begin
+         Result := True;
+         Break;
+       end;
+    end;
+
+    Sleep(1000);
+  end;
 end;
 
 function TSlimProxyVirtualBoxFixture.GetVmIp: String;
