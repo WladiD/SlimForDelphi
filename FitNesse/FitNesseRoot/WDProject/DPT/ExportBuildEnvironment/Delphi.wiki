@@ -1,0 +1,24 @@
+!3 DPT: Export Build Environment
+
+!4 Export Environment
+
+|script|!-SlimProxy.Process-!                                                                                                                                                    |
+|run   |cmd.exe /c "cd /d ${WDDT_ROOT}\Projects\DPT && _DPT.BuildAndRun.bat ${DELPHI_VERSION} !-ExportBuildEnvironment-! ${VM_HOST_SHARE_PATH}\${DELPHI_VERSION}!-BuildEnvironment-!"|
+|check |last exit code                                                                             |0                                                                            |
+|show  |last output                                                                                                                                                              |
+
+!4 Run !-InitD12BuildEnvironment.bat-! in VM
+
+|script     |!-SlimProxy.VirtualBox-!                                                                                                                                                            |
+|VM Name    |${VM_NAME}                                                                                                                                                                          |
+|VM User    |${VM_USER_NAME}                                                                                                                                                                     |
+|VM Password|${VM_USER_PASS}                                                                                                                                                                     |
+|ensure     |Start VM                                                                                                                                                                            |
+|ensure     |Wait For Guest                    |600                                                                                                                                              |
+|ensure     |Guest Execute Cmd And Wait;       |${VM_SHARE_PATH}\${DELPHI_VERSION}!-BuildEnvironment-!\Init${DELPHI_VERSION}!-BuildEnvironment-!.bat --Unattended                                        |
+|#show      |Last Guest Execute Output                                                                                                                                                           |
+|ensure     |Last Guest Execute Output Contains|Initialization complete                                                                                                                          |
+|reject     |Last Guest Execute Output Contains|Build Environment already initialized                                                                                                            |
+|ensure     |Guest Execute Cmd And Wait;       |cd /d "${VM_SHARE_PATH}\${DELPHI_VERSION}!-BuildEnvironment-!" && DPT.exe ${DELPHI_VERSION} !-BuildAndRun Init-!${DELPHI_VERSION}!-BuildEnvironment.dpr-!|
+|#show      |Last Guest Execute Output                                                                                                                                                           |
+|ensure     |Last Guest Execute Output Contains|Delphi Build Environment Initialized Successfully                                                                                                |

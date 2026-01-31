@@ -1,10 +1,8 @@
 ---
-Test
+Suite
 ---
 !define SLIM_PORT {0}
 !define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
-!define SLIM_PROXY_LOCAL_PATH {${PROJECT_ROOT}\Projects\SlimProxy\Win32\Debug\SlimProxy.exe}
-!define VM_SLIM_PORT {9002}
 
 Following vars should be defined on the Vars page.
 !define VM_NAME {UNDEFINED}
@@ -14,30 +12,13 @@ Following vars should be defined on the Vars page.
 !define VM_SHARE_PATH {UNDEFINED}
 !include -setup >Vars
 
-
 !2 Requirements
+ * !-VirtualBox-!
+ * VM with by Delphi supported Windows version
  * UAC must be disabled in VM
   * Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
   * Value: EnableLUA = 0
 
-!3 DPT: Export Build Environment
+!contents -R2 -g -p -f -h
 
-!4 Export Environment
 
-|script|!-SlimProxy.Process-!                                                                                                                             |
-|run   |cmd.exe /c "cd /d ${WDDT_ROOT}\Projects\DPT && _DPT.BuildAndRun.bat D12 !-ExportBuildEnvironment-! ${VM_HOST_SHARE_PATH}\Delphi12BuildEnvironment"|
-|check |last exit code                                                                 |0                                                                 |
-|show  |last output                                                                                                                                       |
-
-!4 Run !-InitD12BuildEnvironment.bat-! in VM
-
-|script     |!-SlimProxy.VirtualBox-!                                                                                                                                                                                                                     |
-|VM Name    |${VM_NAME}                                                                                                                                                                                                                                   |
-|VM User    |${VM_USER_NAME}                                                                                                                                                                                                                              |
-|VM Password|${VM_USER_PASS}                                                                                                                                                                                                                              |
-|ensure     |Start VM                                                                                                                                                                                                                                     |
-|ensure     |Wait For Guest|120|
-|ensure     |Guest Execute Cmd And Wait;|${VM_SHARE_PATH}\Delphi12BuildEnvironment\InitD12BuildEnvironment.bat --Unattended|
-|show       |Last Guest Execute Output|
-|ensure     |Guest Execute Cmd And Wait;|cd /d "${VM_SHARE_PATH}\Delphi12BuildEnvironment" && !-DPT.exe D12 BuildAndRun InitD12BuildEnvironment.dpr-!|
-|show       |Last Guest Execute Output|

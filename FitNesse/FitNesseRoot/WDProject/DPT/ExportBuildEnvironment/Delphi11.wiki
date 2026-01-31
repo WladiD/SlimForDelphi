@@ -1,0 +1,6 @@
+---
+Test
+---
+!define DELPHI_VERSION {D11}
+
+!include Delphi

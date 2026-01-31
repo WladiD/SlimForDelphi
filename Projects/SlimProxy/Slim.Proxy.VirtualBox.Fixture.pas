@@ -42,6 +42,7 @@ type
     function  GuestExecuteAndWait(const AProgramPath, AArguments: String): Boolean;
     function  GuestExecuteCmd(const ACmdLine: String): Boolean;
     function  GuestExecuteCmdAndWait(const ACmdLine: String): Boolean;
+    function  LastGuestExecuteOutputContains(const AText: String): Boolean;
     function  StartVm: Boolean;
     function  WaitForGuest(ATimeoutSeconds: Integer): Boolean;
     property  LastGuestExecuteOutput: String read FLastGuestExecuteOutput;
@@ -63,8 +64,8 @@ end;
 function TSlimProxyVirtualBoxFixture.ExecuteVBoxManage(const AArgs: String; out AOutput: String): Integer;
 var
   Buffer    : Array[0..4095] of AnsiChar;
-  BytesAvail: DWORD;
-  BytesRead : DWORD;
+  BytesAvail: Cardinal;
+  BytesRead : Cardinal;
   Cmd       : String;
   hRead     : THandle;
   hWrite    : THandle;
@@ -72,11 +73,12 @@ var
   SA        : TSecurityAttributes;
   SI        : TStartupInfo;
   StrStream : TStringStream;
-  WaitRes   : DWORD;
+  WaitRes   : Cardinal;
 begin
   Result := -1;
   AOutput := '';
 
+  SA := Default(TSecurityAttributes);
   SA.nLength := SizeOf(TSecurityAttributes);
   SA.bInheritHandle := True;
   SA.lpSecurityDescriptor := nil;
@@ -84,8 +86,9 @@ begin
   if not CreatePipe(hRead, hWrite, @SA, 0) then
     RaiseLastOSError;
 
+  StrStream := nil;
   try
-    ZeroMemory(@SI, SizeOf(SI));
+    SI := Default(TStartupInfo);
     SI.cb := SizeOf(SI);
     SI.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
     SI.wShowWindow := SW_HIDE;
@@ -100,28 +103,27 @@ begin
 
     CloseHandle(hWrite); // Close write end in this process
 
+    StrStream := TStringStream.Create('', TEncoding.ANSI);
     try
-      StrStream := TStringStream.Create('', TEncoding.ANSI);
-      try
-        repeat
-          WaitRes := WaitForSingleObject(PI.hProcess, 50);
+      repeat
+        WaitRes := WaitForSingleObject(PI.hProcess, 50);
 
-          while True do
-          begin
-             BytesAvail := 0;
-             if not PeekNamedPipe(hRead, nil, 0, nil, @BytesAvail, nil) then Break;
-             if BytesAvail = 0 then Break;
+        while True do
+        begin
+          BytesAvail := 0;
+          if not PeekNamedPipe(hRead, nil, 0, nil, @BytesAvail, nil) then
+            Break;
+          if BytesAvail = 0 then
+            Break;
 
-             if not ReadFile(hRead, Buffer, SizeOf(Buffer), BytesRead, nil) then Break;
-             if BytesRead > 0 then StrStream.Write(Buffer, BytesRead);
-          end;
-        until WaitRes <> WAIT_TIMEOUT;
+          if not ReadFile(hRead, Buffer, SizeOf(Buffer), BytesRead, nil) then
+            Break;
+          if BytesRead > 0 then
+            StrStream.Write(Buffer, BytesRead);
+        end;
+      until WaitRes <> WAIT_TIMEOUT;
 
-        AOutput := StrStream.DataString;
-      finally
-        StrStream.Free;
-      end;
-
+      AOutput := StrStream.DataString;
       GetExitCodeProcess(PI.hProcess, DWORD(Result));
     finally
       CloseHandle(PI.hProcess);
@@ -129,6 +131,7 @@ begin
     end;
   finally
     CloseHandle(hRead);
+    StrStream.Free;
   end;
 end;
 
@@ -136,29 +139,27 @@ function TSlimProxyVirtualBoxFixture.GetVmState: String;
 var
   Output: String;
   Lines : TStringList;
-  Line  : String;
 begin
   Result := 'unknown';
-  if FVmName = '' then Exit;
+  if (FVmName = '') or
+     (ExecuteVBoxManage(Format('showvminfo "%s" --machinereadable', [FVmName]), Output) <> 0) then
+    Exit;
 
-  if ExecuteVBoxManage(Format('showvminfo "%s" --machinereadable', [FVmName]), Output) = 0 then
-  begin
-    Lines := TStringList.Create;
-    try
-      Lines.Text := Output;
-      for Line in Lines do
+  Lines := TStringList.Create;
+  try
+    Lines.Text := Output;
+    for var Line: String in Lines do
+    begin
+      // Look for: VMState="running"
+      if StartsText('VMState=', Line) then
       begin
-        // Look for: VMState="running"
-        if StartsText('VMState=', Line) then
-        begin
-          Result := StringReplace(Line, 'VMState=', '', []);
-          Result := StringReplace(Result, '"', '', [rfReplaceAll]);
-          Break;
-        end;
+        Result := StringReplace(Line, 'VMState=', '', []);
+        Result := StringReplace(Result, '"', '', [rfReplaceAll]);
+        Break;
       end;
-    finally
-      Lines.Free;
     end;
+  finally
+    Lines.Free;
   end;
 end;
 
@@ -176,20 +177,17 @@ begin
 
   // Try to start via 'startvm' (lowercase)
   Result := ExecuteVBoxManage(Format('startvm "%s"', [FVmName]), Output) = 0;
+  if Result then
+    Exit;
 
-  // Verify state again if start command failed or succeeded, to be sure
-  if not Result then
-  begin
-     // Double check if it became running in the meantime or if the error was misleading
-     State := GetVmState;
-     if SameText(State, 'running') then
-       Result := True;
-  end;
+  // Double check if it became running in the meantime or if the error was misleading
+  State := GetVmState;
+  Result := SameText(State, 'running');
 end;
 
 function TSlimProxyVirtualBoxFixture.WaitForGuest(ATimeoutSeconds: Integer): Boolean;
 var
-  StartTick : DWORD;
+  StartTick : UInt64;
   Output    : String;
   HasVersion: Boolean;
   HasIp     : Boolean;
@@ -197,37 +195,35 @@ begin
   if FVmName = '' then
     raise ESlim.Create('VMName not set');
 
-  StartTick := GetTickCount;
+  StartTick := GetTickCount64;
   Result := False;
+  HasVersion := False;
+  HasIp := False;
 
-  while (GetTickCount - StartTick) < (ATimeoutSeconds * 1000) do
+  while (GetTickCount64 - StartTick) < (ATimeoutSeconds * 1000) do
   begin
-    HasVersion := False;
-    HasIp := False;
-
     // 1. Check Guest Additions Version
-    if ExecuteVBoxManage(Format('guestproperty get "%s" "/VirtualBox/GuestAdd/Version"', [FVmName]), Output) = 0 then
-    begin
-       if StartsText('Value: ', Output) and (Trim(Copy(Output, 8, Length(Output))) <> '') then
-         HasVersion := True;
-    end;
+    HasVersion :=
+      HasVersion or
+      (
+        (ExecuteVBoxManage(Format('guestproperty get "%s" "/VirtualBox/GuestAdd/Version"', [FVmName]), Output) = 0) and
+        StartsText('Value: ', Output) and
+        (Trim(Copy(Output, 8, Length(Output))) <> '')
+      );
 
     // 2. Check IP Address
-    if GetVmIp <> '' then
-      HasIp := True;
+    HasIp :=
+      HasIp or
+      (GetVmIp <> '');
 
     // 3. Active Check: Try to execute a simple command
-    if HasVersion and HasIp then
-    begin
-       // If basic checks pass, try to run a command.
-       // We use 'ver' as a lightweight command.
-       // If this succeeds, the execution service is ready.
-       if GuestExecuteCmdInternal('ver', True) then
-       begin
-         Result := True;
-         Break;
-       end;
-    end;
+    Result :=
+      HasVersion and
+      HasIp and
+      GuestExecuteCmdInternal('ver', True);
+
+    if Result then
+      Exit;
 
     Sleep(1000);
   end;
@@ -235,20 +231,17 @@ end;
 
 function TSlimProxyVirtualBoxFixture.GetVmIp: String;
 var
+  Args  : String;
   Output: String;
 begin
   if FVmName = '' then
     raise ESlim.Create('VMName not set');
 
-  if ExecuteVBoxManage(Format('guestproperty get "%s" "/VirtualBox/GuestInfo/Net/0/V4/IP"', [FVmName]), Output) = 0 then
-  begin
-    // Output format: "Value: 192.168.x.x"
-    if StartsText('Value: ', Output) then
-    begin
-      Result := Trim(Copy(Output, 8, Length(Output)));
-      Exit;
-    end;
-  end;
+  Args := Format('guestproperty get "%s" "/VirtualBox/GuestInfo/Net/0/V4/IP"', [FVmName]);
+
+  if (ExecuteVBoxManage(Args, Output) = 0) and
+     StartsText('Value: ', Output) then // Output format: "Value: 192.168.x.x"
+    Exit(Trim(Copy(Output, 8, Length(Output))));
   Result := '';
 end;
 
@@ -304,8 +297,14 @@ begin
   Result := ExecuteVBoxManage(Args, FLastGuestExecuteOutput) = 0;
 end;
 
+function TSlimProxyVirtualBoxFixture.LastGuestExecuteOutputContains(const AText: String): Boolean;
+begin
+  Result := ContainsText(FLastGuestExecuteOutput, AText);
+end;
+
 function TSlimProxyVirtualBoxFixture.CopyToGuest(const AHostPath, AGuestPath: String): Boolean;
 var
+  Args  : String;
   Output: String;
 begin
   if FVmName = '' then
@@ -313,8 +312,9 @@ begin
   if FVmUser = '' then
     raise ESlim.Create('VmUser not set');
 
-  Result := ExecuteVBoxManage(Format('guestcontrol "%s" copyto --username "%s" --password "%s" --target-directory "%s" "%s"',
-    [FVmName, FVmUser, FVmPassword, AGuestPath, AHostPath]), Output) = 0;
+  Args := Format('guestcontrol "%s" copyto --username "%s" --password "%s" --target-directory "%s" "%s"',
+    [FVmName, FVmUser, FVmPassword, AGuestPath, AHostPath]);
+  Result := ExecuteVBoxManage(Args, Output) = 0;
 end;
 
 initialization
