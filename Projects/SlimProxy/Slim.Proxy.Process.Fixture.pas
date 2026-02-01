@@ -40,6 +40,7 @@ implementation
 function TSlimProxyProcessFixture.RunCommand(const ACommandLine: String; out AOutput: String): Integer;
 var
   Buffer    : Array[0..4095] of AnsiChar;
+  Bytes     : TBytes;
   BytesAvail: DWORD;
   BytesRead : DWORD;
   Cmd       : String;
@@ -47,10 +48,10 @@ var
   hNullInput: THandle;
   hRead     : THandle;
   hWrite    : THandle;
+  MemStream : TMemoryStream;
   PI        : TProcessInformation;
   SA        : TSecurityAttributes;
   SI        : TStartupInfo;
-  StrStream : TStringStream;
   WaitRes   : DWORD;
 begin
   Result := -1;
@@ -90,7 +91,7 @@ begin
     CloseHandle(hNullInput);
 
     try
-      StrStream := TStringStream.Create('', TEncoding.ANSI);
+      MemStream := TMemoryStream.Create;
       try
         repeat
           // Check if the process is still running
@@ -110,16 +111,29 @@ begin
               Break;
 
             if BytesRead > 0 then
-              StrStream.Write(Buffer, BytesRead)
+              MemStream.Write(Buffer, BytesRead)
             else
               Break;
           end;
 
         until (WaitRes <> WAIT_TIMEOUT);
 
-        AOutput := StrStream.DataString;
+        if MemStream.Size > 0 then
+        begin
+          SetLength(Bytes, MemStream.Size);
+          MemStream.Position := 0;
+          MemStream.Read(Bytes, 0, MemStream.Size);
+          try
+            AOutput := TEncoding.UTF8.GetString(Bytes);
+          except
+            // Fallback if UTF-8 decoding fails (e.g. mixed output)
+            AOutput := TEncoding.ANSI.GetString(Bytes);
+          end;
+        end
+        else
+          AOutput := '';
       finally
-        StrStream.Free;
+        MemStream.Free;
       end;
 
       if GetExitCodeProcess(PI.hProcess, ExitCode) then
