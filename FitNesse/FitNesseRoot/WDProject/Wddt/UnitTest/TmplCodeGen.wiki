@@ -1,0 +1,11 @@
+---
+Test
+---
+!3 TmplCodeGen Unit Test
+
+!4 Run Test
+
+|script|!-SlimProxy.Process-!                                                              |
+|run   |cmd.exe /c ${WDDT_ROOT}\Projects\TmplCodeGen\Test\_Test.TmplCodeGen.BuildAndRun.bat|
+|check |last exit code               |0                                                    |
+|show  |last output                                                                        |

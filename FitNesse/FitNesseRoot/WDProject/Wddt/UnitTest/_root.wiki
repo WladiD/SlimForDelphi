@@ -1,0 +1,9 @@
+---
+Suite
+Test: no
+---
+!1 WD Delphi Tools Unit Tests
+
+This suite executes the unit tests of the WDDelphiTools projects.
+
+!contents -R2 -g -p -f -h

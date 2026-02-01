@@ -1,0 +1,11 @@
+---
+Test
+---
+!3 DPT Unit Test
+
+!4 Run Test
+
+|script|!-SlimProxy.Process-!                                              |
+|run   |cmd.exe /c ${WDDT_ROOT}\Projects\DPT\Test\_Test.DPT.BuildAndRun.bat|
+|check |last exit code               |0                                    |
+|show  |last output                                                        |
