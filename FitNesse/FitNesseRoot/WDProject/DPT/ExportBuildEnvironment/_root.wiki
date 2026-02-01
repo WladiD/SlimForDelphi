@@ -14,8 +14,9 @@ Following vars should be defined on the Vars page.
 
 !2 Requirements
  * !-VirtualBox-!
- * VM with by Delphi supported Windows version
- * UAC must be disabled in VM
+ * VM with a by Delphi supported Windows version
+ * Guest Additions
+ * In VM: Administrator user or a user with admin rights and disabled UAC
   * Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
   * Value: EnableLUA = 0
 
