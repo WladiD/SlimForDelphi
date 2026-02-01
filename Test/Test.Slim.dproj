@@ -5,7 +5,7 @@
         <Config Condition="'$(Config)'==''">Debug</Config>
         <FrameworkType>None</FrameworkType>
         <MainSource>Test.Slim.dpr</MainSource>
-        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <ProjectGuid>{E09EC392-886E-4D80-BB79-1E4D7FD0280F}</ProjectGuid>
         <ProjectName Condition="'$(ProjectName)'==''">Test.Slim</ProjectName>
         <ProjectVersion>20.3</ProjectVersion>

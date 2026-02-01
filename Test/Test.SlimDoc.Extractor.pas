@@ -253,18 +253,18 @@ begin
       var Msg := 'Extracted methods: ';
       for var M: TSlimDocMethod in Doc.Methods do
         Msg := Msg + M.Name + ', ';
-      Assert.AreEqual(3, Doc.Methods.Count, Msg);
+      Assert.AreEqual(NativeInt(3), Doc.Methods.Count, Msg);
     end;
 
     // Check Constructors (Should have Create)
-    Assert.AreEqual(1, Doc.Constructors.Count, 'Should have 1 constructor');
+    Assert.AreEqual(NativeInt(1), Doc.Constructors.Count, 'Should have 1 constructor');
     Assert.AreEqual('Create', Doc.Constructors[0].Name);
-    Assert.AreEqual(1, Doc.Constructors[0].Parameters.Count);
+    Assert.AreEqual(NativeInt(1), Doc.Constructors[0].Parameters.Count);
 
     // Look for specific method
     Method := GetDocMethod('MethodTwo');
     Assert.IsNotNull(Method);
-    Assert.AreEqual(1, Method.Parameters.Count);
+    Assert.AreEqual(NativeInt(1), Method.Parameters.Count);
     Assert.AreEqual('A', Method.Parameters[0].Name);
     Assert.AreEqual('Boolean', Method.ReturnType);
 
@@ -278,7 +278,7 @@ begin
     Assert.IsNull(Method, 'Create should not be in Methods list');
 
     // Check Property
-    Assert.AreEqual(1, Doc.Properties.Count);
+    Assert.AreEqual(NativeInt(1), Doc.Properties.Count);
     Prop := Doc.Properties[0];
     Assert.AreEqual('MyProp', Prop.Name);
     Assert.AreEqual('Integer', Prop.PropertyType);

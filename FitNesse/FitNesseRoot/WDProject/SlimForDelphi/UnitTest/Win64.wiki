@@ -1,0 +1,11 @@
+---
+Test
+---
+!3 !-SlimForDelphi-! Win64 Unit Test
+
+!4 Run Test (Win64)
+
+|script|!-SlimProxy.Process-!                                               |
+|run   |cmd.exe /c ${PROJECT_ROOT}\Test\_Test.Slim.BuildAndRun.bat Win64    |
+|check |last exit code               |0                                     |
+|show  |last output                                                         |

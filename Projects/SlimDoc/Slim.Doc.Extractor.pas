@@ -169,6 +169,8 @@ begin
     SameText(AMethodName, 'QualifiedClassName') or
     SameText(AMethodName, 'UnitName') or
     SameText(AMethodName, 'UnitScope') or
+    // CPP_ABI methods (Delphi 12+ Win64 compatibility)
+    AMethodName.StartsWith('CPP_ABI_', True) or
     // TSlimFixture methods
     SameText(AMethodName, 'HasDelayedInfo') or
     SameText(AMethodName, 'InitDelayedEvent') or

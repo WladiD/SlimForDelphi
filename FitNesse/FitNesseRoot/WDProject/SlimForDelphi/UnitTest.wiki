@@ -1,0 +1,9 @@
+---
+Suite
+Test: no
+---
+!1 !-SlimForDelphi-! Unit Tests
+
+Unit tests for the !-SlimForDelphi-! framework.
+
+!contents -R2 -g -p -f -h
