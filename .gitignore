@@ -31,3 +31,5 @@ Win??
 /FitNesse/FitNesseRoot/RecentChanges.wiki
 /FitNesse/FitNesseRoot/RerunLastFailures_*.wiki
 /FitNesse/FitNesseRoot/**/Vars.wiki
+/FitNesse/FitNesseRoot/DPT_LintTest/content.txt
+/FitNesse/FitNesseRoot/DPT_LintTest/properties.xml

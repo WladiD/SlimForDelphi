@@ -1,0 +1,10 @@
+---
+Static
+---
+|script|!-SlimProxy.Process-!                              |
+|run   |cmd.exe /c ${WDDT_ROOT}\Projects\DPT\_DPT.Build.bat|
+|check |last exit code                  |0                 |
+
+#|script            |!-SlimProxy.Core-!    |
+#|connect to target;|Target1|localhost|9012|
+#|switch to target  |Target1               |

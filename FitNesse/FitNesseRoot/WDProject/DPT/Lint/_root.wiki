@@ -1,0 +1,7 @@
+---
+Suite
+---
+!define SLIM_PORT {0}
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
+
+!contents -R2 -g -p -f -h
