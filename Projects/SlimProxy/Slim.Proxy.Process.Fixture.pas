@@ -13,6 +13,7 @@ uses
   Winapi.Windows,
 
   System.Classes,
+  System.RegularExpressions,
   System.SysUtils,
 
   Slim.Fixture,
@@ -30,12 +31,24 @@ type
     function LastExitCode: Integer;
     function LastOutput: String;
     function OutputContains(const AText: String): Boolean;
+    function OutputMatches(const APattern: String): Boolean;
+    function OutputMatchCount(const APattern: String): Integer;
     function Run(const ACommand: String): Boolean;
   end;
 
 implementation
 
 { TSlimProxyProcessFixture }
+
+function TSlimProxyProcessFixture.OutputMatchCount(const APattern: String): Integer;
+begin
+  Result := TRegEx.Matches(FLastOutput, APattern, [roIgnoreCase, roMultiLine]).Count;
+end;
+
+function TSlimProxyProcessFixture.OutputMatches(const APattern: String): Boolean;
+begin
+  Result := TRegEx.IsMatch(FLastOutput, APattern, [roIgnoreCase, roMultiLine]);
+end;
 
 function TSlimProxyProcessFixture.RunCommand(const ACommandLine: String; out AOutput: String): Integer;
 var
