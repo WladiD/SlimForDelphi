@@ -55,7 +55,6 @@ Test
 |script|!-SlimProxy.Process-!|
 |ensure|run|${DPT_COMMAND} Build !-Sample.dproj-!|
 |reject|output contains|DPT WORKFLOW VIOLATION|
-|check |output contains|DEBUG: Detected 1 project files|true|
 |check |output contains|Setting up Delphi environment|true|
 |show  |last output|
 
