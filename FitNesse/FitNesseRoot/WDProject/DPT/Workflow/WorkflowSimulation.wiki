@@ -3,7 +3,7 @@ Test
 ---
 !1 AI Workflow Simulation
 
-!define DPT_COMMAND {cmd.exe /c set gemini_cli=1 && cd "${TEST_DATA_PATH}" && "${DPT_EXE}" LATEST}
+!define DPT_COMMAND {cmd.exe /c set "GEMINI_CLI=1" && cd "${TEST_DATA_PATH}" && "${DPT_EXE}" LATEST}
 
 !2 1. Try Build without session (Expect Violation)
 |script|!-SlimProxy.Process-!|
