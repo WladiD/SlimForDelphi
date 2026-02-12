@@ -3,7 +3,6 @@ Suite
 ---
 !define SLIM_PORT {0}
 !define COMMAND_PATTERN {${PROJECT_ROOT}\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
-!define WDDT_ROOT {C:\WDC\WDDelphiTools}
 !define DPT_EXE {${WDDT_ROOT}\Projects\DPT\DPT.exe}
 !define TEST_DATA_PATH {${FITNESSE_ROOT}\files\TestData\DptWorkflow}
 
