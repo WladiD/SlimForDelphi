@@ -35,16 +35,16 @@ Test
 |show           |last output                                                                                                                     |
 
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
-|script             |!-SlimProxy.Process-!                                                                     |
-|set working dir    |${TEST_DATA_PATH}                                                                         |
-|add environment var|GEMINI_CLI           |value                                        |1                     |
-|reject             |run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check              |last exit code       |13                                                                  |
-|ensure             |output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|check              |output contains count|Prozess wird beendet...                      |1                     |
-|ensure             |output contains      |Es ist ein Fehler aufgetreten!                                      |
-|ensure             |output contains      |!-ExitCode: 13-!                                                    |
-|show               |last output                                                                               |
+|script             |!-SlimProxy.Process-!                                                                    |
+|set working dir    |${TEST_DATA_PATH}                                                                        |
+|add environment var|GEMINI_CLI           |value                                       |1                     |
+|reject             |run                  |${DPT_COMMAND} Build !-Sample.dproj-!                              |
+|check              |last exit code       |13                                                                 |
+|ensure             |output contains      |Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis|
+|check              |output contains count|Prozess wird beendet...                     |1                     |
+|ensure             |output contains      |Es ist ein Fehler aufgetreten!                                     |
+|ensure             |output contains      |!-ExitCode: 13-!                                                   |
+|show               |last output                                                                              |
 
 !2 5. Register file in AI Session
 |script             |!-SlimProxy.Process-!                                                            |
@@ -89,3 +89,39 @@ Test
 |check              |last exit code |0                                |
 |ensure             |output contains|AI session stopped for PID       |
 |show               |last output                                      |
+
+!2 10. Build TFW.dproj (Expect !-AfterDptGuard-! instructions)
+|script             |!-SlimProxy.Process-!                                                            |
+|set working dir    |${TEST_DATA_PATH}                                                                |
+|add environment var|GEMINI_CLI     |value                             |1                             |
+|ensure             |run            |cmd.exe /c copy /y !-Sample.dproj-! !-TFW.dproj-!                |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Start                               |
+|ensure             |run            |${DPT_COMMAND} Build !-TFW.dproj-!                               |
+|check              |last exit code |0                                                                |
+|ensure             |output contains|Der Build war erfolgreich!                                       |
+|ensure             |output contains|Möchten Sie die Unit-Tests für TFW ausführen?                    |
+|ensure             |output contains|!-`MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj`-!|
+|show               |last output                                                                      |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Stop                                |
+
+
+!2 11. Verify Multi-line Prefix Duplication (!-GetInvalidLintFiles-!)
+|script             |!-SlimProxy.Process-!                                                                                                                                                                                                                     |
+|set working dir    |${TEST_DATA_PATH}                                                                                                                                                                                                                         |
+|add environment var|GEMINI_CLI     |value                                                                                                          |1                                                                                                         |
+|ensure             |run            |cmd.exe /c echo. > Unit1.pas && echo. > Unit2.pas                                                                                                                                                                         |
+|ensure             |run            |!-cmd.exe /c echo ^<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"^>^<ItemGroup^>^<DCCReference Include="Unit1.pas"/^>^<DCCReference Include="Unit2.pas"/^>^</ItemGroup^>^</Project^> > Multi.dproj-!|
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Start                                                                                                                                                                                        |
+|ensure             |run            |cmd.exe /c ping -n 3 127.0.0.1 >nul                                                                                                                                                                                       |
+|ensure             |run            |cmd.exe /c copy /b Unit1.pas +,, && copy /b Unit2.pas +,,                                                                                                                                                                 |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! !-RegisterFiles-! Unit1.pas Unit2.pas                                                                                                                                                        |
+|reject             |run            |${DPT_COMMAND} Build !-Multi.dproj-!                                                                                                                                                                                      |
+|ensure             |output contains|Lint-Ergebnis                                                                                                                                                                                                             |
+|ensure             |output contains|Unit1.pas                                                                                                                                                                                                                 |
+|ensure             |output contains|Unit2.pas                                                                                                                                                                                                                 |
+|show               |last output                                                                                                                                                                                                                               |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Stop                                                                                                                                                                                         |
+
+
+
+

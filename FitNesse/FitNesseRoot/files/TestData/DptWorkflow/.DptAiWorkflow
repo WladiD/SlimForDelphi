@@ -21,8 +21,10 @@ BeforeDptGuard: IsCurrentAction("AiSession") and
 BeforeDptGuard: IsCurrentAction("Build") and 
                 not HasValidLintResult(GetCurrentProjectFiles())
 {
-  - Vor dem Build muss für alle veränderten oder erstellten Delphi-Units ein gültiges und aktuelles Lint-Ergebnis vorliegen:
-    `MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>`
+  - Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis vorliegen:
+    - `GetInvalidLintFiles(GetCurrentProjectFiles())`
+
+  - `MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>`
     
   - Die Lint-Action setzt voraus, dass die zu prüfenden Dateien zuvor in der 
     AI-Session registriert wurden:
@@ -46,4 +48,17 @@ AfterDptGuard: GetExitCode() > 0
 {
   Es ist ein Fehler aufgetreten!
   ExitCode: `GetExitCode()`
+}
+
+AfterDptGuard: IsCurrentAction("Build") and
+               IsCurrentBuildProjectFile("TFW.dproj") and
+               (GetExitCode()=0)
+{
+  Der Build war erfolgreich!
+  
+  1. **Frag den Anwender:** "Möchten Sie die Unit-Tests für TFW ausführen?" 
+  2. **Wenn der Anwender zustimmt:**
+     * Run the tests:
+     * **IMPORTANT:** Set `block_until_ms` to 180000 (3 minutes) for this command.
+     `MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj`
 }
