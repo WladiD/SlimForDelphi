@@ -4,7 +4,8 @@ DptCondition: not AiSessionStarted() and
   - Bevor du mit der DPT.exe arbeiten kannst, musst du eine AI-Session starten:
     `MISC\DPT\DPT.exe LATEST AiSession Start`
     
-  DptAction: ExitDptProcess()  
+  DptCondition: RequestDptExit()
+  { Prozess wird beendet... }
 }
 
 DptCondition: IsCurrentAction("AiSession") and
@@ -27,7 +28,8 @@ DptCondition: IsCurrentAction("Build") and
     AI-Session registriert wurden:
     `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
     
-  DptAction: ExitDptProcess()
+  DptCondition: RequestDptExit()
+  { Prozess wird beendet... }
 }
 
 DptCondition: IsCurrentAction("Lint") and 
@@ -37,5 +39,6 @@ DptCondition: IsCurrentAction("Lint") and
     AI-Session registriert werden:
     `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
     
-  DptAction: ExitDptProcess()
+  DptCondition: RequestDptExit()
+  { Prozess wird beendet... }
 }
