@@ -1,44 +1,49 @@
-DptCondition: not AiSessionStarted() and 
-              not (IsCurrentAction("AiSession") and IsCurrentAiSessionAction("Start"))
+BeforeDptGuard: not AiSessionStarted() and 
+                not (IsCurrentAction("AiSession") and IsCurrentAiSessionAction("Start"))
 {
   - Bevor du mit der DPT.exe arbeiten kannst, musst du eine AI-Session starten:
     `MISC\DPT\DPT.exe LATEST AiSession Start`
     
-  DptCondition: RequestDptExit()
+  BeforeDptGuard: RequestDptExitWithCode(12)
   { Prozess wird beendet... }
 }
 
-DptCondition: IsCurrentAction("AiSession") and
-              IsCurrentAiSessionAction("Start")
+BeforeDptGuard: IsCurrentAction("AiSession") and
+                IsCurrentAiSessionAction("Start")
 {
   - Wenn du mit einer Aufgabe fertig bist, musst du die AI-Session beenden:
     `MISC\DPT\DPT.exe LATEST AiSession Stop`
+
   - Den aktuellen Status der Session kannst du jederzeit abfragen:
     `MISC\DPT\DPT.exe LATEST AiSession Status`
 }
 
-DptCondition: IsCurrentAction("Build") and 
-              not HasValidLintResult(GetCurrentProjectFiles())
+BeforeDptGuard: IsCurrentAction("Build") and 
+                not HasValidLintResult(GetCurrentProjectFiles())
 {
-  - Vor dem Build muss für alle veränderten oder erstellten Delphi-Units 
-    ein gültiges und aktuelles Lint-Ergebnis vorliegen:
+  - Vor dem Build muss für alle veränderten oder erstellten Delphi-Units ein gültiges und aktuelles Lint-Ergebnis vorliegen:
     `MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>`
     
   - Die Lint-Action setzt voraus, dass die zu prüfenden Dateien zuvor in der 
     AI-Session registriert wurden:
     `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
     
-  DptCondition: RequestDptExit()
+  BeforeDptGuard: RequestDptExitWithCode(13)
   { Prozess wird beendet... }
 }
 
-DptCondition: IsCurrentAction("Lint") and 
-              not IsFileRegisteredInAiSession(GetCurrentLintTargetFile())
+BeforeDptGuard: IsCurrentAction("Lint") and 
+                not IsFileRegisteredInAiSession(GetCurrentLintTargetFile())
 {
-  - Bevor eine Datei per Lint-Action geprüft werden kann, muss sie in der 
-    AI-Session registriert werden:
+  - Bevor eine Datei per Lint-Action geprüft werden kann, muss sie in der AI-Session registriert werden:
     `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
-    
-  DptCondition: RequestDptExit()
+
+  BeforeDptGuard: RequestDptExitWithCode(13)
   { Prozess wird beendet... }
+}
+
+AfterDptGuard: GetExitCode() > 0
+{
+  Es ist ein Fehler aufgetreten!
+  ExitCode: `GetExitCode()`
 }

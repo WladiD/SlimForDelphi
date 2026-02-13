@@ -8,10 +8,12 @@ Test
 !2 1. Try Build without session (Expect Violation)
 |script|!-SlimProxy.Process-!                                                               |
 |reject|run            |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code |1                                                                   |
+|check |last exit code |12                                                                  |
 |ensure|output contains|Bevor du mit der DPT.exe arbeiten kannst,                           |
 |ensure|output contains|!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
 |ensure|output contains|Prozess wird beendet...                                             |
+|ensure|output contains|Es ist ein Fehler aufgetreten!                                      |
+|ensure|output contains|!-ExitCode: 12-!                                                    |
 |reject|output contains|Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
 |show  |last output                                                                         |
 
@@ -30,9 +32,11 @@ Test
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
 |script|!-SlimProxy.Process-!                                                               |
 |reject|run            |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code |1                                                                   |
+|check |last exit code |13                                                                  |
 |ensure|output contains|Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
 |ensure|output contains|Prozess wird beendet...                                             |
+|ensure|output contains|Es ist ein Fehler aufgetreten!                                      |
+|ensure|output contains|!-ExitCode: 13-!                                                    |
 |show  |last output                                                                         |
 
 !2 5. Register file in AI Session
