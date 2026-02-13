@@ -6,16 +6,16 @@ Test
 !define DPT_COMMAND {cmd.exe /c set "GEMINI_CLI=1" && cd "${TEST_DATA_PATH}" && "${DPT_EXE}" LATEST}
 
 !2 1. Try Build without session (Expect Violation)
-|script|!-SlimProxy.Process-!                                                               |
-|reject|run            |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code |12                                                                  |
-|ensure|output contains|Bevor du mit der DPT.exe arbeiten kannst,                           |
-|ensure|output contains|!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
-|ensure|output contains|Prozess wird beendet...                                             |
-|ensure|output contains|Es ist ein Fehler aufgetreten!                                      |
-|ensure|output contains|!-ExitCode: 12-!                                                    |
-|reject|output contains|Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|show  |last output                                                                         |
+|script|!-SlimProxy.Process-!                                                                     |
+|reject|run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
+|check |last exit code       |12                                                                  |
+|ensure|output contains      |Bevor du mit der DPT.exe arbeiten kannst,                           |
+|ensure|output contains      |!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
+|check |output contains count|Prozess wird beendet...                      |1                     |
+|ensure|output contains      |Es ist ein Fehler aufgetreten!                                      |
+|ensure|output contains      |!-ExitCode: 12-!                                                    |
+|reject|output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
+|show  |last output                                                                               |
 
 !2 2. Start AI Session
 |script|!-SlimProxy.Process-!                             |
@@ -30,14 +30,14 @@ Test
 |show  |last output                                                                                                                                               |
 
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
-|script|!-SlimProxy.Process-!                                                               |
-|reject|run            |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code |13                                                                  |
-|ensure|output contains|Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|ensure|output contains|Prozess wird beendet...                                             |
-|ensure|output contains|Es ist ein Fehler aufgetreten!                                      |
-|ensure|output contains|!-ExitCode: 13-!                                                    |
-|show  |last output                                                                         |
+|script|!-SlimProxy.Process-!                                                                     |
+|reject|run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
+|check |last exit code       |13                                                                  |
+|ensure|output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
+|check |output contains count|Prozess wird beendet...                      |1                     |
+|ensure|output contains      |Es ist ein Fehler aufgetreten!                                      |
+|ensure|output contains      |!-ExitCode: 13-!                                                    |
+|show  |last output                                                                               |
 
 !2 5. Register file in AI Session
 |script|!-SlimProxy.Process-!                                                            |

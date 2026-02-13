@@ -31,6 +31,7 @@ type
     function LastExitCode: Integer;
     function LastOutput: String;
     function OutputContains(const AText: String): Boolean;
+    function OutputContainsCount(const AText: String): Integer;
     function OutputMatches(const APattern: String): Boolean;
     function OutputMatchCount(const APattern: String): Integer;
     function Run(const ACommand: String): Boolean;
@@ -180,6 +181,20 @@ end;
 function TSlimProxyProcessFixture.OutputContains(const AText: String): Boolean;
 begin
   Result := Pos(AText, FLastOutput) > 0;
+end;
+
+function TSlimProxyProcessFixture.OutputContainsCount(const AText: String): Integer;
+var
+  LPos: Integer;
+begin
+  Result := 0;
+  if AText = '' then Exit;
+  LPos := Pos(AText, FLastOutput);
+  while LPos > 0 do
+  begin
+    Inc(Result);
+    LPos := Pos(AText, FLastOutput, LPos + Length(AText));
+  end;
 end;
 
 initialization
