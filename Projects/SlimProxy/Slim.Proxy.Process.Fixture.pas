@@ -26,8 +26,13 @@ type
   private
     FLastExitCode: Integer;
     FLastOutput  : String;
+    FWorkingDir  : String;
+    FEnvVars     : TStringList;
     function RunCommand(const ACommandLine: String; out AOutput: String): Integer;
   public
+    procedure AfterConstruction; override;
+    destructor Destroy; override;
+
     function LastExitCode: Integer;
     function LastOutput: String;
     function OutputContains(const AText: String): Boolean;
@@ -35,11 +40,36 @@ type
     function OutputMatches(const APattern: String): Boolean;
     function OutputMatchCount(const APattern: String): Integer;
     function Run(const ACommand: String): Boolean;
+
+    procedure AddEnvironmentVarValue(const AName, AValue: String);
+    procedure SetWorkingDir(const ADir: String);
   end;
 
 implementation
 
 { TSlimProxyProcessFixture }
+
+procedure TSlimProxyProcessFixture.AfterConstruction;
+begin
+  inherited;
+  FEnvVars := TStringList.Create;
+end;
+
+destructor TSlimProxyProcessFixture.Destroy;
+begin
+  FEnvVars.Free;
+  inherited;
+end;
+
+procedure TSlimProxyProcessFixture.AddEnvironmentVarValue(const AName, AValue: String);
+begin
+  FEnvVars.Values[AName] := AValue;
+end;
+
+procedure TSlimProxyProcessFixture.SetWorkingDir(const ADir: String);
+begin
+  FWorkingDir := ADir;
+end;
 
 function TSlimProxyProcessFixture.OutputMatchCount(const APattern: String): Integer;
 begin
@@ -95,10 +125,18 @@ begin
     SI.hStdError := hWrite;
     SI.hStdInput := hNullInput;
 
+    // Apply environment variables to current process so child inherits them
+    for var I := 0 to FEnvVars.Count - 1 do
+      SetEnvironmentVariable(PChar(FEnvVars.Names[I]), PChar(FEnvVars.ValueFromIndex[I]));
+
     Cmd := ACommandLine;
     UniqueString(Cmd);
 
-    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, 0, nil, nil, SI, PI) then
+    var LWorkingDir: PChar := nil;
+    if FWorkingDir <> '' then
+      LWorkingDir := PChar(FWorkingDir);
+
+    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, 0, nil, LWorkingDir, SI, PI) then
       RaiseLastOSError;
 
     CloseHandle(hWrite);

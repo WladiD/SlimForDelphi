@@ -3,72 +3,89 @@ Test
 ---
 !1 AI Workflow Simulation
 
-!define DPT_COMMAND {cmd.exe /c set "GEMINI_CLI=1" && cd "${TEST_DATA_PATH}" && "${DPT_EXE}" LATEST}
+!define DPT_COMMAND {"${DPT_EXE}" LATEST}
 
 !2 1. Try Build without session (Expect Violation)
-|script|!-SlimProxy.Process-!                                                                     |
-|reject|run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code       |12                                                                  |
-|ensure|output contains      |Bevor du mit der DPT.exe arbeiten kannst,                           |
-|ensure|output contains      |!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
-|check |output contains count|Prozess wird beendet...                      |1                     |
-|ensure|output contains      |Es ist ein Fehler aufgetreten!                                      |
-|ensure|output contains      |!-ExitCode: 12-!                                                    |
-|reject|output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|show  |last output                                                                               |
+|script             |!-SlimProxy.Process-!                                                                     |
+|set working dir    |${TEST_DATA_PATH}                                                                         |
+|add environment var|GEMINI_CLI           |value                                        |1                     |
+|reject             |run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
+|check              |last exit code       |12                                                                  |
+|ensure             |output contains      |Bevor du mit der DPT.exe arbeiten kannst,                           |
+|ensure             |output contains      |!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
+|check              |output contains count|Prozess wird beendet...                      |1                     |
+|ensure             |output contains      |Es ist ein Fehler aufgetreten!                                      |
+|ensure             |output contains      |!-ExitCode: 12-!                                                    |
+|reject             |output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
+|show               |last output                                                                               |
 
 !2 2. Start AI Session
-|script|!-SlimProxy.Process-!                             |
-|ensure|run            |${DPT_COMMAND} !-AiSession-! Start|
-|check |last exit code |0                                 |
-|ensure|output contains|AI session started for PID        |
-|show  |last output                                       |
+|script             |!-SlimProxy.Process-!                             |
+|set working dir    |${TEST_DATA_PATH}                                 |
+|add environment var|GEMINI_CLI     |value              |1             |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Start|
+|check              |last exit code |0                                 |
+|ensure             |output contains|AI session started for PID        |
+|show               |last output                                       |
 
 !2 3. Modify file to trigger "changed since session start"
-|script|!-SlimProxy.Process-!                                                                                                                                     |
-|ensure|run|cmd.exe /c ping -n 3 127.0.0.1 >nul && cd "${TEST_DATA_PATH}" && copy /y !-SampleUnit.valid.pas-! !-SampleUnit.pas-! && copy /b !-SampleUnit.pas-! +,,|
-|show  |last output                                                                                                                                               |
+|script         |!-SlimProxy.Process-!                                                                                                           |
+|set working dir|${TEST_DATA_PATH}                                                                                                               |
+|ensure         |run|cmd.exe /c ping -n 3 127.0.0.1 >nul && copy /y !-SampleUnit.valid.pas-! !-SampleUnit.pas-! && copy /b !-SampleUnit.pas-! +,,|
+|show           |last output                                                                                                                     |
 
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
-|script|!-SlimProxy.Process-!                                                                     |
-|reject|run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
-|check |last exit code       |13                                                                  |
-|ensure|output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|check |output contains count|Prozess wird beendet...                      |1                     |
-|ensure|output contains      |Es ist ein Fehler aufgetreten!                                      |
-|ensure|output contains      |!-ExitCode: 13-!                                                    |
-|show  |last output                                                                               |
+|script             |!-SlimProxy.Process-!                                                                     |
+|set working dir    |${TEST_DATA_PATH}                                                                         |
+|add environment var|GEMINI_CLI           |value                                        |1                     |
+|reject             |run                  |${DPT_COMMAND} Build !-Sample.dproj-!                               |
+|check              |last exit code       |13                                                                  |
+|ensure             |output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
+|check              |output contains count|Prozess wird beendet...                      |1                     |
+|ensure             |output contains      |Es ist ein Fehler aufgetreten!                                      |
+|ensure             |output contains      |!-ExitCode: 13-!                                                    |
+|show               |last output                                                                               |
 
 !2 5. Register file in AI Session
-|script|!-SlimProxy.Process-!                                                            |
-|ensure|run            |${DPT_COMMAND} !-AiSession-! !-RegisterFiles-! !-SampleUnit.pas-!|
-|check |last exit code |0                                                                |
-|ensure|output contains|Registered file in AI session: !-SampleUnit.pas-!                |
-|show  |last output                                                                      |
+|script             |!-SlimProxy.Process-!                                                            |
+|set working dir    |${TEST_DATA_PATH}                                                                |
+|add environment var|GEMINI_CLI     |value                             |1                             |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! !-RegisterFiles-! !-SampleUnit.pas-!|
+|check              |last exit code |0                                                                |
+|ensure             |output contains|Registered file in AI session: !-SampleUnit.pas-!                |
+|show               |last output                                                                      |
 
 !2 6. Check Session Status
-|script|!-SlimProxy.Process-!                              |
-|ensure|run            |${DPT_COMMAND} !-AiSession-! Status|
-|ensure|output contains|!-SampleUnit.pas-!                 |
-|show  |last output                                        |
+|script             |!-SlimProxy.Process-!                              |
+|set working dir    |${TEST_DATA_PATH}                                  |
+|add environment var|GEMINI_CLI     |value              |1              |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Status|
+|ensure             |output contains|!-SampleUnit.pas-!                 |
+|show               |last output                                        |
 
 !2 7. Try Lint (should pass now)
-|script|!-SlimProxy.Process-!                                                                                      |
-|ensure|run            |${DPT_COMMAND} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-SampleUnit.pas-!|
-|check |last exit code |0                                                                                          |
-|ensure|output contains|Linting passed                                                                             |
-|show  |last output                                                                                                |
+|script             |!-SlimProxy.Process-!                                                                                      |
+|set working dir    |${TEST_DATA_PATH}                                                                                          |
+|add environment var|GEMINI_CLI     |value                                          |1                                          |
+|ensure             |run            |${DPT_COMMAND} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-SampleUnit.pas-!|
+|check              |last exit code |0                                                                                          |
+|ensure             |output contains|Linting passed                                                                             |
+|show               |last output                                                                                                |
 
 !2 8. Try Build (should pass workflow check and MSBuild now)
-|script|!-SlimProxy.Process-!                                |
-|ensure|run            |${DPT_COMMAND} Build !-Sample.dproj-!|
-|reject|output contains|DPT WORKFLOW VIOLATION               |
-|ensure|output contains|Setting up Delphi environment        |
-|show  |last output                                          |
+|script             |!-SlimProxy.Process-!                                |
+|set working dir    |${TEST_DATA_PATH}                                    |
+|add environment var|GEMINI_CLI     |value               |1               |
+|ensure             |run            |${DPT_COMMAND} Build !-Sample.dproj-!|
+|reject             |output contains|DPT WORKFLOW VIOLATION               |
+|ensure             |output contains|Setting up Delphi environment        |
+|show               |last output                                          |
 
 !2 9. Stop AI Session
-|script|!-SlimProxy.Process-!                            |
-|ensure|run            |${DPT_COMMAND} !-AiSession-! Stop|
-|check |last exit code |0                                |
-|ensure|output contains|AI session stopped for PID       |
-|show  |last output                                      |
+|script             |!-SlimProxy.Process-!                            |
+|set working dir    |${TEST_DATA_PATH}                                |
+|add environment var|GEMINI_CLI     |value             |1             |
+|ensure             |run            |${DPT_COMMAND} !-AiSession-! Stop|
+|check              |last exit code |0                                |
+|ensure             |output contains|AI session stopped for PID       |
+|show               |last output                                      |
