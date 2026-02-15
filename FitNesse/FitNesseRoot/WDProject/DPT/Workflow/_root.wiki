@@ -4,6 +4,7 @@ Suite
 !define SLIM_PORT {0}
 !define COMMAND_PATTERN {${PROJECT_ROOT}\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat Win32}
 !define DPT_EXE {${WDDT_ROOT}\Projects\DPT\DPT.exe}
+!define DELPHI_VERSION {LATEST}
 !define TEST_DATA_PATH {${FITNESSE_ROOT}\files\TestData\DptWorkflow}
 
 !contents -R2 -g -p -f -h
