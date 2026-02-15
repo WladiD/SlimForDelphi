@@ -29,10 +29,10 @@ Test
 |show               |last output                                       |
 
 !2 3. Modify file to trigger "changed since session start"
-|script         |!-SlimProxy.Process-!                                                                                                           |
-|set working dir|${TEST_DATA_PATH}                                                                                                               |
-|ensure         |run|cmd.exe /c ping -n 3 127.0.0.1 >nul && copy /y !-SampleUnit.valid.pas-! !-SampleUnit.pas-! && copy /b !-SampleUnit.pas-! +,,|
-|show           |last output                                                                                                                     |
+|script         |!-SlimProxy.Process-!                                                                               |
+|set working dir|${TEST_DATA_PATH}                                                                                   |
+|ensure         |run|cmd.exe /c copy /y !-SampleUnit.valid.pas-! !-SampleUnit.pas-! && copy /b !-SampleUnit.pas-! +,,|
+|show           |last output                                                                                         |
 
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
 |script             |!-SlimProxy.Process-!                                                                    |
@@ -41,6 +41,7 @@ Test
 |reject             |run                  |${DPT_COMMAND} Build !-Sample.dproj-!                              |
 |check              |last exit code       |13                                                                 |
 |ensure             |output contains      |Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis|
+|ensure             |output contains      |!-SampleUnit.pas-!                                                 |
 |check              |output contains count|Prozess wird beendet...                     |1                     |
 |ensure             |output contains      |Es ist ein Fehler aufgetreten!                                     |
 |ensure             |output contains      |!-ExitCode: 13-!                                                   |
