@@ -1,28 +1,30 @@
 ---
 Test
 ---
+!define TEST_DATA_PATH {${TEST_DATA_ROOT}\DptWorkflow}
+
 !1 AI Workflow Simulation
 
 !2 1. Try Build without session (Expect Violation)
-|script                                                                                                              |
-|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!                                                  |
-|pop fixture                                                                                                         |
-|check                    |last exit code       |12                                                                  |
-|ensure                   |output contains      |Bevor du mit der DPT.exe arbeiten kannst,                           |
-|ensure                   |output contains      |!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
-|check                    |output contains count|Prozess wird beendet...                      |1                     |
-|ensure                   |output contains      |Es ist ein Fehler aufgetreten!                                      |
-|ensure                   |output contains      |!-ExitCode: 12-!                                                    |
-|reject                   |output contains      |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
-|show                     |last output                                                                               |
+|script                                                                                                                                 |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!|With Data                             |!-DptWorkflow-!              |
+|pop fixture                                                                                                                            |
+|check                    |last exit code                          |12                                                                  |
+|ensure                   |output contains                         |Bevor du mit der DPT.exe arbeiten kannst,                           |
+|ensure                   |output contains                         |!-`MISC\DPT\DPT.exe LATEST AiSession Start`-!                       |
+|check                    |output contains count                   |Prozess wird beendet...               |1                            |
+|ensure                   |output contains                         |Es ist ein Fehler aufgetreten!                                      |
+|ensure                   |output contains                         |!-ExitCode: 12-!                                                    |
+|reject                   |output contains                         |Vor dem Build muss für alle veränderten oder erstellten Delphi-Units|
+|show                     |last output                                                                                                  |
 
 !2 2. Start AI Session
-|script                                                              |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Start     |
-|pop fixture                                                         |
-|check                    |last exit code |0                         |
-|ensure                   |output contains|AI session started for PID|
-|show                     |last output                               |
+|script                                                                                    |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Start|With Data |!-DptWorkflow-!|
+|pop fixture                                                                               |
+|check                    |last exit code                       |0                         |
+|ensure                   |output contains                      |AI session started for PID|
+|show                     |last output                                                     |
 
 !2 3. Modify file to trigger "changed since session start"
 |script         |!-SlimProxy.Process-!                                                                               |
@@ -31,70 +33,70 @@ Test
 |show           |last output                                                                                         |
 
 !2 4. Try Build with session but unregistered changed file (Expect Violation)
-|script                                                                                                             |
-|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!                                                 |
-|pop fixture                                                                                                        |
-|check                    |last exit code       |13                                                                 |
-|ensure                   |output contains      |Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis|
-|ensure                   |output contains      |!-SampleUnit.pas-!                                                 |
-|check                    |output contains count|Prozess wird beendet...                     |1                     |
-|ensure                   |output contains      |Es ist ein Fehler aufgetreten!                                     |
-|ensure                   |output contains      |!-ExitCode: 13-!                                                   |
-|show                     |last output                                                                              |
+|script                                                                                                                                |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!|With Data                            |!-DptWorkflow-!              |
+|pop fixture                                                                                                                           |
+|check                    |last exit code                          |13                                                                 |
+|ensure                   |output contains                         |Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis|
+|ensure                   |output contains                         |!-SampleUnit.pas-!                                                 |
+|check                    |output contains count                   |Prozess wird beendet...              |1                            |
+|ensure                   |output contains                         |Es ist ein Fehler aufgetreten!                                     |
+|ensure                   |output contains                         |!-ExitCode: 13-!                                                   |
+|show                     |last output                                                                                                 |
 
 !2 5. Register file in AI Session
-|script                                                                                        |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! !-RegisterFiles-! !-SampleUnit.pas-!|
-|pop fixture                                                                                   |
-|check                    |last exit code   |0                                                 |
-|ensure                   |output contains  |Registered file in AI session: !-SampleUnit.pas-! |
-|show                     |last output                                                         |
+|script                                                                                                                                          |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! !-RegisterFiles-! !-SampleUnit.pas-!|With Data            |!-DptWorkflow-!            |
+|pop fixture                                                                                                                                     |
+|check                    |last exit code                                                      |0                                                |
+|ensure                   |output contains                                                     |Registered file in AI session: !-SampleUnit.pas-!|
+|show                     |last output                                                                                                           |
 
 !2 6. Check Session Status
-|script                                                          |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Status|
-|pop fixture                                                     |
-|ensure                   |output contains  |!-SampleUnit.pas-!  |
-|show                     |last output                           |
+|script                                                                                    |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Status|With Data|!-DptWorkflow-!|
+|pop fixture                                                                               |
+|ensure                   |output contains                       |!-SampleUnit.pas-!       |
+|show                     |last output                                                     |
 
 !2 7. Try Lint (should pass now)
-|script                                                                                                                  |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-SampleUnit.pas-!|
-|pop fixture                                                                                                             |
-|check                    |last exit code                                 |0                                             |
-|ensure                   |output contains                                |Linting passed                                |
-|show                     |last output                                                                                   |
+|script                                                                                                                                            |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-SampleUnit.pas-!|With Data|!-DptWorkflow-!|
+|pop fixture                                                                                                                                       |
+|check                    |last exit code                                                                                |0                        |
+|ensure                   |output contains                                                                               |Linting passed           |
+|show                     |last output                                                                                                             |
 
 !2 8. Try Build (should pass workflow check and MSBuild now)
-|script                                                                 |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!     |
-|pop fixture                                                            |
-|reject                   |output contains|DPT WORKFLOW VIOLATION       |
-|ensure                   |output contains|Setting up Delphi environment|
-|show                     |last output                                  |
+|script                                                                                          |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-Sample.dproj-!|With Data  |!-DptWorkflow-!  |
+|pop fixture                                                                                     |
+|reject                   |output contains                         |DPT WORKFLOW VIOLATION       |
+|ensure                   |output contains                         |Setting up Delphi environment|
+|show                     |last output                                                           |
 
 !2 9. Stop AI Session
-|script                                                              |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Stop      |
-|pop fixture                                                         |
-|check                    |last exit code |0                         |
-|ensure                   |output contains|AI session stopped for PID|
-|show                     |last output                               |
+|script                                                                                   |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Stop|With Data |!-DptWorkflow-!|
+|pop fixture                                                                              |
+|check                    |last exit code                      |0                         |
+|ensure                   |output contains                     |AI session stopped for PID|
+|show                     |last output                                                    |
 
 !2 10. Build TFW.dproj (Expect !-AfterDptGuard-! instructions)
-|script                   |!-SlimProxy.Process-!                                                            |
-|set working dir          |${TEST_DATA_PATH}                                                                |
-|ensure                   |run            |cmd.exe /c copy /y !-Sample.dproj-! !-TFW.dproj-!                |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Start                                            |
-|pop fixture                                                                                                |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-TFW.dproj-!                                            |
-|pop fixture                                                                                                |
-|check                    |last exit code |0                                                                |
-|ensure                   |output contains|Der Build war erfolgreich!                                       |
-|ensure                   |output contains|Möchten Sie die Unit-Tests für TFW ausführen?                    |
-|ensure                   |output contains|!-`MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj`-!|
-|show                     |last output                                                                      |
-|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Stop                                             |
+|script                   |!-SlimProxy.Process-!                                                                                  |
+|set working dir          |${TEST_DATA_PATH}                                                                                      |
+|ensure                   |run                                  |cmd.exe /c copy /y !-Sample.dproj-! !-TFW.dproj-!                |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Start|With Data                    |!-DptWorkflow-!                    |
+|pop fixture                                                                                                                      |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-TFW.dproj-!|With Data                    |!-DptWorkflow-!                    |
+|pop fixture                                                                                                                      |
+|check                    |last exit code                       |0                                                                |
+|ensure                   |output contains                      |Der Build war erfolgreich!                                       |
+|ensure                   |output contains                      |Möchten Sie die Unit-Tests für TFW ausführen?                    |
+|ensure                   |output contains                      |!-`MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj`-!|
+|show                     |last output                                                                                            |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Stop |With Data                    |!-DptWorkflow-!                    |
 
 
 
