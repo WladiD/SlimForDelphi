@@ -1,0 +1,16 @@
+!1 Scenarios
+
+|scenario           |Ensure Dpt Run In Ai Mode|params                |
+|start              |!-SlimProxy.Process-!                           |
+|set working dir    |${TEST_DATA_PATH}                               |
+|add environment var|GEMINI_CLI               |value        |1       |
+|ensure             |run                      |${DPT_EXE} @params|
+|push fixture                                                        |
+
+|scenario           |Reject Dpt Run In Ai Mode|params                |
+|start              |!-SlimProxy.Process-!                           |
+|set working dir    |${TEST_DATA_PATH}                               |
+|add environment var|GEMINI_CLI               |value        |1       |
+|reject             |run                      |${DPT_EXE} @params|
+|push fixture                                                        |
+
