@@ -32,5 +32,4 @@ Win??
 /FitNesse/FitNesseRoot/RerunLastFailures_*.wiki
 /FitNesse/FitNesseRoot/**/Vars.wiki
 /FitNesse/FitNesseRoot/DPT_LintSuite/*
-/FitNesse/FitNesseRoot/files/TestData/DptWorkflow/Sample.exe
-/FitNesse/FitNesseRoot/files/TestData/DptWorkflow/Sample.res
+/FitNesse/FitNesseRoot/files/TestData/DptWorkflow/*
