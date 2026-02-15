@@ -2,7 +2,7 @@ BeforeDptGuard: not AiSessionStarted() and
                 not (IsCurrentAction("AiSession") and IsCurrentAiSessionAction("Start"))
 {
   - Bevor du mit der DPT.exe arbeiten kannst, musst du eine AI-Session starten:
-    `MISC\DPT\DPT.exe LATEST AiSession Start`
+    ``MISC\DPT\DPT.exe LATEST AiSession Start``
     
   BeforeDptGuard: RequestDptExitWithCode(12)
   { Prozess wird beendet... }
@@ -12,10 +12,10 @@ BeforeDptGuard: IsCurrentAction("AiSession") and
                 IsCurrentAiSessionAction("Start")
 {
   - Wenn du mit einer Aufgabe fertig bist, musst du die AI-Session beenden:
-    `MISC\DPT\DPT.exe LATEST AiSession Stop`
+    ``MISC\DPT\DPT.exe LATEST AiSession Stop``
 
   - Den aktuellen Status der Session kannst du jederzeit abfragen:
-    `MISC\DPT\DPT.exe LATEST AiSession Status`
+    ``MISC\DPT\DPT.exe LATEST AiSession Status``
 }
 
 BeforeDptGuard: IsCurrentAction("Build") and 
@@ -24,12 +24,12 @@ BeforeDptGuard: IsCurrentAction("Build") and
   - Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis vorliegen:
     - `GetInvalidLintFiles(GetCurrentProjectFiles())`
 
-  - `MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>`
-    
+  - ``MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>``
+
   - Die Lint-Action setzt voraus, dass die zu prüfenden Dateien zuvor in der 
     AI-Session registriert wurden:
-    `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
-    
+    ``MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>``
+
   BeforeDptGuard: RequestDptExitWithCode(13)
   { Prozess wird beendet... }
 }
@@ -38,7 +38,7 @@ BeforeDptGuard: IsCurrentAction("Lint") and
                 not IsFileRegisteredInAiSession(GetCurrentLintTargetFile())
 {
   - Bevor eine Datei per Lint-Action geprüft werden kann, muss sie in der AI-Session registriert werden:
-    `MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>`
+    ``MISC\DPT\DPT.exe LATEST AiSession RegisterFiles <TargetFiles...>``
 
   BeforeDptGuard: RequestDptExitWithCode(13)
   { Prozess wird beendet... }
@@ -59,6 +59,6 @@ AfterDptGuard: IsCurrentAction("Build") and
   1. **Frag den Anwender:** "Möchten Sie die Unit-Tests für TFW ausführen?" 
   2. **Wenn der Anwender zustimmt:**
      * Run the tests:
-     * **IMPORTANT:** Set `block_until_ms` to 180000 (3 minutes) for this command.
-     `MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj`
+     * **IMPORTANT:** Set ``block_until_ms`` to 180000 (3 minutes) for this command.
+     ``MISC\DPT\DPT.exe LATEST BuildAndRun TFW\TEST\Test.Tfw.dproj``
 }
