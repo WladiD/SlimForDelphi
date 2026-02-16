@@ -310,6 +310,14 @@ begin
             LClassName.StartsWith('SlimProxy.', True) and                    // We expect fully qualified names like "SlimProxy.ClassName" as imports are ignored locally
             FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
             LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
+        end
+        else if (LInstruction in [siCall, siCallAndAssign]) and (LRawStmt.Count > 2) then
+        begin
+           var LInstName := LRawStmt[2].ToString;
+           if FContext.Instances.TryGetValue(LInstName, LFixture) then
+             LIsLocal := (LFixture is TSlimProxyBaseFixture)
+           else if not SameText(LInstName, 'scriptTableActor') then
+             LIsLocal := False; // Unknown instance, assume remote.
         end;
 
         if LIsLocal then // --- 1. Local Execution ---
