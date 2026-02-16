@@ -39,3 +39,7 @@ Win??
 /FitNesse/FitNesseRoot/files/TestData/DptWorkflow/TFW.res
 /FitNesse/FitNesseRoot/files/TestData/DptWorkflow/Unit1.pas
 /FitNesse/FitNesseRoot/files/TestData/DptWorkflow/Unit2.pas
+/FitNesse/FitNesseRoot/files/TestData/WorkflowWithUnitTests/App.dproj
+/FitNesse/FitNesseRoot/files/TestData/WorkflowWithUnitTests/MyCode.pas
+/FitNesse/FitNesseRoot/files/TestData/WorkflowWithUnitTests/Test.dproj
+/FitNesse/FitNesseRoot/files/TestData/WorkflowWithUnitTests/Test.exe
