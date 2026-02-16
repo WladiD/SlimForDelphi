@@ -1,0 +1,89 @@
+---
+Test
+---
+!1 Workflow with Mandatory Unit Tests (!-BuildAndRun-!)
+
+!2 1. Setup Environment
+|script                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Start                           |With Data                                                                                                                                                    |!-WorkflowWithUnitTests-!                                                                                                                                                   |
+|pop fixture                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|# Create Code and Projects                                                                                                                                                                                                                                                                                                                                                                                                           |
+|ensure                   |run                                                             |cmd.exe /c copy /y "${TEST_DATA_ROOT}\DptWorkflow\SampleUnit.valid.pas" !-MyCode.pas-!                                                                                                                                                                                                                                                    |
+|ensure                   |run                                                             |!-powershell -Command "(Get-Content MyCode.pas) -replace 'SampleUnit', 'MyCode' | Set-Content MyCode.pas -Encoding UTF8"-!                                                                                                                                                                                                  |
+|ensure                   |run                                                             |!-cmd.exe /c echo ^<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"^>^<ItemGroup^>^<DCCReference Include="MyCode.pas"/^>^</ItemGroup^>^<Target Name="Build" /^>^</Project^> > App.dproj-!|
+|ensure                   |run                                                             |!-cmd.exe /c echo ^<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"^>^<PropertyGroup^>^<DCC_ExeOutput^>.^</DCC_ExeOutput^>^<SanitizedProjectName^>Test^</SanitizedProjectName^>^</PropertyGroup^>^<ItemGroup^>^<DCCReference Include="MyCode.pas"/^>^</ItemGroup^>^<Target Name="Build" /^>^</Project^> > Test.dproj-!|
+|# Fake the Test Executable (Test.exe = DPT.exe)                                                                                                                                                                                                                                                                                                                                                                                      |
+|ensure                   |run                                                             |cmd.exe /c copy /y "${WDDT_ROOT}\Projects\DPT\DPT.exe" Test.exe                                                                                                                                                                                                                                                                           |
+|# Register files                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! !-RegisterFiles-! !-MyCode.pas-!|With Data                                                                                                                                                    |!-WorkflowWithUnitTests-!                                                                                                                                                   |
+
+!2 2. Build 'App' fails (Lint missing)
+|script                                                                                             |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                        |
+|check                    |last exit code                       |13                                 |
+|ensure                   |output contains                      |Linting required                   |
+
+!2 3. Lint passes
+|script                                                                                                                                                  |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-MyCode.pas-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                                                                             |
+|show                     |last output                                                                                                                   |
+
+!2 4. Build 'App' fails (Tests missing/not run)
+|script                                                                                             |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                        |
+|check                    |last exit code                       |14                                 |
+|ensure                   |output contains                      |Unit Tests required                |
+
+!2 5. Run 'Test.dproj' -> Fails (Simulated exit != 0 using invalid arg)
+|script                                                                                                                              |
+|# Run DPT with invalid command -> Exit != 0                                                                                         |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} !-BuildAndRun-! !-Test.dproj-! -- !-InvalidCommand-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                                                         |
+|check                    |last exit code                                                        |1                                  |
+
+!2 6. Build 'App' STILL fails (Tests failed)
+|script                                                                                             |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                        |
+|check                    |last exit code                       |14                                 |
+
+!2 7. Run 'Test.dproj' -> Success (Simulated exit 0 using Help)
+|script                                                                                                                |
+|# Run DPT Help -> Exit 0                                                                                              |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-BuildAndRun-! !-Test.dproj-! -- Help|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                                           |
+|check                    |last exit code                                          |0                                  |
+
+!2 8. Build 'App' Success
+|script                                                                                             |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!|With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                        |
+|ensure                   |output contains                      |Build successful                   |
+|show                     |last output                                                              |
+
+!2 9. Modify Code -> Build Fails (Needs Lint, then Test)
+|script                                                                                                                                                  |
+|ensure                   |run                                                                                       |cmd.exe /c copy /y "${TEST_DATA_ROOT}\DptWorkflow\SampleUnit.valid.pas" !-MyCode.pas-! & copy /b !-MyCode.pas-! +,,|
+|ensure                   |run                                                                                       |!-powershell -Command "(Get-Content MyCode.pas) -replace 'SampleUnit', 'MyCode' | Set-Content MyCode.pas -Encoding UTF8"-!|
+|# First Guard: Lint                                                                                                                                     |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!                                                     |With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                                                                             |
+|check                    |last exit code                                                                            |13                                 |
+|# Fix Lint                                                                                                                                              |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Lint "${WDDT_ROOT}\Projects\DPT\Lint\TaifunUnitStyle.pas" !-MyCode.pas-!|With Data|!-WorkflowWithUnitTests-!|
+|# Second Guard: Test (because Code changed > Last Run Time)                                                                                             |
+|Reject Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!                                                     |With Data|!-WorkflowWithUnitTests-!|
+|pop fixture                                                                                                                                             |
+|check                    |last exit code                                                                            |14                                 |
+|# Run Test                                                                                                                                              |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-BuildAndRun-! !-Test.dproj-! -- Help                                  |With Data|!-WorkflowWithUnitTests-!|
+|# Build                                                                                                                                                 |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} Build !-App.dproj-!                                                     |With Data|!-WorkflowWithUnitTests-!|
+
+
+!2 10. Cleanup
+|script                                                                                            |
+|Ensure Dpt Run In Ai Mode|${DELPHI_VERSION} !-AiSession-! Stop|With Data|!-WorkflowWithUnitTests-!|
