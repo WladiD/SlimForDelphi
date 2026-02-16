@@ -1,0 +1,17 @@
+BeforeDptGuard: IsCurrentAction("Build") and 
+                not HasValidLintResult()
+{
+  - Linting required!
+  - `MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>`
+  BeforeDptGuard: RequestDptExitWithCode(13)
+}
+
+BeforeDptGuard: IsCurrentAction("Build") and 
+                IsCurrentBuildProjectFile("App.dproj") and
+                not HasValidRunResult("Test.dproj")
+{
+  - Unit Tests required!
+  - `MISC\DPT\DPT.exe LATEST BuildAndRun Test.dproj`
+  
+  BeforeDptGuard: RequestDptExitWithCode(14)
+}

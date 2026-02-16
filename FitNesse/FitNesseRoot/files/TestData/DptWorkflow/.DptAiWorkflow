@@ -19,10 +19,10 @@ BeforeDptGuard: IsCurrentAction("AiSession") and
 }
 
 BeforeDptGuard: IsCurrentAction("Build") and 
-                not HasValidLintResult(GetCurrentProjectFiles())
+                not HasValidLintResult()
 {
   - Vor dem Build muss für folgende Dateien ein aktuelles Lint-Ergebnis vorliegen:
-    - `GetInvalidLintFiles(GetCurrentProjectFiles())`
+    - `GetInvalidLintFiles()`
 
   - ``MISC\DPT\DPT.exe LATEST Lint TaifunUnitStyle.pas <TargetFile>``
 
