@@ -52,14 +52,7 @@ end;
 
 function TFitNesseClient.GetBaseUrl: string;
 begin
-  if FInstance.baseUrl <> '' then
-  begin
-    Result := FInstance.baseUrl;
-    if Result.EndsWith('/') then
-      Delete(Result, Length(Result), 1);
-  end
-  else
-    Result := Format('http://localhost:%d', [FInstance.port]);
+  Result := FInstance.GetEffectiveBaseUrl;
 end;
 
 function TFitNesseClient.CheckIfRunning: Boolean;
@@ -84,13 +77,8 @@ begin
 end;
 
 function TFitNesseClient.GetFitNesseRoot: string;
-var
-  LRootName: string;
 begin
-  LRootName := FInstance.fitnesseRoot;
-  if LRootName = '' then
-    LRootName := 'FitNesseRoot';
-  Result := TPath.Combine(FInstance.rootPath, LRootName);
+  Result := TPath.Combine(FInstance.rootPath, FInstance.GetEffectiveFitNesseRoot);
 end;
 
 function TFitNesseClient.StartInstance: Boolean;

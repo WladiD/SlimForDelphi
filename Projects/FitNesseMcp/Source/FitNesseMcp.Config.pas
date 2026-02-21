@@ -21,6 +21,8 @@ type
     port: Integer;
     startCmdLine: string;
     isRunning: Boolean;
+    function GetEffectiveBaseUrl: string;
+    function GetEffectiveFitNesseRoot: string;
   end;
 
   TFitNesseConfig = record
@@ -30,6 +32,28 @@ type
   end;
 
 implementation
+
+{ TFitNesseInstance }
+
+function TFitNesseInstance.GetEffectiveBaseUrl: string;
+begin
+  if baseUrl <> '' then
+  begin
+    Result := baseUrl;
+    if Result.EndsWith('/') then
+      Delete(Result, Length(Result), 1);
+  end
+  else
+    Result := Format('http://localhost:%d', [port]);
+end;
+
+function TFitNesseInstance.GetEffectiveFitNesseRoot: string;
+begin
+  if fitnesseRoot <> '' then
+    Result := fitnesseRoot
+  else
+    Result := 'FitNesseRoot';
+end;
 
 { TFitNesseConfig }
 

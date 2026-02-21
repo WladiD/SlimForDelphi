@@ -305,16 +305,27 @@ begin
     end
     else if LToolName = 'list_instances' then
     begin
+      TDocVariant.New(LRes);
+      LRes.instances := _Arr([]);
       for var i := 0 to High(FConfig.instances) do
       begin
         LClient := TFitNesseClient.Create(FConfig.instances[i]);
         try
           FConfig.instances[i].isRunning := LClient.CheckIfRunning;
+          LRes.instances.Add(_Obj([
+            'name', FConfig.instances[i].name,
+            'baseUrl', FConfig.instances[i].GetEffectiveBaseUrl,
+            'rootPath', FConfig.instances[i].rootPath,
+            'fitnesseRoot', FConfig.instances[i].GetEffectiveFitNesseRoot,
+            'port', FConfig.instances[i].port,
+            'startCmdLine', FConfig.instances[i].startCmdLine,
+            'isRunning', FConfig.instances[i].isRunning
+          ]));
         finally
           LClient.Free;
         end;
       end;
-      LResult := RecordSaveJson(FConfig, TypeInfo(TFitNesseConfig));
+      LResult := VariantSaveJSON(LRes);
     end
     else
     begin
