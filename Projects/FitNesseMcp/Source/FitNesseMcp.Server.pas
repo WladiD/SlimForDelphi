@@ -21,6 +21,7 @@ type
   private
     FConfig: TFitNesseConfig;
     FIsRunning: Boolean;
+    FLastStartedInstance: string;
     procedure Log(const AMsg: string);
     procedure HandleRequest(const AJson: RawUtf8);
     procedure SendResponse(const AResponse: String);
@@ -56,7 +57,11 @@ begin
   inherited Create;
   LConfigPath := ExtractFilePath(ParamStr(0)) + 'fitnesse-config.json';
   if FConfig.LoadFromFile(LConfigPath) then
-    Log('Config loaded successfully from: ' + LConfigPath)
+  begin
+    Log('Config loaded successfully from: ' + LConfigPath);
+    if Length(FConfig.instances) > 0 then
+      FLastStartedInstance := FConfig.instances[0].name;
+  end
   else
     Log('WARNING: Could not load fitnesse-config.json from: ' + LConfigPath);
 end;
@@ -181,11 +186,11 @@ begin
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
-            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
+            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance (optional, defaults to first configured instance)']),
             'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the test page or suite']),
             'format', _Obj(['type', 'string', 'description', 'Output format: "junit" (default, compact summary) or "xml" (verbose details).', 'default', 'junit'])
           ]),
-          'required', _Arr(['instance', 'pagePath'])
+          'required', _Arr(['pagePath'])
         ])
       ]),
       _Obj([
@@ -194,11 +199,11 @@ begin
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
-            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
+            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance (optional, defaults to first configured instance)']),
             'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the test page or suite']),
             'resultDate', _Obj(['type', 'string', 'description', 'Timestamp of the result (YYYYMMDDHHMMSS)'])
           ]),
-          'required', _Arr(['instance', 'pagePath', 'resultDate'])
+          'required', _Arr(['pagePath', 'resultDate'])
         ])
       ]),
       _Obj([
@@ -207,10 +212,10 @@ begin
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
-            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
+            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance (optional, defaults to first configured instance)']),
             'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the page'])
           ]),
-          'required', _Arr(['instance', 'pagePath'])
+          'required', _Arr(['pagePath'])
         ])
       ]),
       _Obj([
@@ -230,11 +235,11 @@ begin
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
-            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
+            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance (optional, defaults to first configured instance)']),
             'pagePath', _Obj(['type', 'string', 'description', 'Wiki path to list (empty for root)']),
             'recursive', _Obj(['type', 'boolean', 'description', 'If true, lists all pages recursively.', 'default', false])
           ]),
-          'required', _Arr(['instance', 'pagePath'])
+          'required', _Arr(['pagePath'])
         ])
       ]),
       _Obj([
@@ -281,7 +286,10 @@ end;
 function TFitNesseMcpServer.DoStartInstance(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
 begin
   if AClient.StartInstance then
-    Result := 'Instance started successfully.'
+  begin
+    FLastStartedInstance := VarToStr(AArgs.instance);
+    Result := 'Instance started successfully.';
+  end
   else
     Result := 'Failed to start instance. Check server logs (stderr).';
 end;
@@ -343,12 +351,33 @@ begin
   try
     if LNeedsInstance then
     begin
-      LInstanceName := VarToStr(AParams.arguments.instance);
-      if not FConfig.GetInstanceByName(LInstanceName, LInstance) then
+      if not AParams.arguments.Exists('instance') or (VarToStr(AParams.arguments.instance) = '') then
       begin
-        Log('Error: Instance not found: ' + LInstanceName);
-        SendError(AId, -32001, 'Instance not found: ' + LInstanceName);
-        Exit;
+        if LToolName = 'start_instance' then
+        begin
+          SendError(AId, -32602, 'Invalid params: "instance" is required for start_instance');
+          Exit;
+        end;
+
+        if (FLastStartedInstance <> '') and FConfig.GetInstanceByName(FLastStartedInstance, LInstance) then
+        begin
+          Log('No instance specified, using default/last started: ' + LInstance.name);
+        end
+        else
+        begin
+          SendError(AId, -32002, 'No FitNesse instances configured or default instance not found.');
+          Exit;
+        end;
+      end
+      else
+      begin
+        LInstanceName := VarToStr(AParams.arguments.instance);
+        if not FConfig.GetInstanceByName(LInstanceName, LInstance) then
+        begin
+          Log('Error: Instance not found: ' + LInstanceName);
+          SendError(AId, -32001, 'Instance not found: ' + LInstanceName);
+          Exit;
+        end;
       end;
       LClient := TFitNesseClient.Create(LInstance);
     end;
