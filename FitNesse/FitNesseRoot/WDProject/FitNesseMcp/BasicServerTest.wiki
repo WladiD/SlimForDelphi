@@ -1,0 +1,10 @@
+---
+Test
+---
+!3 !-FitNesseMcp-! server
+
+|script|!-SlimProxy.Mcp-!                                                                                          |
+|ensure|mcp start;|..\..\Projects\FitNesseMcp\FitNesseMcp.exe                                                      |
+|check |mcp call; |list_instances  |{}                                                  |=~/SlimForDelphi/|
+|check |mcp call; |get_page_content|{"instance":"SlimForDelphi", "pagePath":"FrontPage"}|=~/FrontPage\.wiki/|
+|mcp stop|

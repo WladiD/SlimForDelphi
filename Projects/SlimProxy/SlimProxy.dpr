@@ -20,6 +20,7 @@ uses
   Slim.Logger,
   Slim.Proxy,
   Slim.Proxy.Core.Fixture,
+  Slim.Proxy.Mcp.Fixture in 'Slim.Proxy.Mcp.Fixture.pas',
   Slim.Proxy.Process.Fixture,
   Slim.Proxy.VirtualBox.Fixture,
   Slim.Proxy.Interfaces,

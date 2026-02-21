@@ -1,0 +1,17 @@
+---
+Suite
+---
+!define SLIM_PORT {0}
+!define TARGET_PLATFORM {Win32}
+!define COMMAND_PATTERN {..\Projects\SlimProxy\_SlimProxy.BuildAndRun.bat ${TARGET_PLATFORM}}
+!define TEST_SYSTEM {slim}
+
+# FitNesse MCP Tests
+
+An MCP (Model Context Protocol) Server for FitNesse.
+
+## Test Setup
+
+The following tests verify the functionality of the FitNesse MCP server by starting it and calling its tools via a proxy fixture.
+
+!contents -R2 -g -p -f -h
