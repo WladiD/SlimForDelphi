@@ -32,6 +32,14 @@ type
     procedure HandleCallTool(const AId: Variant; const AParams: Variant);
     procedure HandleListResources(const AId: Variant);
     procedure HandleReadResource(const AId: Variant; const AParams: Variant);
+
+    // Tool Implementations
+    function DoRunTest(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+    function DoGetTestResult(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+    function DoGetPageContent(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+    function DoStartInstance(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+    function DoListPages(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+    function DoListInstances: RawUtf8;
   public
     constructor Create;
     procedure Run;
@@ -195,7 +203,7 @@ begin
       ]),
       _Obj([
         'name', 'get_page_content',
-        'description', 'Gets the wiki source of a FitNesse page.',
+        'description', 'Gets the wiki source of a FitNesse page directly from the filesystem. Returns the full file path and the content.',
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
@@ -243,9 +251,83 @@ begin
   SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
 end;
 
+function TFitNesseMcpServer.DoRunTest(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+var
+  LPagePath: string;
+begin
+  LPagePath := VarToStr(AArgs.pagePath);
+  if AArgs.Exists('format') then
+    Result := AClient.RunTest(LPagePath, VarToStr(AArgs.format))
+  else
+    Result := AClient.RunTest(LPagePath, 'junit');
+end;
+
+function TFitNesseMcpServer.DoGetTestResult(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+begin
+  Result := AClient.GetTestResult(VarToStr(AArgs.pagePath), VarToStr(AArgs.resultDate));
+end;
+
+function TFitNesseMcpServer.DoGetPageContent(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+var
+  LRes: Variant;
+begin
+  LRes := _Json(AClient.GetPageContent(VarToStr(AArgs.pagePath)));
+  if LRes.Exists('error') then
+    Result := LRes.error
+  else
+    Result := 'File: ' + LRes.filePath + #13#10 + '---' + #13#10 + LRes.content;
+end;
+
+function TFitNesseMcpServer.DoStartInstance(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+begin
+  if AClient.StartInstance then
+    Result := 'Instance started successfully.'
+  else
+    Result := 'Failed to start instance. Check server logs (stderr).';
+end;
+
+function TFitNesseMcpServer.DoListPages(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
+var
+  LPagePath: string;
+begin
+  LPagePath := VarToStr(AArgs.pagePath);
+  if AArgs.Exists('recursive') then
+    Result := AClient.ListPages(LPagePath, Boolean(AArgs.recursive))
+  else
+    Result := AClient.ListPages(LPagePath, False);
+end;
+
+function TFitNesseMcpServer.DoListInstances: RawUtf8;
+var
+  LRes: Variant;
+  LClient: TFitNesseClient;
+begin
+  TDocVariant.New(LRes);
+  LRes.instances := _Arr([]);
+  for var i := 0 to High(FConfig.instances) do
+  begin
+    LClient := TFitNesseClient.Create(FConfig.instances[i]);
+    try
+      FConfig.instances[i].isRunning := LClient.CheckIfRunning;
+      LRes.instances.Add(_Obj([
+        'name', FConfig.instances[i].name,
+        'baseUrl', FConfig.instances[i].GetEffectiveBaseUrl,
+        'rootPath', FConfig.instances[i].rootPath,
+        'fitnesseRoot', FConfig.instances[i].GetEffectiveFitNesseRoot,
+        'port', FConfig.instances[i].port,
+        'startCmdLine', FConfig.instances[i].startCmdLine,
+        'isRunning', FConfig.instances[i].isRunning
+      ]));
+    finally
+      LClient.Free;
+    end;
+  end;
+  Result := VariantSaveJSON(LRes);
+end;
+
 procedure TFitNesseMcpServer.HandleCallTool(const AId: Variant; const AParams: Variant);
 var
-  LInstanceName, LPagePath, LToolName: string;
+  LInstanceName, LToolName: string;
   LInstance: TFitNesseInstance;
   LClient: TFitNesseClient;
   LResult: RawUtf8;
@@ -272,62 +354,17 @@ begin
     end;
 
     if LToolName = 'run_test' then
-    begin
-      LPagePath := VarToStr(AParams.arguments.pagePath);
-      if AParams.arguments.Exists('format') then
-        LResult := LClient.RunTest(LPagePath, VarToStr(AParams.arguments.format))
-      else
-        LResult := LClient.RunTest(LPagePath, 'junit');
-    end
+      LResult := DoRunTest(LClient, AParams.arguments)
     else if LToolName = 'get_test_result' then
-    begin
-      LPagePath := VarToStr(AParams.arguments.pagePath);
-      LResult := LClient.GetTestResult(LPagePath, VarToStr(AParams.arguments.resultDate));
-    end
+      LResult := DoGetTestResult(LClient, AParams.arguments)
     else if LToolName = 'get_page_content' then
-    begin
-      LPagePath := VarToStr(AParams.arguments.pagePath);
-      LResult := LClient.GetPageContent(LPagePath);
-    end
+      LResult := DoGetPageContent(LClient, AParams.arguments)
     else if LToolName = 'start_instance' then
-    begin
-      if LClient.StartInstance then
-        LResult := 'Instance started successfully.'
-      else
-        LResult := 'Failed to start instance. Check server logs (stderr).';
-    end
+      LResult := DoStartInstance(LClient, AParams.arguments)
     else if LToolName = 'list_pages' then
-    begin
-      LPagePath := VarToStr(AParams.arguments.pagePath);
-      if AParams.arguments.Exists('recursive') then
-        LResult := LClient.ListPages(LPagePath, Boolean(AParams.arguments.recursive))
-      else
-        LResult := LClient.ListPages(LPagePath, False);
-    end
+      LResult := DoListPages(LClient, AParams.arguments)
     else if LToolName = 'list_instances' then
-    begin
-      TDocVariant.New(LRes);
-      LRes.instances := _Arr([]);
-      for var i := 0 to High(FConfig.instances) do
-      begin
-        LClient := TFitNesseClient.Create(FConfig.instances[i]);
-        try
-          FConfig.instances[i].isRunning := LClient.CheckIfRunning;
-          LRes.instances.Add(_Obj([
-            'name', FConfig.instances[i].name,
-            'baseUrl', FConfig.instances[i].GetEffectiveBaseUrl,
-            'rootPath', FConfig.instances[i].rootPath,
-            'fitnesseRoot', FConfig.instances[i].GetEffectiveFitNesseRoot,
-            'port', FConfig.instances[i].port,
-            'startCmdLine', FConfig.instances[i].startCmdLine,
-            'isRunning', FConfig.instances[i].isRunning
-          ]));
-        finally
-          LClient.Free;
-        end;
-      end;
-      LResult := VariantSaveJSON(LRes);
-    end
+      LResult := DoListInstances
     else
     begin
       SendError(AId, -32601, 'Tool not found: ' + LToolName);

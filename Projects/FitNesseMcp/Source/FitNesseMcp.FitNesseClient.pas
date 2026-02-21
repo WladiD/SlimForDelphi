@@ -223,25 +223,41 @@ end;
 
 function TFitNesseClient.GetPageContent(const APagePath: string): RawUtf8;
 var
-  LClient: THTTPClient;
-  LUrl: string;
+  LRoot, LPath, LFilePath, LContent: string;
+  LRes: Variant;
 begin
-  LUrl := Format('%s/%s?responder=edit', [GetBaseUrl, APagePath]);
-  LClient := THTTPClient.Create;
-  try
-    LClient.ConnectionTimeout := 2000;
-    try
-      Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
-    except
-      on E: Exception do
-      begin
-        Log('Error getting page content: ' + E.Message);
-        Result := StringToUtf8('Error: FitNesse unreachable: ' + E.Message);
-      end;
-    end;
-  finally
-    LClient.Free;
+  LRoot := GetFitNesseRoot;
+  LPath := TPath.Combine(LRoot, StringReplace(APagePath, '.', '\', [rfReplaceAll]));
+  LFilePath := '';
+
+  // 1. Check directory for content.txt or _root.wiki
+  if DirectoryExists(LPath) then
+  begin
+    if FileExists(TPath.Combine(LPath, 'content.txt')) then
+      LFilePath := TPath.Combine(LPath, 'content.txt')
+    else if FileExists(TPath.Combine(LPath, '_root.wiki')) then
+      LFilePath := TPath.Combine(LPath, '_root.wiki');
   end;
+
+  // 2. Check for .wiki file
+  if (LFilePath = '') and FileExists(LPath + '.wiki') then
+    LFilePath := LPath + '.wiki';
+
+  TDocVariant.New(LRes);
+  LRes.pagePath := StringToUtf8(APagePath);
+  
+  if LFilePath <> '' then
+  begin
+    LContent := TFile.ReadAllText(LFilePath);
+    LRes.filePath := StringToUtf8(LFilePath);
+    LRes.content := StringToUtf8(LContent);
+  end
+  else
+  begin
+    LRes.error := StringToUtf8('Page not found on filesystem: ' + LPath);
+  end;
+
+  Result := VariantToUtf8(_Json(VariantToUtf8(LRes)));
 end;
 
 function TFitNesseClient.GetPageType(const APagePath: string): string;
