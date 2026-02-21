@@ -48,8 +48,11 @@ Configuration is handled via the `fitnesse-config.json` file located in the same
 
 The server provides the following tools:
 
-*   `list_instances`: Lists all configured instances and their status.
-*   `start_instance`: Starts a local FitNesse instance (requires `jarPath` and Java in the path).
-*   `list_pages`: Lists suites and tests under a specific wiki path.
-*   `run_test`: Executes a test or suite and returns the result as XML.
-*   `get_page_content`: Reads the source content of a wiki page.
+*   **`list_instances`**: Lists all configured instances and their status (including whether they are currently running).
+*   **`start_instance`**: Starts a local FitNesse instance (using the configured `startCmdLine` or the default Java command).
+*   **`list_pages`**: Lists suites and tests under a specific wiki path. Supports recursive listing and includes the page type (Suite, Test, Static).
+*   **`run_test`**: Executes a test or suite.
+    *   `format`: "junit" (default, compact summary) or "xml" (verbose details).
+    *   Returns the result directly. Use the timestamp in the output to retrieve historical results via `get_test_result`.
+*   **`get_test_result`**: Retrieves the full execution log (verbose XML) for a specific past test run using its timestamp (`YYYYMMDDHHMMSS`).
+*   **`get_page_content`**: Reads the wiki source of a page using the `?edit` responder.
