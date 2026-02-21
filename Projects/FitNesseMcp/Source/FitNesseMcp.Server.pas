@@ -222,7 +222,8 @@ begin
           'type', 'object',
           'properties', _Obj([
             'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
-            'pagePath', _Obj(['type', 'string', 'description', 'Wiki path to list (empty for root)'])
+            'pagePath', _Obj(['type', 'string', 'description', 'Wiki path to list (empty for root)']),
+            'recursive', _Obj(['type', 'boolean', 'description', 'If true, lists all pages recursively.', 'default', false])
           ]),
           'required', _Arr(['instance', 'pagePath'])
         ])
@@ -297,7 +298,10 @@ begin
     else if LToolName = 'list_pages' then
     begin
       LPagePath := AParams.arguments.pagePath;
-      LResult := LClient.ListPages(LPagePath);
+      if AParams.arguments.Exists('recursive') then
+        LResult := LClient.ListPages(LPagePath, AParams.arguments.recursive)
+      else
+        LResult := LClient.ListPages(LPagePath, False);
     end
     else if LToolName = 'list_instances' then
     begin

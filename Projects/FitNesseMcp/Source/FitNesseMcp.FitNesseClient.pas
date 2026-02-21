@@ -30,7 +30,7 @@ type
     function RunTest(const APagePath: string; const AFormat: string = 'junit'): RawUtf8;
     function GetTestResult(const APagePath, AResultDate: string): RawUtf8;
     function GetPageContent(const APagePath: string): RawUtf8;
-    function ListPages(const AParentPath: string): RawUtf8;
+    function ListPages(const AParentPath: string; ARecursive: Boolean = False): RawUtf8;
     function CheckIfRunning: Boolean;
   end;
 
@@ -146,75 +146,86 @@ begin
   end;
 end;
 
-function TFitNesseClient.ListPages(const AParentPath: string): RawUtf8;
+function TFitNesseClient.ListPages(const AParentPath: string; ARecursive: Boolean = False): RawUtf8;
 var
-  LRoot, LSearchPath: string;
-  LDirs: TArray<string>;
-  LWikiFiles: TArray<string>;
-  LDir, LName, LWikiFile: string;
+  LRoot, LStartPath: string;
   LRes: Variant;
-  LPageType: string;
-  LPropsPath: string;
-  LPropsXml: string;
-  LProcessed: TStringList;
+
+  procedure DoList(const ACurrentPath, ACurrentWikiPath: string);
+  var
+    LDirs, LWikiFiles: TArray<string>;
+    LDir, LName, LWikiFile: string;
+    LPageType, LNewWikiPath: string;
+    LProcessed: TStringList;
+  begin
+    if not DirectoryExists(ACurrentPath) then Exit;
+
+    LProcessed := TStringList.Create;
+    try
+      LProcessed.CaseSensitive := False;
+
+      LDirs := TDirectory.GetDirectories(ACurrentPath);
+      for LDir in LDirs do
+      begin
+        LName := TPath.GetFileName(LDir);
+        if LName.StartsWith('.') or LName.StartsWith('files') then Continue;
+        
+        if ACurrentWikiPath = '' then
+           LNewWikiPath := LName
+        else
+           LNewWikiPath := ACurrentWikiPath + '.' + LName;
+
+        if FileExists(TPath.Combine(LDir, 'content.txt')) or FileExists(TPath.Combine(LDir, '_root.wiki')) then
+        begin
+          LPageType := GetPageType(LNewWikiPath);
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType), 'path', StringToUtf8(LNewWikiPath)]));
+          LProcessed.Add(LName);
+          
+          if ARecursive then
+            DoList(LDir, LNewWikiPath);
+        end
+        else if ARecursive then
+        begin
+           // Recurse even if not a page (might contain pages)
+           DoList(LDir, LNewWikiPath);
+        end;
+      end;
+
+      LWikiFiles := TDirectory.GetFiles(ACurrentPath, '*.wiki');
+      for LWikiFile in LWikiFiles do
+      begin
+        LName := TPath.GetFileNameWithoutExtension(LWikiFile);
+        if LName.StartsWith('_') then Continue;
+        
+        if LProcessed.IndexOf(LName) < 0 then
+        begin
+          if ACurrentWikiPath = '' then
+             LNewWikiPath := LName
+          else
+             LNewWikiPath := ACurrentWikiPath + '.' + LName;
+             
+          LPageType := GetPageType(LNewWikiPath);
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType), 'path', StringToUtf8(LNewWikiPath)]));
+        end;
+      end;
+    finally
+      LProcessed.Free;
+    end;
+  end;
+
 begin
   LRoot := GetFitNesseRoot;
   if AParentPath = '' then
-    LSearchPath := LRoot
+    LStartPath := LRoot
   else
-    LSearchPath := TPath.Combine(LRoot, StringReplace(AParentPath, '.', '\', [rfReplaceAll]));
+    LStartPath := TPath.Combine(LRoot, StringReplace(AParentPath, '.', '\', [rfReplaceAll]));
   
   TDocVariant.New(LRes);
   LRes.path := StringToUtf8(AParentPath);
   LRes.pages := _Arr([]);
 
-  LProcessed := TStringList.Create;
-  LProcessed.CaseSensitive := False;
-  try
-    if DirectoryExists(LSearchPath) then
-    begin
-      LDirs := TDirectory.GetDirectories(LSearchPath);
-      Log('Found ' + IntToStr(Length(LDirs)) + ' directories in ' + LSearchPath);
-      for LDir in LDirs do
-      begin
-        LName := TPath.GetFileName(LDir);
-        Log('Checking directory: ' + LName);
-        if LName.StartsWith('.') or LName.StartsWith('files') then Continue;
-        
-        if FileExists(TPath.Combine(LDir, 'content.txt')) or FileExists(TPath.Combine(LDir, '_root.wiki')) then
-        begin
-          LPageType := GetPageType(AParentPath + '.' + LName);
-          // Fix: If AParentPath is empty, don't add dot
-          if AParentPath = '' then
-             LPageType := GetPageType(LName)
-          else
-             LPageType := GetPageType(AParentPath + '.' + LName);
-
-          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType)]));
-          LProcessed.Add(LName);
-        end;
-      end;
-
-      LWikiFiles := TDirectory.GetFiles(LSearchPath, '*.wiki');
-      for LWikiFile in LWikiFiles do
-      begin
-        LName := TPath.GetFileNameWithoutExtension(LWikiFile);
-        if LName.StartsWith('_') then Continue; // Skip _root.wiki
-        
-        if LProcessed.IndexOf(LName) < 0 then
-        begin
-          if AParentPath = '' then
-             LPageType := GetPageType(LName)
-          else
-             LPageType := GetPageType(AParentPath + '.' + LName);
-             
-          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType)]));
-        end;
-      end;
-    end;
-  finally
-    LProcessed.Free;
-  end;
+  DoList(LStartPath, AParentPath);
+  
   Result := _Json(LRes);
 end;
 
