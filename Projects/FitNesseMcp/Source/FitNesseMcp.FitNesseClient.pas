@@ -65,7 +65,6 @@ var
   LClient: THTTPClient;
   LUrl: string;
 begin
-  Result := False;
   LUrl := GetBaseUrl + '/root';
   LClient := THTTPClient.Create;
   try

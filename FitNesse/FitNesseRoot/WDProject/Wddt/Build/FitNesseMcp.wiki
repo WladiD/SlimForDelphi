@@ -1,0 +1,12 @@
+---
+Test
+---
+!3 !-FitNesseMcp-! Build Verification
+
+!4 Build !-FitNesseMcp-! (Force Build)
+
+|script|!-SlimProxy.Process-!                                                 |
+|run   |cmd.exe /c ${PROJECT_ROOT}\Projects\FitNesseMcp\_FitNesseMcp.Build.bat|
+|check |last exit code                    |0                                  |
+|show  |last output                                                           |
+|ensure|output contains                   |Build successful                   |

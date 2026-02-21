@@ -1,0 +1,11 @@
+---
+Test
+---
+!3 !-FitNesseMcp-! Unit Tests
+
+|script|!-SlimProxy.Process-!                                                                            |
+|ensure|run            |cmd.exe /c ${PROJECT_ROOT}\Projects\FitNesseMcp\_FitNesseMcp.BuildAndRunTests.bat|
+|ensure|output contains|Build successful                                                                 |
+|ensure|output contains|Tests werden gestartet                                                           |
+|ensure|output contains|Fehlgeschlagene Tests: 0                                                         |
+|show  |last output                                                                                      |
