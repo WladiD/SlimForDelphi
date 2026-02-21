@@ -3,17 +3,22 @@
 interface
 
 uses
-  System.SysUtils,
-  System.Classes,
-  System.Net.HttpClient,
-  System.IOUtils,
-  System.Types,
-  Winapi.Windows,
+
   mormot.core.base,
-  mormot.core.unicode,
-  mormot.core.json,
   mormot.core.data,
+  mormot.core.json,
+  mormot.core.text,
+  mormot.core.unicode,
   mormot.core.variants,
+
+  Winapi.Windows,
+
+  System.Classes,
+  System.IOUtils,
+  System.Net.HttpClient,
+  System.SysUtils,
+  System.Types,
+
   FitNesseMcp.Config;
 
 type
@@ -214,7 +219,7 @@ begin
 
   DoList(LStartPath, AParentPath);
   
-  Result := _Json(LRes);
+  Result := VariantToUtf8(_Json(VariantToUtf8(LRes)));
 end;
 
 function TFitNesseClient.GetPageContent(const APagePath: string): RawUtf8;
@@ -242,7 +247,7 @@ end;
 
 function TFitNesseClient.GetPageType(const APagePath: string): string;
 var
-  LRoot, LPath, LFilePath, LContent: string;
+  LRoot, LPath, LFilePath: string;
   LIsSuite, LIsTest: Boolean;
   
   procedure CheckContent(const AContent: string);

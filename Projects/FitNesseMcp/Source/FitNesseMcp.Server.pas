@@ -5,6 +5,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Variants,
   mormot.core.base,
   mormot.core.unicode,
   mormot.core.json,
@@ -22,7 +23,7 @@ type
     FIsRunning: Boolean;
     procedure Log(const AMsg: string);
     procedure HandleRequest(const AJson: RawUtf8);
-    procedure SendResponse(const AResponse: RawUtf8);
+    procedure SendResponse(const AResponse: String);
     procedure SendError(const AId: Variant; ACode: Integer; const AMessage: string);
     
     // MCP Handlers
@@ -118,10 +119,10 @@ begin
   end;
 end;
 
-procedure TFitNesseMcpServer.SendResponse(const AResponse: RawUtf8);
+procedure TFitNesseMcpServer.SendResponse(const AResponse: String);
 begin
-  Log('<< ' + Utf8ToString(AResponse));
-  Writeln(Utf8ToString(AResponse));
+  Log('<< ' + AResponse);
+  Writeln(AResponse);
   Flush(Output);
 end;
 
@@ -133,7 +134,7 @@ begin
   LRes.jsonrpc := '2.0';
   LRes.id := AId;
   LRes.error := _Obj(['code', ACode, 'message', AMessage]);
-  SendResponse(_Json(LRes));
+  SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
 end;
 
 procedure TFitNesseMcpServer.HandleInitialize(const AId: Variant; const AParams: Variant);
@@ -154,7 +155,7 @@ begin
       'version', '1.0.0'
     ])
   ]);
-  SendResponse(_Json(LRes));
+  SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
 end;
 
 procedure TFitNesseMcpServer.HandleListTools(const AId: Variant);
@@ -239,7 +240,7 @@ begin
       ])
     ])
   ]);
-  SendResponse(_Json(LRes));
+  SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
 end;
 
 procedure TFitNesseMcpServer.HandleCallTool(const AId: Variant; const AParams: Variant);
@@ -260,7 +261,7 @@ begin
   try
     if LNeedsInstance then
     begin
-      LInstanceName := AParams.arguments.instance;
+      LInstanceName := VarToStr(AParams.arguments.instance);
       if not FConfig.GetInstanceByName(LInstanceName, LInstance) then
       begin
         Log('Error: Instance not found: ' + LInstanceName);
@@ -272,20 +273,20 @@ begin
 
     if LToolName = 'run_test' then
     begin
-      LPagePath := AParams.arguments.pagePath;
+      LPagePath := VarToStr(AParams.arguments.pagePath);
       if AParams.arguments.Exists('format') then
-        LResult := LClient.RunTest(LPagePath, AParams.arguments.format)
+        LResult := LClient.RunTest(LPagePath, VarToStr(AParams.arguments.format))
       else
         LResult := LClient.RunTest(LPagePath, 'junit');
     end
     else if LToolName = 'get_test_result' then
     begin
-      LPagePath := AParams.arguments.pagePath;
-      LResult := LClient.GetTestResult(LPagePath, AParams.arguments.resultDate);
+      LPagePath := VarToStr(AParams.arguments.pagePath);
+      LResult := LClient.GetTestResult(LPagePath, VarToStr(AParams.arguments.resultDate));
     end
     else if LToolName = 'get_page_content' then
     begin
-      LPagePath := AParams.arguments.pagePath;
+      LPagePath := VarToStr(AParams.arguments.pagePath);
       LResult := LClient.GetPageContent(LPagePath);
     end
     else if LToolName = 'start_instance' then
@@ -297,9 +298,9 @@ begin
     end
     else if LToolName = 'list_pages' then
     begin
-      LPagePath := AParams.arguments.pagePath;
+      LPagePath := VarToStr(AParams.arguments.pagePath);
       if AParams.arguments.Exists('recursive') then
-        LResult := LClient.ListPages(LPagePath, AParams.arguments.recursive)
+        LResult := LClient.ListPages(LPagePath, Boolean(AParams.arguments.recursive))
       else
         LResult := LClient.ListPages(LPagePath, False);
     end
@@ -341,7 +342,7 @@ begin
         _Obj(['type', 'text', 'text', Utf8ToString(LResult)])
       ])
     ]);
-    SendResponse(_Json(LRes));
+    SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
   finally
     LClient.Free;
   end;
@@ -355,7 +356,7 @@ begin
   LRes.jsonrpc := '2.0';
   LRes.id := AId;
   LRes.result := _Obj(['resources', _Arr([])]);
-  SendResponse(_Json(LRes));
+  SendResponse(VariantToString(_Json(VariantToUtf8(LRes))));
 end;
 
 procedure TFitNesseMcpServer.HandleReadResource(const AId: Variant; const AParams: Variant);

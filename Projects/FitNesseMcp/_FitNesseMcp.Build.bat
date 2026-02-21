@@ -9,12 +9,6 @@ if not "%~1"=="" set "BUILD_CONFIG=%~1"
 
 echo.
 echo ------------------------------------------
-echo  Stopping FitNesseMcp if running
-echo ------------------------------------------
-taskkill /F /IM FitNesseMcp.exe /T > nul 2>&1
-
-echo.
-echo ------------------------------------------
 echo  Building FitNesseMcp using DPT
 echo ------------------------------------------
 echo.
