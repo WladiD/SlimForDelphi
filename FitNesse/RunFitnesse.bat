@@ -25,8 +25,17 @@ REM End Write of FitNesseRoot\Vars.wiki
 REM =================================================================
 
 set "JAVA_OPTS="
-if "%~1"=="-debug" (
-    set "JAVA_OPTS=-Dslim.port=9000 -Dslim.pool.size=1 "
-)
+set "ARGS="
 
-java %JAVA_OPTS%-jar fitnesse-standalone.jar
+:PARSE_ARGS
+if "%~1"=="" goto START_FITNESSE
+if /i "%~1"=="-debug" (
+    set "JAVA_OPTS=-Dslim.port=9000 -Dslim.pool.size=1 "
+) else (
+    set "ARGS=%ARGS% %1"
+)
+shift
+goto PARSE_ARGS
+
+:START_FITNESSE
+java %JAVA_OPTS%-jar fitnesse-standalone.jar %ARGS%

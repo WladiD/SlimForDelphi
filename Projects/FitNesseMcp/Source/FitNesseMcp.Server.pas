@@ -111,7 +111,9 @@ begin
     on E: Exception do
     begin
       Log('EXCEPTION in HandleRequest: ' + E.Message);
-      SendError(Null, -32603, 'Internal error: ' + E.Message);
+      if VarIsEmptyOrNull(LId) then
+        LId := Null;
+      SendError(LId, -32603, 'Internal error: ' + E.Message);
     end;
   end;
 end;
@@ -166,14 +168,28 @@ begin
     'tools', _Arr([
       _Obj([
         'name', 'run_test',
-        'description', 'Runs a FitNesse test or suite and returns the result in XML format.',
+        'description', 'Executes a FitNesse test or suite. Returns a compact JUnit XML report by default. Use ''xml'' format for full details or inspect historical results via ''get_test_result'' using the timestamp from the output.',
         'inputSchema', _Obj([
           'type', 'object',
           'properties', _Obj([
             'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
-            'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the test page or suite'])
+            'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the test page or suite']),
+            'format', _Obj(['type', 'string', 'description', 'Output format: "junit" (default, compact summary) or "xml" (verbose details).', 'default', 'junit'])
           ]),
           'required', _Arr(['instance', 'pagePath'])
+        ])
+      ]),
+      _Obj([
+        'name', 'get_test_result',
+        'description', 'Retrieves the full execution log (verbose XML) for a specific past test run. Use the timestamp found in the ''run_test'' output.',
+        'inputSchema', _Obj([
+          'type', 'object',
+          'properties', _Obj([
+            'instance', _Obj(['type', 'string', 'description', 'Name of the FitNesse instance']),
+            'pagePath', _Obj(['type', 'string', 'description', 'Wiki path of the test page or suite']),
+            'resultDate', _Obj(['type', 'string', 'description', 'Timestamp of the result (YYYYMMDDHHMMSS)'])
+          ]),
+          'required', _Arr(['instance', 'pagePath', 'resultDate'])
         ])
       ]),
       _Obj([
@@ -256,7 +272,15 @@ begin
     if LToolName = 'run_test' then
     begin
       LPagePath := AParams.arguments.pagePath;
-      LResult := LClient.RunTest(LPagePath);
+      if AParams.arguments.Exists('format') then
+        LResult := LClient.RunTest(LPagePath, AParams.arguments.format)
+      else
+        LResult := LClient.RunTest(LPagePath, 'junit');
+    end
+    else if LToolName = 'get_test_result' then
+    begin
+      LPagePath := AParams.arguments.pagePath;
+      LResult := LClient.GetTestResult(LPagePath, AParams.arguments.resultDate);
     end
     else if LToolName = 'get_page_content' then
     begin

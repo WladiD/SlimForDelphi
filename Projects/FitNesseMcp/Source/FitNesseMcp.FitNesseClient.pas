@@ -4,6 +4,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Classes,
   System.Net.HttpClient,
   System.IOUtils,
   System.Types,
@@ -26,7 +27,8 @@ type
   public
     constructor Create(const AInstance: TFitNesseInstance);
     function StartInstance: Boolean;
-    function RunTest(const APagePath: string): RawUtf8;
+    function RunTest(const APagePath: string; const AFormat: string = 'junit'): RawUtf8;
+    function GetTestResult(const APagePath, AResultDate: string): RawUtf8;
     function GetPageContent(const APagePath: string): RawUtf8;
     function ListPages(const AParentPath: string): RawUtf8;
     function CheckIfRunning: Boolean;
@@ -105,6 +107,13 @@ begin
   begin
     Log('Using configured start command...');
     LCommandLine := FInstance.startCmdLine;
+    
+    if (Pos('cmd', LowerCase(LCommandLine)) <> 1) and 
+       ((Pos('.bat', LowerCase(LCommandLine)) > 0) or (Pos('.cmd', LowerCase(LCommandLine)) > 0)) then
+    begin
+       LCommandLine := 'cmd /c ' + LCommandLine;
+       Log('Prepended cmd /c to batch file command.');
+    end;
   end
   else
   begin
@@ -141,35 +150,70 @@ function TFitNesseClient.ListPages(const AParentPath: string): RawUtf8;
 var
   LRoot, LSearchPath: string;
   LDirs: TArray<string>;
-  LDir, LName: string;
+  LWikiFiles: TArray<string>;
+  LDir, LName, LWikiFile: string;
   LRes: Variant;
   LPageType: string;
   LPropsPath: string;
   LPropsXml: string;
+  LProcessed: TStringList;
 begin
   LRoot := GetFitNesseRoot;
-  LSearchPath := TPath.Combine(LRoot, StringReplace(AParentPath, '.', '\', [rfReplaceAll]));
+  if AParentPath = '' then
+    LSearchPath := LRoot
+  else
+    LSearchPath := TPath.Combine(LRoot, StringReplace(AParentPath, '.', '\', [rfReplaceAll]));
   
   TDocVariant.New(LRes);
   LRes.path := StringToUtf8(AParentPath);
   LRes.pages := _Arr([]);
 
-  if DirectoryExists(LSearchPath) then
-  begin
-    LDirs := TDirectory.GetDirectories(LSearchPath);
-    Log('Found ' + IntToStr(Length(LDirs)) + ' directories in ' + LSearchPath);
-    for LDir in LDirs do
+  LProcessed := TStringList.Create;
+  LProcessed.CaseSensitive := False;
+  try
+    if DirectoryExists(LSearchPath) then
     begin
-      LName := TPath.GetFileName(LDir);
-      Log('Checking directory: ' + LName);
-      if LName.StartsWith('.') or LName.StartsWith('files') then Continue;
-      
-      if FileExists(TPath.Combine(LDir, 'content.txt')) or FileExists(TPath.Combine(LDir, '_root.wiki')) then
+      LDirs := TDirectory.GetDirectories(LSearchPath);
+      Log('Found ' + IntToStr(Length(LDirs)) + ' directories in ' + LSearchPath);
+      for LDir in LDirs do
       begin
-        LPageType := GetPageType(AParentPath + '.' + LName);
-        LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType)]));
+        LName := TPath.GetFileName(LDir);
+        Log('Checking directory: ' + LName);
+        if LName.StartsWith('.') or LName.StartsWith('files') then Continue;
+        
+        if FileExists(TPath.Combine(LDir, 'content.txt')) or FileExists(TPath.Combine(LDir, '_root.wiki')) then
+        begin
+          LPageType := GetPageType(AParentPath + '.' + LName);
+          // Fix: If AParentPath is empty, don't add dot
+          if AParentPath = '' then
+             LPageType := GetPageType(LName)
+          else
+             LPageType := GetPageType(AParentPath + '.' + LName);
+
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType)]));
+          LProcessed.Add(LName);
+        end;
+      end;
+
+      LWikiFiles := TDirectory.GetFiles(LSearchPath, '*.wiki');
+      for LWikiFile in LWikiFiles do
+      begin
+        LName := TPath.GetFileNameWithoutExtension(LWikiFile);
+        if LName.StartsWith('_') then Continue; // Skip _root.wiki
+        
+        if LProcessed.IndexOf(LName) < 0 then
+        begin
+          if AParentPath = '' then
+             LPageType := GetPageType(LName)
+          else
+             LPageType := GetPageType(AParentPath + '.' + LName);
+             
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType)]));
+        end;
       end;
     end;
+  finally
+    LProcessed.Free;
   end;
   Result := _Json(LRes);
 end;
@@ -182,7 +226,16 @@ begin
   LUrl := Format('%s/%s?responder=edit', [GetBaseUrl, APagePath]);
   LClient := THTTPClient.Create;
   try
-    Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
+    LClient.ConnectionTimeout := 2000;
+    try
+      Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
+    except
+      on E: Exception do
+      begin
+        Log('Error getting page content: ' + E.Message);
+        Result := StringToUtf8('Error: FitNesse unreachable: ' + E.Message);
+      end;
+    end;
   finally
     LClient.Free;
   end;
@@ -191,39 +244,66 @@ end;
 function TFitNesseClient.GetPageType(const APagePath: string): string;
 var
   LRoot, LPath, LFilePath, LContent: string;
+  LIsSuite, LIsTest: Boolean;
+  
+  procedure CheckContent(const AContent: string);
+  begin
+    if (Pos('<Suite/>', AContent) > 0) or (Pos('<Suite />', AContent) > 0) or
+       (Pos('---'#10'Suite'#10'---', StringReplace(AContent, #13#10, #10, [rfReplaceAll])) > 0) then
+      LIsSuite := True;
+      
+    if (Pos('<Test/>', AContent) > 0) or (Pos('<Test />', AContent) > 0) or
+       (Pos('---'#10'Test'#10'---', StringReplace(AContent, #13#10, #10, [rfReplaceAll])) > 0) then
+      LIsTest := True;
+  end;
+
 begin
   Result := 'Test'; // Default
   LRoot := GetFitNesseRoot;
   LPath := TPath.Combine(LRoot, StringReplace(APagePath, '.', '\', [rfReplaceAll]));
+  
+  LIsSuite := False;
+  LIsTest := False;
 
   if DirectoryExists(LPath) then
   begin
     // Check properties.xml
     LFilePath := TPath.Combine(LPath, 'properties.xml');
     if FileExists(LFilePath) then
-    begin
-      LContent := TFile.ReadAllText(LFilePath);
-      if (Pos('<Suite/>', LContent) > 0) or (Pos('<Suite />', LContent) > 0) then
-        Exit('Suite');
-      if (Pos('<Test/>', LContent) > 0) or (Pos('<Test />', LContent) > 0) then
-        Exit('Test');
-    end;
+      CheckContent(TFile.ReadAllText(LFilePath));
 
     // Check _root.wiki frontmatter
     LFilePath := TPath.Combine(LPath, '_root.wiki');
     if FileExists(LFilePath) then
-    begin
-      LContent := TFile.ReadAllText(LFilePath);
-      LContent := StringReplace(LContent, #13#10, #10, [rfReplaceAll]);
-      if Pos('---'#10'Suite'#10'---', LContent) > 0 then
-        Exit('Suite');
-      if Pos('---'#10'Test'#10'---', LContent) > 0 then
-        Exit('Test');
-    end;
+      CheckContent(TFile.ReadAllText(LFilePath));
   end;
+  
+  // Check .wiki file
+  if FileExists(LPath + '.wiki') then
+     CheckContent(TFile.ReadAllText(LPath + '.wiki'));
+
+  if LIsSuite then Result := 'Suite'
+  else if LIsTest then Result := 'Test'
+  else Result := 'Static'; // Assuming static if not explicitly defined
 end;
 
-function TFitNesseClient.RunTest(const APagePath: string): RawUtf8;
+function TFitNesseClient.GetTestResult(const APagePath, AResultDate: string): RawUtf8;
+var
+  LHistoryDir: string;
+  LFiles: TArray<string>;
+begin
+  LHistoryDir := TPath.Combine(GetFitNesseRoot, 'files\testResults\' + APagePath);
+  if not DirectoryExists(LHistoryDir) then
+    Exit(StringToUtf8('Error: History directory not found: ' + LHistoryDir));
+
+  LFiles := TDirectory.GetFiles(LHistoryDir, AResultDate + '*.xml');
+  if Length(LFiles) = 0 then
+    Exit(StringToUtf8('Error: No result file found for date ' + AResultDate + ' in ' + LHistoryDir));
+  
+  Result := StringToUtf8(TFile.ReadAllText(LFiles[0]));
+end;
+
+function TFitNesseClient.RunTest(const APagePath: string; const AFormat: string = 'junit'): RawUtf8;
 var
   LClient: THTTPClient;
   LUrl: string;
@@ -234,11 +314,20 @@ begin
   else
     LResponder := 'test';
 
-  Log('Running ' + LResponder + ': ' + APagePath);
-  LUrl := Format('%s/%s?responder=%s&format=xml', [GetBaseUrl, APagePath, LResponder]);
+  Log('Running ' + LResponder + ': ' + APagePath + ' (' + AFormat + ')');
+  LUrl := Format('%s/%s?responder=%s&format=%s', [GetBaseUrl, APagePath, LResponder, AFormat]);
   LClient := THTTPClient.Create;
   try
-    Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
+    LClient.ConnectionTimeout := 2000;
+    try
+      Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
+    except
+      on E: Exception do
+      begin
+        Log('Error executing test: ' + E.Message);
+        Result := StringToUtf8(Format('<testResults><error>FitNesse unreachable: %s</error></testResults>', [E.Message]));
+      end;
+    end;
   finally
     LClient.Free;
   end;
