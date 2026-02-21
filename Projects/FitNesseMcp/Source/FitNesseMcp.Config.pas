@@ -17,8 +17,9 @@ type
     name: string;
     baseUrl: string;
     rootPath: string;
+    fitnesseRoot: string;
     port: Integer;
-    jarPath: string;
+    startCmdLine: string;
     isRunning: Boolean;
   end;
 

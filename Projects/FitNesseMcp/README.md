@@ -14,15 +14,19 @@ Configuration is handled via the `fitnesse-config.json` file located in the same
     {
       "name": "LocalDev",
       "rootPath": "C:/Projects/MyProject/FitNesse",
-      "port": 9001,
-      "jarPath": "C:/Projects/MyProject/FitNesse/fitnesse-standalone.jar"
+      "port": 9001
+    },
+    {
+      "name": "CustomStart",
+      "rootPath": "C:/Projects/OtherProject",
+      "port": 9002,
+      "startCmdLine": "java -jar fitnesse-standalone.jar -p 9002 -e 0"
     },
     {
       "name": "RemoteServer",
       "baseUrl": "http://testserver:8080",
       "rootPath": "\\\\testserver\\share\\FitNesse",
-      "port": 8080,
-      "jarPath": "" 
+      "port": 8080
     }
   ]
 }
@@ -33,7 +37,9 @@ Configuration is handled via the `fitnesse-config.json` file located in the same
 *   **name**: Unique name of the instance (used for selection in the MCP client).
 *   **rootPath**: Path to the directory containing the `FitNesseRoot` folder.
 *   **port**: The port on which FitNesse is running (or should be started).
-*   **jarPath**: Absolute path to the `fitnesse-standalone.jar`. Required to start the instance via the MCP server.
+*   **fitnesseRoot** (Optional): The name of the FitNesse root directory (e.g. `MyWiki`). If not specified, `FitNesseRoot` is used by default.
+*   **startCmdLine** (Optional): The full command line to start the FitNesse instance (e.g. `java -jar my-fitnesse.jar -p 8080`).
+    *   If **not** specified, the server attempts to launch `java -jar fitnesse-standalone.jar -p <port> -e 0` in the `rootPath`.
 *   **baseUrl** (Optional): The full base URL of the FitNesse instance (e.g., `http://myserver:8080` or `https://secure.example.com`).
     *   If **not** specified, `http://localhost:<port>` is used by default.
     *   Useful for instances on other machines or behind HTTPS/proxies.

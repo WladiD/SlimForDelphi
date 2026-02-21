@@ -82,8 +82,13 @@ begin
 end;
 
 function TFitNesseClient.GetFitNesseRoot: string;
+var
+  LRootName: string;
 begin
-  Result := TPath.Combine(FInstance.rootPath, 'FitNesseRoot');
+  LRootName := FInstance.fitnesseRoot;
+  if LRootName = '' then
+    LRootName := 'FitNesseRoot';
+  Result := TPath.Combine(FInstance.rootPath, LRootName);
 end;
 
 function TFitNesseClient.StartInstance: Boolean;
@@ -94,15 +99,32 @@ var
   LCurrentDir: string;
   LJarPath: string;
 begin
-  LJarPath := StringReplace(FInstance.jarPath, '/', '\', [rfReplaceAll]);
   LCurrentDir := StringReplace(FInstance.rootPath, '/', '\', [rfReplaceAll]);
 
-  Log('Preparing to start FitNesse...');
-  if not FileExists(LJarPath) then begin Log('ERROR: JAR not found: ' + LJarPath); Exit(False); end;
+  if FInstance.startCmdLine <> '' then
+  begin
+    Log('Using configured start command...');
+    LCommandLine := FInstance.startCmdLine;
+  end
+  else
+  begin
+    Log('Preparing to start FitNesse (Default mode)...');
+    LJarPath := TPath.Combine(LCurrentDir, 'fitnesse-standalone.jar');
+    
+    if not FileExists(LJarPath) then 
+    begin 
+      Log('ERROR: JAR not found in rootPath: ' + LJarPath); 
+      Exit(False); 
+    end;
+
+    LCommandLine := Format('java -jar "fitnesse-standalone.jar" -p %d -e 0', [FInstance.port]);
+    
+    if FInstance.fitnesseRoot <> '' then
+      LCommandLine := LCommandLine + ' -r "' + FInstance.fitnesseRoot + '"';
+  end;
 
   FillChar(LStartupInfo, SizeOf(LStartupInfo), 0);
   LStartupInfo.cb := SizeOf(LStartupInfo);
-  LCommandLine := Format('java -jar "%s" -p %d -e 0', [LJarPath, FInstance.port]);
 
   Result := CreateProcess(nil, PChar(LCommandLine), nil, nil, False,
     CREATE_NO_WINDOW or CREATE_BREAKAWAY_FROM_JOB, nil, PChar(LCurrentDir), LStartupInfo, LProcessInfo);
