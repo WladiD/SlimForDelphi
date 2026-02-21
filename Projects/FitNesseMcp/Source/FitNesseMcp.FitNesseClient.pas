@@ -22,13 +22,15 @@ uses
   FitNesseMcp.Config;
 
 type
+  TFitNessePageType = (ptStatic, ptTest, ptSuite);
+
   TFitNesseClient = class
   private
     FInstance: TFitNesseInstance;
     procedure Log(const AMsg: string);
     function GetFitNesseRoot: string;
     function GetBaseUrl: string;
-    function GetPageType(const APagePath: string): string;
+    function GetPageType(const APagePath: string): TFitNessePageType;
   public
     constructor Create(const AInstance: TFitNesseInstance);
     function StartInstance: Boolean;
@@ -37,6 +39,7 @@ type
     function GetPageContent(const APagePath: string): RawUtf8;
     function ListPages(const AParentPath: string; ARecursive: Boolean = False): RawUtf8;
     function CheckIfRunning: Boolean;
+    class function PageTypeToString(APageType: TFitNessePageType): string;
   end;
 
 implementation
@@ -147,7 +150,8 @@ var
   var
     LDirs, LWikiFiles: TArray<string>;
     LDir, LName, LWikiFile: string;
-    LPageType, LNewWikiPath: string;
+    LNewWikiPath: string;
+    LPageTypeEnum: TFitNessePageType;
     LProcessed: TStringList;
   begin
     if not DirectoryExists(ACurrentPath) then Exit;
@@ -169,8 +173,8 @@ var
 
         if FileExists(TPath.Combine(LDir, 'content.txt')) or FileExists(TPath.Combine(LDir, '_root.wiki')) then
         begin
-          LPageType := GetPageType(LNewWikiPath);
-          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType), 'path', StringToUtf8(LNewWikiPath)]));
+          LPageTypeEnum := GetPageType(LNewWikiPath);
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(PageTypeToString(LPageTypeEnum)), 'path', StringToUtf8(LNewWikiPath)]));
           LProcessed.Add(LName);
           
           if ARecursive then
@@ -196,8 +200,8 @@ var
           else
              LNewWikiPath := ACurrentWikiPath + '.' + LName;
              
-          LPageType := GetPageType(LNewWikiPath);
-          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(LPageType), 'path', StringToUtf8(LNewWikiPath)]));
+          LPageTypeEnum := GetPageType(LNewWikiPath);
+          LRes.pages.Add(_Obj(['name', StringToUtf8(LName), 'type', StringToUtf8(PageTypeToString(LPageTypeEnum)), 'path', StringToUtf8(LNewWikiPath)]));
         end;
       end;
     finally
@@ -223,11 +227,10 @@ end;
 
 function TFitNesseClient.GetPageContent(const APagePath: string): RawUtf8;
 var
-  LRoot, LPath, LFilePath, LContent: string;
+  LPath, LFilePath, LContent: string;
   LRes: Variant;
 begin
-  LRoot := GetFitNesseRoot;
-  LPath := TPath.Combine(LRoot, StringReplace(APagePath, '.', '\', [rfReplaceAll]));
+  LPath := TPath.Combine(GetFitNesseRoot, StringReplace(APagePath, '.', '\', [rfReplaceAll]));
   LFilePath := '';
 
   // 1. Check directory for content.txt or _root.wiki
@@ -260,7 +263,18 @@ begin
   Result := VariantToUtf8(_Json(VariantToUtf8(LRes)));
 end;
 
-function TFitNesseClient.GetPageType(const APagePath: string): string;
+class function TFitNesseClient.PageTypeToString(APageType: TFitNessePageType): string;
+begin
+  case APageType of
+    ptStatic: Result := 'Static';
+    ptTest:   Result := 'Test';
+    ptSuite:  Result := 'Suite';
+  else
+    Result := 'Static';
+  end;
+end;
+
+function TFitNesseClient.GetPageType(const APagePath: string): TFitNessePageType;
 var
   LRoot, LPath, LFilePath: string;
   LIsSuite, LIsTest: Boolean;
@@ -277,7 +291,6 @@ var
   end;
 
 begin
-  Result := 'Test'; // Default
   LRoot := GetFitNesseRoot;
   LPath := TPath.Combine(LRoot, StringReplace(APagePath, '.', '\', [rfReplaceAll]));
   
@@ -301,9 +314,9 @@ begin
   if FileExists(LPath + '.wiki') then
      CheckContent(TFile.ReadAllText(LPath + '.wiki'));
 
-  if LIsSuite then Result := 'Suite'
-  else if LIsTest then Result := 'Test'
-  else Result := 'Static'; // Assuming static if not explicitly defined
+  if LIsSuite then Result := ptSuite
+  else if LIsTest then Result := ptTest
+  else Result := ptStatic; 
 end;
 
 function TFitNesseClient.GetTestResult(const APagePath, AResultDate: string): RawUtf8;
@@ -328,7 +341,7 @@ var
   LUrl: string;
   LResponder: string;
 begin
-  if GetPageType(APagePath) = 'Suite' then
+  if GetPageType(APagePath) = ptSuite then
     LResponder := 'suite'
   else
     LResponder := 'test';

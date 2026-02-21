@@ -273,9 +273,9 @@ var
 begin
   LRes := _Json(AClient.GetPageContent(VarToStr(AArgs.pagePath)));
   if LRes.Exists('error') then
-    Result := LRes.error
+    Result := VariantToUtf8(LRes.error)
   else
-    Result := 'File: ' + LRes.filePath + #13#10 + '---' + #13#10 + LRes.content;
+    Result := 'File: ' + VariantToUtf8(LRes.filePath) + StringToUtf8(#13#10'---'#13#10) + VariantToUtf8(LRes.content);
 end;
 
 function TFitNesseMcpServer.DoStartInstance(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
