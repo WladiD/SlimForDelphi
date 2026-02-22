@@ -54,19 +54,21 @@ window.addEventListener('load', function() {
            // We use a wrapper to toggle between preview and full content
            td.innerHTML = '<div class="long-content-wrapper">' + 
                           '<div class="preview" style="' + style + '">' + 
-                          previewText + '... <a href="javascript:void(0)" class="show-more-link" style="color:#007bff;">[Show Full Output]</a></div>' + 
-                          '<div class="full-content" style="display:none; ' + style + '">' + fullHtml + '</div>' + 
+                          previewText + '... <a href="javascript:void(0)" class="toggle-link expand" style="color:#007bff;">[Show More]</a></div>' + 
+                          '<div class="full-content" style="display:none; ' + style + '">' + 
+                          fullHtml + 
+                          ' <a href="javascript:void(0)" class="toggle-link collapse" style="color:#007bff;">[Show Less]</a></div>' + 
                           '</div>';
            
-           // Bind click event
-           var link = td.querySelector('.show-more-link');
-           if (link) {
-             link.onclick = function() {
-               var wrapper = this.closest('.long-content-wrapper');
-               wrapper.querySelector('.preview').style.display = 'none';
-               wrapper.querySelector('.full-content').style.display = 'block';
-             };
-           }
+           // Bind click event for both links
+           var wrapper = td.querySelector('.long-content-wrapper');
+           wrapper.querySelectorAll('.toggle-link').forEach(function(link) {
+               link.onclick = function() {
+                   var isExpand = this.classList.contains('expand');
+                   wrapper.querySelector('.preview').style.display = isExpand ? 'none' : 'block';
+                   wrapper.querySelector('.full-content').style.display = isExpand ? 'block' : 'none';
+               };
+           });
         }
       });
     });
