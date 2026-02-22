@@ -1,1 +1,29 @@
 #page header
+!-
+<script>
+window.addEventListener('load', function() {
+  try {
+    document.querySelectorAll('td').forEach(function(td) {
+      var html = td.innerHTML.trim();
+      // Matches Slim symbol assignment ($Var<-[...]) and output ($Var->[...])
+      // Handles both HTML encoded arrows (&lt;- / -&gt;) and raw arrows (<- / ->)
+      var match = html.match(/^(\$\w+)\s*(&lt;-|<-|-&gt;|->)\s*\[([\s\S]*)\]$/);
+      if (match) {
+        var sym = match[1];
+        var arrow = match[2].replace('&lt;', '<').replace('&gt;', '>');
+        var content = match[3];
+        
+        if (content.length > 50) {
+           td.innerHTML = '<details><summary style="cursor:pointer;color:#007bff">' + 
+                          sym + ' ' + arrow + ' (Show Value)</summary>' +
+                          '<div style="max-height:300px;overflow:auto;background:#f8f9fa;border:1px solid #ddd;padding:5px;white-space:pre-wrap;font-family:monospace;">' + 
+                          content + '</div></details>';
+        }
+      }
+    });
+  } catch (e) {
+    console.error("FitNesse Symbol Collapser Error:", e);
+  }
+});
+</script>
+-!
