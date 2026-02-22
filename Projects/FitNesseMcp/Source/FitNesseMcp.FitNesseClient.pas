@@ -283,14 +283,31 @@ var
   LIsSuite, LIsTest: Boolean;
   
   procedure CheckContent(const AContent: string);
+  var
+    LHeaderEnd: Integer;
+    LHeader: string;
   begin
-    if (Pos('<Suite/>', AContent) > 0) or (Pos('<Suite />', AContent) > 0) or
-       (Pos('---'#10'Suite'#10'---', StringReplace(AContent, #13#10, #10, [rfReplaceAll])) > 0) then
+    // Check XML properties (properties.xml)
+    if (Pos('<Suite/>', AContent) > 0) or (Pos('<Suite />', AContent) > 0) then
       LIsSuite := True;
-      
-    if (Pos('<Test/>', AContent) > 0) or (Pos('<Test />', AContent) > 0) or
-       (Pos('---'#10'Test'#10'---', StringReplace(AContent, #13#10, #10, [rfReplaceAll])) > 0) then
+    if (Pos('<Test/>', AContent) > 0) or (Pos('<Test />', AContent) > 0) then
       LIsTest := True;
+
+    // Check Wiki Header properties (--- ... ---)
+    if AContent.StartsWith('---') then
+    begin
+      LHeaderEnd := Pos('---', AContent, 4); // Find closing '---', skip first 3 chars
+      if LHeaderEnd > 0 then
+      begin
+        LHeader := Copy(AContent, 4, LHeaderEnd - 4);
+        // Normalize line endings to LF for easier checking
+        LHeader := StringReplace(LHeader, #13#10, #10, [rfReplaceAll]);
+        LHeader := #10 + LHeader + #10; // Wrap in newlines to match full lines
+
+        if Pos(#10'Test'#10, LHeader) > 0 then LIsTest := True;
+        if Pos(#10'Suite'#10, LHeader) > 0 then LIsSuite := True;
+      end;
+    end;
   end;
 
 begin

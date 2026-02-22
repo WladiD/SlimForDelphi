@@ -1,0 +1,26 @@
+---
+Test
+---
+!3 !-FitNesseMcp-! server
+
+|script                 |!-SlimProxy.Mcp-!                                                      |
+|ensure                 |mcp start;|..\..\Projects\FitNesseMcp\FitNesseMcp.exe                  |
+|$StartInstanceResponse=|mcp call; |start_instance  |{"instance":"SlimForDelphi"}               |
+|$ListInstancesResponse=|mcp call; |list_instances  |{}                                         |
+|$PageContentResponse=  |mcp call; |get_page_content|{"pagePath":"FrontPage"}                   |
+|$ListPageResponse=     |mcp call; |list_pages      |{"pagePath":"WDProject", "recursive": true}|
+|mcp stop                                                                                       |
+
+|script|!-SlimProxy.StringTester-!|$StartInstanceResponse                                         |
+|ensure|matches                   |(Instance is already running!-|-!Instance started successfully)|
+
+|script|!-SlimProxy.StringTester-!|$ListInstancesResponse    |
+|ensure|contains                  |!-SlimForDelphi-!         |
+|check |contains count            |!-\"isRunning\":true-!|>=1|
+
+|script|!-SlimProxy.StringTester-!|$PageContentResponse                                                           |
+|ensure|contains                  |!-''The fully integrated stand-alone acceptance testing framework and wiki.''-!|
+
+|script|!-SlimProxy.StringTester-!|$ListPageResponse                                                                    |
+|ensure|contains                  |!-{\"name\":\"Basics\",\"type\":\"Test\",\"path\":\"WDProject.FitNesseMcp.Basics\"}-!|
+

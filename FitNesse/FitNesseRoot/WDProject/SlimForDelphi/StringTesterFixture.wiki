@@ -1,0 +1,22 @@
+---
+Test
+---
+!3 Check !-StringTester-!
+
+|script         |!-SlimProxy.Process-!                                                 |
+|set working dir|${PROJECT_ROOT}                                                       |
+|ensure         |run|!-cmd.exe /c echo SlimForDelphi is great! SlimForDelphi is fast!-!|
+|$OUTPUT=       |last output                                                           |
+
+|script|!-SlimProxy.StringTester-!|$OUTPUT                                           |
+|ensure|contains                  |!-SlimForDelphi is great! SlimForDelphi is fast!-!|
+|check |contains count            |!-SlimForDelphi-!                |2               |
+|ensure|matches                   |fast!$                                            |
+|check |match count               |!-SlimForDelphi-!                |2               |
+|check |match count               |\b[a-z]{4,5}\b                   |2               |
+
+|script|!-SlimProxy.StringTester-!|Hallo Welt|
+|check |text                      |Hallo Welt|
+|ensure|contains                  |Welt      |
+|reject|contains                  |Slim      |
+|check |contains count            |l    |3   |

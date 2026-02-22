@@ -1,9 +1,0 @@
-!3 !-FitNesseMcp-! server
-
-|script|!-SlimProxy.Mcp-!                                                                                                                                    |
-|ensure|mcp start;|..\..\Projects\FitNesseMcp\FitNesseMcp.exe                                                                                                |
-|check |mcp call; |start_instance  |{"instance":"SlimForDelphi"}               |=~/(Instance is already running!-|-!Instance started successfully)/          |
-|check |mcp call; |list_instances  |{}                                         |=~/SlimForDelphi/                                                            |
-|check |mcp call; |get_page_content|{"pagePath":"FrontPage"}                   |=~/The fully integrated stand\-alone acceptance testing framework and wiki\./|
-|check |mcp call; |list_pages      |{"pagePath":"WDProject", "recursive": true}|=~/WDProject\.FitNesseMcp\.BasicServerTest/                                  |
-|mcp stop                                                                                                                                                    |
