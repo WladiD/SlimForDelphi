@@ -1,9 +1,9 @@
 ---
 Static
 ---
-|script|!-SlimProxy.Process-!                                                 |
-|run   |cmd.exe /c ${WDDT_ROOT}\Projects\DPT\_DPT.BuildAndRun.bat recent start|
-|check |last exit code                           |0                           |
+|script|!-SlimProxy.Process-!                                                     |
+|ensure|run|cmd.exe /c ${WDDT_ROOT}\Projects\DPT\_DPT.BuildAndRun.bat recent start|
+|show  |last output                                                               |
 
 |script            |!-SlimProxy.Core-!    |
 |connect to target;|Target1|localhost|9012|
