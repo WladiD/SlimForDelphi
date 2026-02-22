@@ -33,6 +33,8 @@ type
     class procedure TwoMinuteExample(const AContent: String);
     [Test]
     procedure TwoMinuteExampleTest;
+    [Test]
+    procedure TestRegExPatternAsString;
   end;
 
   [TestFixture]
@@ -108,6 +110,37 @@ begin
     Assert.AreEqual('call', (EntryLast[1] as TSlimString).ToString);
     Assert.AreEqual('decisionTable_0', (EntryLast[2] as TSlimString).ToString);
     Assert.AreEqual('endTable', (EntryLast[3] as TSlimString).ToString);
+  finally
+    SlimList.Free;
+  end;
+end;
+
+procedure TestSlimListUnserializer.TestRegExPatternAsString;
+var
+  SlimList: TSlimList;
+begin
+  // This input represents a Slim list with 1 element which is the string "[a-z]{5}"
+  // Format: [000001:000008:[a-z]{5}:]
+  SlimList := SlimListUnserialize('[000001:000008:[a-z]{5}:]');
+  try
+    Assert.IsNotNull(SlimList);
+    Assert.AreEqual(1, SlimList.Count);
+    Assert.IsTrue(SlimList.Entries[0] is TSlimString, 'Expected TSlimString for RegEx pattern starting with [');
+    Assert.AreEqual('[a-z]{5}', (SlimList.Entries[0] as TSlimString).ToString);
+  finally
+    SlimList.Free;
+  end;
+
+  // Verify that actual lists still work:
+  // Outer list (1 item) containing inner list (1 item: "val")
+  // Inner list format: [000001:000003:val:] (Length: 1+6+1+6+1+3+1+1 = 20)
+  // Outer list format: [000001:000020:<InnerList>:]
+  SlimList := SlimListUnserialize('[000001:000020:[000001:000003:val:]:]');
+  try
+    Assert.IsNotNull(SlimList);
+    Assert.AreEqual(1, SlimList.Count);
+    Assert.IsTrue(SlimList.Entries[0] is TSlimList, 'Expected TSlimList for valid nested list');
+    Assert.AreEqual('val', ((SlimList.Entries[0] as TSlimList).Entries[0] as TSlimString).ToString);
   finally
     SlimList.Free;
   end;

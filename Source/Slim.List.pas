@@ -1,4 +1,4 @@
-﻿// ======================================================================
+// ======================================================================
 // Copyright (c) 2026 Waldemar Derr. All rights reserved.
 //
 // Licensed under the MIT license. See included LICENSE file for details.
@@ -14,7 +14,8 @@ uses
   System.Classes,
   System.Contnrs,
   System.Types,
-  System.SysUtils;
+  System.SysUtils,
+  Slim.Common;
 
 type
 
@@ -71,7 +72,6 @@ type
     function LookChar: Char;
     function ReadChar: Char;
     procedure ReadColon;
-    procedure ReadContent(const AContent: String; ATarget: TSlimList);
     procedure ReadExpectedChar(AExpectedChar: Char);
     function ReadLength: Integer;
     function ReadString(ALength: Integer): String;
@@ -253,11 +253,12 @@ end;
 constructor TSlimListUnserializer.Create(const AContent: String);
 begin
   FContent := AContent;
+  FPos := 1;
 end;
 
 function TSlimListUnserializer.LookChar: Char;
 begin
-  if FPos <= Length(FContent) then
+  if (FPos >= 1) and (FPos <= Length(FContent)) then
     Result := FContent[FPos]
   else
     Result := #0;
@@ -265,40 +266,18 @@ end;
 
 function TSlimListUnserializer.ReadChar: Char;
 begin
-  if FPos <= Length(FContent) then
+  if (FPos >= 1) and (FPos <= Length(FContent)) then
   begin
     Result := FContent[FPos];
     Inc(FPos);
   end
   else
-    raise Exception.Create('End reached');
+    raise ESlim.Create('End reached');
 end;
 
 procedure TSlimListUnserializer.ReadColon;
 begin
   ReadExpectedChar(':');
-end;
-
-procedure TSlimListUnserializer.ReadContent(const AContent: String; ATarget: TSlimList);
-var
-  CurChar    : Char;
-  PrevContent: String;
-  PrevPos    : Integer;
-begin
-  PrevContent := FContent;
-  PrevPos := FPos;
-  try
-    FContent := AContent;
-    FPos := 1;
-    CurChar := LookChar;
-    if CurChar = '[' then
-      ReadList(ATarget)
-    else if CurChar.IsNumber then
-      ReadLengthAndEntry(ATarget);
-  finally
-    FContent := PrevContent;
-    FPos := PrevPos;
-  end;
 end;
 
 procedure TSlimListUnserializer.ReadExpectedChar(AExpectedChar: Char);
@@ -318,31 +297,50 @@ var
 begin
   Value := Copy(FContent, FPos, LengthLength);
   if not((Length(Value) = LengthLength) and TryStrToInt(Value, Result)) then
-    raise Exception.CreateFmt('Invalid length "%s" at pos %d', [Value, FPos]);
+    raise Slim.Common.ESlim.CreateFmt('Invalid length "%s" at pos %d', [Value, FPos]);
   Inc(FPos, LengthLength);
   ReadColon;
 end;
 
 procedure TSlimListUnserializer.ReadLengthAndEntry(ATarget: TSlimList);
 var
-  CurChar     : Char;
-  EntryLength : Integer;
-  EntryString : String;
-  SubEntryList: TSlimList;
+  LEntryLength : Integer;
+  LEntryString : String;
+  LSubEntryList: TSlimList;
+  LSubUnserializer: TSlimListUnserializer;
 begin
-  EntryLength := ReadLength;
-  CurChar := LookChar;
-  EntryString := ReadString(EntryLength);
+  LEntryLength := ReadLength;
+  LEntryString := ReadString(LEntryLength);
   ReadColon;
-  if CurChar = '[' then
+
+  if LEntryString.StartsWith('[') then
   begin
-    SubEntryList := TSlimList.Create;
-    ATarget.Add(SubEntryList);
-    ReadContent(EntryString, SubEntryList);
+    LSubEntryList := TSlimList.Create;
+    try
+      try
+        LSubUnserializer := TSlimListUnserializer.Create(LEntryString);
+        try
+          LSubUnserializer.ReadList(LSubEntryList);
+          // Commit nested list
+          ATarget.Add(LSubEntryList);
+        finally
+          LSubUnserializer.Free;
+        end;
+      except
+        on E: Exception do
+        begin
+          LSubEntryList.Free;
+          ATarget.Add(TSlimString.Create(LEntryString));
+        end;
+      end;
+    except
+      LSubEntryList.Free;
+      raise;
+    end;
   end
   else
   begin
-    ATarget.Add(TSlimString.Create(EntryString))
+    ATarget.Add(TSlimString.Create(LEntryString));
   end;
 end;
 
@@ -371,7 +369,10 @@ begin
   Result := TSlimList.Create;
   try
     FPos := 1;
-    ReadContent(FContent, Result);
+    if FContent.StartsWith('[') then
+      ReadList(Result)
+    else
+      raise ESlim.Create('Invalid Slim message format');
   except
     FreeAndNil(Result);
     raise;
