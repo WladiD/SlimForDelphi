@@ -1,0 +1,7 @@
+---
+Test
+---
+|script         |!-SlimProxy.Process-!                |
+|set working dir|${PROJECT_ROOT}\Projects\FitNesseMcp |
+|ensure         |run|cmd.exe /c _FitNesseMcp.Build.bat|
+|#show           |last output                          |
