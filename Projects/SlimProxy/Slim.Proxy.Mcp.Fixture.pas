@@ -30,6 +30,7 @@ type
     FhStdinWrite: THandle;
     FhStdoutRead: THandle;
     FRequestId: Integer;
+    FReadBuffer: string;
     procedure Log(const AMsg: string);
     function IsRunning: Boolean;
   public
@@ -91,7 +92,7 @@ begin
 
   FillChar(SI, SizeOf(TStartupInfo), 0);
   SI.cb := SizeOf(TStartupInfo);
-  SI.hStdError := hStdoutWrite;
+  SI.hStdError := GetStdHandle(STD_ERROR_HANDLE);
   SI.hStdOutput := hStdoutWrite;
   SI.hStdInput := hStdinRead;
   SI.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
@@ -114,23 +115,38 @@ end;
 function TSlimProxyMcpFixture.McpCall(const AMethod: string; const AParamsJson: string): string;
 var
   LReq, LParams: Variant;
-  LReqStr, LLine: RawUtf8;
+  LReqStr: RawUtf8;
   LBytesWritten, LBytesRead, LBytesAvail: DWORD;
   LBuffer: array[0..4095] of AnsiChar;
-  LResponse: string;
   LStart: Cardinal;
+  LPos: Integer;
 begin
   if not IsRunning then Exit('Error: MCP Server not running');
 
   TDocVariant.New(LReq);
   LReq.jsonrpc := '2.0';
   LReq.id := FRequestId;
-  LReq.method := StringToUtf8(AMethod);
-  
-  if AParamsJson <> '' then
-    LReq.params := _Json(StringToUtf8(AParamsJson))
+
+  // Smart dispatch: If method is standard MCP or contains slash, send as is. Otherwise wrap as tool call.
+  if (AMethod = 'initialize') or (Pos('/', AMethod) > 0) then
+  begin
+    LReq.method := StringToUtf8(AMethod);
+    if AParamsJson <> '' then
+      LReq.params := _Json(StringToUtf8(AParamsJson))
+    else
+      LReq.params := _Obj([]);
+  end
   else
-    LReq.params := _Obj([]);
+  begin
+    // Assume Tool Call
+    LReq.method := 'tools/call';
+    if AParamsJson <> '' then
+       LParams := _Json(StringToUtf8(AParamsJson))
+    else
+       LParams := _Obj([]);
+       
+    LReq.params := _Obj(['name', StringToUtf8(AMethod), 'arguments', LParams]);
+  end;
 
   LReqStr := VariantSaveJSON(LReq) + #10;
   Inc(FRequestId);
@@ -138,26 +154,49 @@ begin
   if not WriteFile(FhStdinWrite, LReqStr[1], Length(LReqStr), LBytesWritten, nil) then
     Exit('Error: Failed to write to stdin');
 
-  LResponse := '';
+  Result := '';
   LStart := GetTickCount;
   
-  // Wait for response (simplified: wait for a full line)
-  while GetTickCount - LStart < 5000 do
+  while GetTickCount - LStart < 20000 do
   begin
+    // Check if we already have a line in the buffer
+    LPos := Pos(#10, FReadBuffer);
+    if LPos > 0 then
+    begin
+      Result := Copy(FReadBuffer, 1, LPos - 1).Trim;
+      Delete(FReadBuffer, 1, LPos);
+      if Result <> '' then Exit;
+      Continue;
+    end;
+
+    // Read more data
     LBytesAvail := 0;
     if PeekNamedPipe(FhStdoutRead, nil, 0, nil, @LBytesAvail, nil) and (LBytesAvail > 0) then
     begin
       if ReadFile(FhStdoutRead, LBuffer, SizeOf(LBuffer) - 1, LBytesRead, nil) and (LBytesRead > 0) then
       begin
         LBuffer[LBytesRead] := #0;
-        LResponse := LResponse + Utf8ToString(RawUtf8(LBuffer));
-        if Pos(#10, LResponse) > 0 then Break;
+        FReadBuffer := FReadBuffer + Utf8ToString(RawUtf8(LBuffer));
+        // Continue loop to process the buffer immediately
+        Continue;
       end;
     end;
-    Sleep(50);
+    
+    // Check if server is still alive
+    if not IsRunning then
+    begin
+       Result := 'Error: MCP Server terminated unexpectedly during call to ' + AMethod;
+       Exit;
+    end;
+
+    Sleep(10);
   end;
 
-  Result := LResponse.Trim;
+  if Result = '' then
+  begin
+    Result := 'Error: Timeout waiting for response to ' + AMethod;
+    Log(Result + '. Current buffer: ' + FReadBuffer);
+  end;
 end;
 
 procedure TSlimProxyMcpFixture.McpStop;
@@ -173,6 +212,7 @@ begin
   FillChar(FProcessInfo, SizeOf(FProcessInfo), 0);
   FhStdinWrite := 0;
   FhStdoutRead := 0;
+  FReadBuffer := '';
 end;
 
 initialization

@@ -96,6 +96,9 @@ var
   LCurrentDir: string;
   LJarPath: string;
 begin
+  if CheckIfRunning then
+    Exit(True);
+
   LCurrentDir := StringReplace(FInstance.rootPath, '/', '\', [rfReplaceAll]);
 
   if FInstance.startCmdLine <> '' then
@@ -131,7 +134,7 @@ begin
   LStartupInfo.cb := SizeOf(LStartupInfo);
 
   Result := CreateProcess(nil, PChar(LCommandLine), nil, nil, False,
-    CREATE_NO_WINDOW or CREATE_BREAKAWAY_FROM_JOB, nil, PChar(LCurrentDir), LStartupInfo, LProcessInfo);
+    DETACHED_PROCESS or CREATE_BREAKAWAY_FROM_JOB, nil, PChar(LCurrentDir), LStartupInfo, LProcessInfo);
 
   if Result then
   begin

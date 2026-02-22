@@ -1,4 +1,4 @@
-unit FitNesseMcp.Server;
+﻿unit FitNesseMcp.Server;
 
 interface
 
@@ -285,7 +285,12 @@ end;
 
 function TFitNesseMcpServer.DoStartInstance(const AClient: TFitNesseClient; const AArgs: Variant): RawUtf8;
 begin
-  if AClient.StartInstance then
+  if AClient.CheckIfRunning then
+  begin
+    FLastStartedInstance := VarToStr(AArgs.instance);
+    Result := 'Instance is already running.';
+  end
+  else if AClient.StartInstance then
   begin
     FLastStartedInstance := VarToStr(AArgs.instance);
     Result := 'Instance started successfully.';
