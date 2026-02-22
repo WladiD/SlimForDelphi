@@ -109,7 +109,7 @@ begin
     except
       if (GetTickCount - LStart) >= Cardinal(FConnectTimeout) then
         raise;
-      TThread.Sleep(100);
+      TThread.Sleep(10);
     end;
   end;
 
