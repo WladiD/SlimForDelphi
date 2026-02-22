@@ -51,7 +51,8 @@ type
     FActiveTarget  : TSlimProxyTarget;
     FConnectTimeout: Integer;
     FTargets       : TObjectDictionary<string, TSlimProxyTarget>;
-    function TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
+    procedure CheckLocalFixtureInstance(const AInstanceName: String; var AIsLocal: Boolean);
+    function  TryForwardToTarget(ARawStmt: TSlimList; out AResult: TSlimList): Boolean;
   public
     constructor Create(AContext: TSlimStatementContext); override;
     destructor Destroy; override;
@@ -311,13 +312,13 @@ begin
             FContext.Resolver.TryGetSlimFixture(LClassName, nil, LClass) and // Try to resolve locally without imports
             LClass.MetaclassType.InheritsFrom(TSlimProxyBaseFixture);        // Check if it inherits from our base class (security/consistency check)
         end
-        else if (LInstruction in [siCall, siCallAndAssign]) and (LRawStmt.Count > 2) then
+        else if (LInstruction = siCall) and (LRawStmt.Count > 2) then
         begin
-           var LInstName := LRawStmt[2].ToString;
-           if FContext.Instances.TryGetValue(LInstName, LFixture) then
-             LIsLocal := (LFixture is TSlimProxyBaseFixture)
-           else if not SameText(LInstName, 'scriptTableActor') then
-             LIsLocal := False; // Unknown instance, assume remote.
+          CheckLocalFixtureInstance(LRawStmt[2].ToString, LIsLocal);
+        end
+        else if (LInstruction = siCallAndAssign) and (LRawStmt.Count > 3) then
+        begin
+          CheckLocalFixtureInstance(LRawStmt[3].ToString, LIsLocal);
         end;
 
         if LIsLocal then // --- 1. Local Execution ---
@@ -374,6 +375,16 @@ begin
     Result.Free;
     raise;
   end;
+end;
+
+procedure TSlimProxyExecutor.CheckLocalFixtureInstance(const AInstanceName: String; var AIsLocal: Boolean);
+var
+  Fixture: TSlimFixture;
+begin
+  if FContext.Instances.TryGetValue(AInstanceName, Fixture) then
+    AIsLocal := (Fixture is TSlimProxyBaseFixture)
+  else if not SameText(AInstanceName, 'scriptTableActor') then
+    AIsLocal := False; // Unknown instance, assume remote.
 end;
 
 end.
