@@ -15,6 +15,8 @@ window.addEventListener('load', function() {
   }
 
   try {
+    var hasCollapsedContent = false;
+
     // 1. Symbol Collapser (Specific Pattern: $Var<-[...])
     document.querySelectorAll('td').forEach(function(td) {
       var html = td.innerHTML.trim();
@@ -25,6 +27,7 @@ window.addEventListener('load', function() {
         var content = match[3];
         
         if (content.length > 50) {
+           hasCollapsedContent = true;
            td.innerHTML = '<details><summary style="cursor:pointer;color:#007bff;">' + 
                           sym + ' ' + arrow + ' (Show Value)</summary>' +
                           '<div style="max-height:300px;overflow:auto;background:#f8f9fa;border:1px solid #ddd;padding:5px;white-space:pre-wrap;font-family:monospace;">' + 
@@ -42,6 +45,7 @@ window.addEventListener('load', function() {
 
         var txt = td.textContent;
         if (txt.length > 500) {
+           hasCollapsedContent = true;
            var fullHtml = td.innerHTML;
            // Check for line breaks (newlines in text content or <br> tags in HTML)
            // We use textContent for \n to catch actual line breaks in the text, and innerHTML for <br> tags
@@ -72,6 +76,49 @@ window.addEventListener('load', function() {
         }
       });
     });
+
+    // 3. Global Controls
+    if (hasCollapsedContent) {
+        var controlsDiv = document.createElement('div');
+        controlsDiv.id = 'global-collapse-controls';
+        controlsDiv.style.marginTop = '20px';
+        controlsDiv.style.padding = '10px';
+        controlsDiv.style.borderTop = '1px solid #ddd';
+        controlsDiv.style.textAlign = 'right';
+        
+        var expandLink = document.createElement('a');
+        expandLink.href = 'javascript:void(0)';
+        expandLink.innerText = '[Expand All Content]';
+        expandLink.style.marginRight = '15px';
+        expandLink.style.fontWeight = 'bold';
+        expandLink.style.color = '#007bff';
+        expandLink.onclick = function() {
+            document.querySelectorAll('details').forEach(function(d) { d.open = true; });
+            document.querySelectorAll('.long-content-wrapper').forEach(function(w) {
+                w.querySelector('.preview').style.display = 'none';
+                w.querySelector('.full-content').style.display = 'block';
+            });
+        };
+
+        var collapseLink = document.createElement('a');
+        collapseLink.href = 'javascript:void(0)';
+        collapseLink.innerText = '[Collapse All Content]';
+        collapseLink.style.fontWeight = 'bold';
+        collapseLink.style.color = '#007bff';
+        collapseLink.onclick = function() {
+            document.querySelectorAll('details').forEach(function(d) { d.open = false; });
+            document.querySelectorAll('.long-content-wrapper').forEach(function(w) {
+                w.querySelector('.preview').style.display = 'block';
+                w.querySelector('.full-content').style.display = 'none';
+            });
+        };
+
+        controlsDiv.appendChild(expandLink);
+        controlsDiv.appendChild(collapseLink);
+
+        var container = document.querySelector('article') || document.body;
+        container.appendChild(controlsDiv);
+    }
 
   } catch (e) {
     console.error("FitNesse Custom Script Error:", e);
