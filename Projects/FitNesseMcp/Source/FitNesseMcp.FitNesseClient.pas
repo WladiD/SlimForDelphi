@@ -370,7 +370,8 @@ begin
   LUrl := Format('%s/%s?responder=%s&format=%s', [GetBaseUrl, APagePath, LResponder, AFormat]);
   LClient := THTTPClient.Create;
   try
-    LClient.ConnectionTimeout := 2000;
+    LClient.ConnectionTimeout := 5000;
+    LClient.ResponseTimeout := 300000; // 5 minutes for long running suites
     try
       Result := StringToUtf8(LClient.Get(LUrl).ContentAsString);
     except
