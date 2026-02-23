@@ -69,7 +69,6 @@ type
   private
     FContent: String;
     FPos    : Integer;
-    function LookChar: Char;
     function ReadChar: Char;
     procedure ReadColon;
     procedure ReadExpectedChar(AExpectedChar: Char);
@@ -254,14 +253,6 @@ constructor TSlimListUnserializer.Create(const AContent: String);
 begin
   FContent := AContent;
   FPos := 1;
-end;
-
-function TSlimListUnserializer.LookChar: Char;
-begin
-  if (FPos >= 1) and (FPos <= Length(FContent)) then
-    Result := FContent[FPos]
-  else
-    Result := #0;
 end;
 
 function TSlimListUnserializer.ReadChar: Char;
