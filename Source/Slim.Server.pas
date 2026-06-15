@@ -40,7 +40,6 @@ type
 
   TSlimServer = class(TIdTCPServer)
   private
-    FContext        : TSlimStatementContext;
     FExecutorClass  : TSlimExecutorClass;
     FLogger         : ISlimLogger;
     FOnReadRequest  : TStringEvent;
@@ -53,7 +52,6 @@ type
     procedure WriteString(AIo: TIdIOHandler; const AValue: String);
   public
     procedure AfterConstruction; override;
-    destructor Destroy; override;
     property ExecutorClass: TSlimExecutorClass read FExecutorClass write FExecutorClass;
     property Logger: ISlimLogger read FLogger write FLogger;
     property OnReadRequest: TStringEvent read FOnReadRequest write FOnReadRequest;
@@ -69,19 +67,6 @@ begin
   inherited AfterConstruction;
   FExecutorClass := TSlimExecutor;
   OnExecute := SlimServerExecute;
-  FContext := TSlimStatementContext.Create;
-  FContext.InitMembers([
-    TSlimStatementContext.TContextMember.cmInstances,
-    TSlimStatementContext.TContextMember.cmLibInstances,
-    TSlimStatementContext.TContextMember.cmResolver,
-    TSlimStatementContext.TContextMember.cmSymbols,
-    TSlimStatementContext.TContextMember.cmImportedNamespaces]);
-end;
-
-destructor TSlimServer.Destroy;
-begin
-  FContext.Free;
-  inherited;
 end;
 
 function TSlimServer.Execute(AExecutor: TSlimExecutor; const ARequest: String): TSlimList;
@@ -117,17 +102,25 @@ end;
 
 procedure TSlimServer.SlimServerExecute(AContext: TIdContext);
 var
-  Io       : TIdIOHandler;
-  LExecutor: TSlimExecutor;
-  Stream   : TStringStream;
+  Io         : TIdIOHandler;
+  LExecutor  : TSlimExecutor;
+  SlimContext: TSlimStatementContext;
 begin
   Io := AContext.Connection.IOHandler;
   Io.WriteLn('Slim -- V0.5');
 
-  Stream := nil;
-  LExecutor := FExecutorClass.Create(FContext);
+  SlimContext := nil;
+  LExecutor := nil;
   try
-    Stream := TStringStream.Create;
+    SlimContext := TSlimStatementContext.Create;
+    SlimContext.InitMembers([
+      TSlimStatementContext.TContextMember.cmInstances,
+      TSlimStatementContext.TContextMember.cmLibInstances,
+      TSlimStatementContext.TContextMember.cmResolver,
+      TSlimStatementContext.TContextMember.cmSymbols,
+      TSlimStatementContext.TContextMember.cmImportedNamespaces]);
+    LExecutor := FExecutorClass.Create(SlimContext);
+
     var LLength: Integer := ReadLength(Io);
     while LLength > 0 do
     begin
@@ -145,8 +138,8 @@ begin
       LLength := ReadLength(Io);
     end;
   finally
-    Stream.Free;
     LExecutor.Free;
+    SlimContext.Free;
   end;
 end;
 
