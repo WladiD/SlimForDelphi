@@ -1,0 +1,8 @@
+---
+Static
+---
+The proxy was launched by !-FitNesse-! for this run only. Ending it here is what lets its launcher
+script clean up the host behind it.
+
+|script|!-SlimProxy.Core-!|
+|Stop Proxy               |

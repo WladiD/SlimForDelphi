@@ -3,6 +3,11 @@ chcp 65001 > nul
 setlocal
 pushd %~dp0
 
+rem The fast unit test run. Tests in the 'Integration' category are excluded:
+rem they start real processes and wait for real ports and windows, which costs
+rem seconds instead of milliseconds. Use _Test.Slim.BuildAndRunAll.bat to run
+rem those as well.
+
 set "BUILD_PLATFORM=Win32"
 if /I "%~1"=="Win32" set "BUILD_PLATFORM=Win32"
 if /I "%~1"=="Win64" set "BUILD_PLATFORM=Win64"
@@ -21,8 +26,8 @@ echo.
 
 set "EXE_PATH=.\%BUILD_PLATFORM%\Debug\Test.Slim.exe"
 
-echo Running tests from %EXE_PATH%...
-"%EXE_PATH%"
+echo Running tests from %EXE_PATH% without the Integration category...
+"%EXE_PATH%" --exclude:Integration
 set TEST_ERROR=%ERRORLEVEL%
 
 popd

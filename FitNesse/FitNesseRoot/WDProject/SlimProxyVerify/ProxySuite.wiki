@@ -1,0 +1,16 @@
+---
+Suite
+Test: no
+---
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Test\SlimVerify\_SlimVerify.BuildAndRunBehindProxy.bat ${TARGET_PLATFORM} ${VERIFY_HOST_PORT}}
+
+!2 Through the proxy
+
+The same three pages, but !-FitNesse-! launches the proxy, and the proxy forwards to a
+!-SlimVerify-! host on port ${VERIFY_HOST_PORT}. '''No page mentions the proxy''' - it is invisible,
+because the target comes from the command line (''--Target='').
+
+The counters of these pages have to match !-DirectSuite-! exactly; the only permitted difference in
+the whole result !-XML-! is the port number in ''<command>''.
+
+!contents -R2 -g -p -f -h

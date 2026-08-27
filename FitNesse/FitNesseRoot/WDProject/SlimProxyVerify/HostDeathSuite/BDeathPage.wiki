@@ -1,0 +1,28 @@
+---
+Test
+---
+!3 Shoot the host, then ask the proxy what happened
+
+Both time limits are turned down first, so this page finishes in seconds. Without a read timeout a
+host that stops answering would hang the whole run - and !-FitNesse-! has no read timeout of its own,
+so the proxy is the only place where that is fixable.
+
+!|script|!-SlimProxy.Core-!|
+|set connect timeout|2000  |
+|set read timeout   |4000  |
+|$pid=  |target process id|Sim|
+
+!|script|!-SlimProxy.Host-!|
+|$killed=|kill host|$pid   |
+|reject  |is host running  |$pid|
+
+!3 The proxy answers with a diagnosis instead of hanging
+
+''!-Ping Target-!'' does a real round trip and hands the cause back instead of raising it, so this
+page can assert it. A forwarded fixture call in its place would end as a red page carrying the very
+same message - which is exactly what turns a hang into a diagnosable result.
+
+!|script   |!-SlimProxy.Core-!|
+|show      |ping target|Sim   |
+|check not |ping target|Sim   |OK|
+|check     |target status     |=~/BROKEN since/|

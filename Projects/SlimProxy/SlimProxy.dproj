@@ -87,6 +87,10 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="Slim.Proxy.Config.pas"/>
+        <DCCReference Include="Slim.Proxy.WinTools.pas"/>
+        <DCCReference Include="Slim.Proxy.Watchdog.pas"/>
+        <DCCReference Include="Slim.Proxy.Host.Fixture.pas"/>
         <DCCReference Include="Slim.Proxy.Mcp.Fixture.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

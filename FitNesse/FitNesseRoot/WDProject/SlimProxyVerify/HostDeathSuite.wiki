@@ -1,0 +1,26 @@
+---
+Suite
+Test: no
+---
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Test\SlimVerify\_SlimVerify.BuildAndRunBehindProxy.bat ${TARGET_PLATFORM} ${VERIFY_DEATH_HOST_PORT}}
+
+!2 The host is shot in the middle of the suite
+
+This variant runs its host on ${VERIFY_DEATH_HOST_PORT}, not on the port of the other variants: that
+gives it its own test system and its own process, so the page that shoots the host cannot take
+!-ProxySuite-! down with it when the whole !-SlimProxyVerify-! suite is run at once.
+
+The middle page kills the host process on purpose and then '''asserts''' what the proxy reports, so
+this variant is green like every other one:
+
+ * '''!-ABeforeDeathPage-!''' works against the living host,
+ * '''!-BDeathPage-!''' kills it and checks that the proxy answers with a named cause instead of
+   hanging,
+ * '''!-CAfterDeathPage-!''' checks that a page after the death still runs and is still told the
+   '''first''' cause,
+ * and the suite runs '''to the end'''.
+
+Without the proxy the run would simply break off at the death and the remaining pages would vanish
+from the result without a page name.
+
+!contents -R2 -g -p -f -h

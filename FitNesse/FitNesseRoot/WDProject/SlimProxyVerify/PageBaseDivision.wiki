@@ -1,0 +1,11 @@
+---
+Static
+---
+!3 Decision table with a computed output column
+
+|eg.Division                     |
+|numerator|denominator|quotient? |
+|10       |2          |5.0       |
+|12.6     |3          |4.2       |
+|22       |7          |~=3.14    |
+|100      |4          |25.0      |

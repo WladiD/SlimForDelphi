@@ -1,0 +1,12 @@
+---
+Suite
+Test: no
+---
+!define COMMAND_PATTERN {${PROJECT_ROOT}\Test\SlimVerify\_SlimVerify.BuildAndRun.bat ${TARGET_PLATFORM}}
+
+!2 Direct against the host
+
+Reference run: !-FitNesse-! builds and launches the !-SlimVerify-! host itself and talks to it
+without any proxy in between.
+
+!contents -R2 -g -p -f -h

@@ -1,0 +1,15 @@
+---
+Test
+---
+!3 A page AFTER the death still runs - and still learns the FIRST cause
+
+This page proves the two properties that decide whether a run stays readable: it shows up in the
+result at all, and it is told '''why''' - not just that something is broken. Without the first cause
+being carried along, every page after a host death would only say "is marked broken" and the actual
+finding would be in no result any more.
+
+!|script   |!-SlimProxy.Core-!|
+|show      |target status     |
+|check     |ping target|Sim   |=~/is broken since/|
+|check not |ping target|Sim   |OK|
+|check     |target status     |=~/BROKEN since/|

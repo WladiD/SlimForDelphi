@@ -102,6 +102,10 @@
         <DCCReference Include="Test.SlimExec.pas"/>
         <DCCReference Include="Test.SlimSymbol.pas"/>
         <DCCReference Include="Test.SlimProxy.pas"/>
+        <DCCReference Include="Test.SlimProxy.Helpers.pas"/>
+        <DCCReference Include="Test.SlimProxy.Timeout.pas"/>
+        <DCCReference Include="Test.SlimProxy.WinTools.pas"/>
+        <DCCReference Include="Test.SlimProxy.GuiHost.pas"/>
         <DCCReference Include="Test.SlimProxy.Process.pas"/>
         <DCCReference Include="Test.SlimLogger.pas"/>
         <DCCReference Include="Test.SlimDoc.Extractor.pas"/>

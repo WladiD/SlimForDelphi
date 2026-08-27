@@ -1,0 +1,10 @@
+---
+Static
+---
+!3 Script table with arguments, return values and a symbol
+
+|script|!-EchoFixture-!                    |
+|check |echo          |Hello World|Hello World|
+|check |echo int      |42         |42         |
+|$captured=|echo      |value for the symbol   |
+|check |echo          |$captured  |value for the symbol|

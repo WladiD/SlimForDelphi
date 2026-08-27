@@ -31,6 +31,9 @@ type
     procedure EnterList(const AList: TSlimList);
     procedure ExitList(const AList: TSlimList);
     procedure LogInstruction(const AInstruction: TSlimList);
+    procedure LogResult(const AResult: TSlimList);
+    procedure LogError(const ASource, AMessage: String);
+    procedure LogEvent(const ACategory, AMessage: String);
     property  LogContent: TStringList read FLogContent;
   end;
 
@@ -83,6 +86,21 @@ end;
 procedure TMockSlimLogger.LogInstruction(const AInstruction: TSlimList);
 begin
   FLogContent.Add('INSTR:' + SlimListSerialize(AInstruction));
+end;
+
+procedure TMockSlimLogger.LogResult(const AResult: TSlimList);
+begin
+  FLogContent.Add('RESULT:' + SlimListSerialize(AResult));
+end;
+
+procedure TMockSlimLogger.LogError(const ASource, AMessage: String);
+begin
+  FLogContent.Add(Format('ERROR:%s:%s', [ASource, AMessage]));
+end;
+
+procedure TMockSlimLogger.LogEvent(const ACategory, AMessage: String);
+begin
+  FLogContent.Add(Format('EVENT:%s:%s', [ACategory, AMessage]));
 end;
 
 { TTestableSlimServer }
@@ -149,11 +167,17 @@ begin
     List.Free;
   end;
 
-  Assert.AreEqual(4, FMockLogger.LogContent.Count, 'Should have 4 log entries');
+  // Every instruction is followed by its result: a log that only shows what was
+  // asked hides the cause of a failure.
+  Assert.AreEqual(6, FMockLogger.LogContent.Count, 'Should have 6 log entries');
   Assert.AreEqual('ENTER:2', FMockLogger.LogContent[0]);
   Assert.AreEqual(ExpectedInstr1, FMockLogger.LogContent[1]);
-  Assert.AreEqual(ExpectedInstr2, FMockLogger.LogContent[2]);
-  Assert.AreEqual('EXIT', FMockLogger.LogContent[3]);
+  Assert.StartsWith('RESULT:', FMockLogger.LogContent[2]);
+  Assert.Contains(FMockLogger.LogContent[2], 'OK');
+  Assert.AreEqual(ExpectedInstr2, FMockLogger.LogContent[3]);
+  Assert.StartsWith('RESULT:', FMockLogger.LogContent[4]);
+  Assert.Contains(FMockLogger.LogContent[4], '42');
+  Assert.AreEqual('EXIT', FMockLogger.LogContent[5]);
 end;
 
 initialization

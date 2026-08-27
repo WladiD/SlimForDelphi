@@ -1,0 +1,8 @@
+---
+Static
+---
+!-FitNesse-! launched the host for this run only, but it does not end by itself. Shutting it down
+here keeps the port free for the next run - the counterpart of ''Stop Proxy'' in the proxy variants.
+
+|script|!-SlimVerifyControl-!|
+|Shutdown                    |

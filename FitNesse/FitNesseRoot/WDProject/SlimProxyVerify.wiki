@@ -1,0 +1,33 @@
+---
+Suite
+Test: no
+---
+!define TEST_SYSTEM {slim}
+!define slim.port {0}
+!define TARGET_PLATFORM {Win32}
+
+# FitNesse waits only 10 seconds for a Slim server. The launchers here build their
+# projects first, so that deadline can pass before the server listens - the run
+# then breaks off with "Error connecting to SLiM server" and looks flaky.
+!define slim.timeout {120}
+
+# Port of the SlimVerify host that the proxy variants put behind themselves. The
+# proxy itself gets its port from FitNesse, only the host needs a fixed one.
+!define VERIFY_HOST_PORT {9101}
+
+# A different port means a different COMMAND_PATTERN, and FitNesse groups pages by
+# test system: on the same command line the page that shoots the host would share
+# the process with ProxySuite and take it down.
+!define VERIFY_DEATH_HOST_PORT {9102}
+
+!1 !-SlimProxy-! equivalence suite
+
+Proof that the proxy is invisible: the very same pages run once '''directly''' against the
+!-SlimVerify-! host and once '''through the proxy''', and both runs have to produce the same
+counters page by page.
+
+Every variant brings its own servers up through its ''!-COMMAND_PATTERN-!'', so a run needs nothing
+but a click on ''Suite''. The builds are part of that pattern, so a stale executable cannot fake a
+result.
+
+!contents -R3 -g -p -f -h

@@ -24,6 +24,19 @@ type
     procedure EnterList(const AList: TSlimList);
     procedure ExitList(const AList: TSlimList);
     procedure LogInstruction(const AInstruction: TSlimList);
+    /// <summary>
+    ///   The result of the instruction that was logged last. Without it a log
+    ///   only shows what was asked, never what came back - and the cause of a
+    ///   failure is then in no log at all.
+    /// </summary>
+    procedure LogResult(const AResult: TSlimList);
+    /// <summary>A failure together with the source that produced it.</summary>
+    procedure LogError(const ASource, AMessage: String);
+    /// <summary>
+    ///   An event worth a timestamp: target switch, host start and exit,
+    ///   watchdog finding.
+    /// </summary>
+    procedure LogEvent(const ACategory, AMessage: String);
   end;
 
   TSlimFileLogger = class(TInterfacedObject, ISlimLogger)
@@ -39,6 +52,9 @@ type
     procedure EnterList(const AList: TSlimList);
     procedure ExitList(const AList: TSlimList);
     procedure LogInstruction(const AInstruction: TSlimList);
+    procedure LogResult(const AResult: TSlimList);
+    procedure LogError(const ASource, AMessage: String);
+    procedure LogEvent(const ACategory, AMessage: String);
   end;
 
 implementation
@@ -99,6 +115,21 @@ end;
 procedure TSlimFileLogger.LogInstruction(const AInstruction: TSlimList);
 begin
   WriteLine(Format('  >> Executing: %s', [SlimListSerialize(AInstruction)]));
+end;
+
+procedure TSlimFileLogger.LogResult(const AResult: TSlimList);
+begin
+  WriteLine(Format('  << Result   : %s', [SlimListSerialize(AResult)]));
+end;
+
+procedure TSlimFileLogger.LogError(const ASource, AMessage: String);
+begin
+  WriteLine(Format('  !! %s [%s]: %s', [FormatDateTime('hh:nn:ss.zzz', Now), ASource, AMessage]));
+end;
+
+procedure TSlimFileLogger.LogEvent(const ACategory, AMessage: String);
+begin
+  WriteLine(Format('  -- %s [%s]: %s', [FormatDateTime('hh:nn:ss.zzz', Now), ACategory, AMessage]));
 end;
 
 end.

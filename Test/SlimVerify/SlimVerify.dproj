@@ -88,6 +88,7 @@
             <Form>LogSlimMainForm</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="SlimVerify.Pathologies.pas"/>
         <DCCReference Include="SlimFixtures.pas"/>
         <DCCReference Include="Main.pas">
             <Form>MainForm</Form>

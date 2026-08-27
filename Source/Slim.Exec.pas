@@ -855,7 +855,11 @@ begin
             
           var LStmtResult: TSlimList := ExecuteStmt(TSlimList(LRawStmt), FContext);
           if Assigned(LStmtResult) then
+          begin
+            if Assigned(FLogger) then
+              FLogger.LogResult(LStmtResult);
             Result.Add(LStmtResult);
+          end;
         end;
         if FStopExecute then
           Break;

@@ -30,12 +30,17 @@ type
   TLogSlimMainForm = class(TForm)
     LogMemo: TMemo;
   private
-    FSlimServer: TSlimServer;
-    procedure Log(const AMessage: String);
     procedure ReadRequestHandler(const AValue: String);
     procedure WriteResponseHandler(const AValue: String);
+  protected
+    FSlimServer: TSlimServer;
+    function  AutoStartSlimServer: Boolean; virtual;
+    procedure Log(const AMessage: String);
   public
     procedure AfterConstruction; override;
+    /// <summary>Activates the Slim server. Idempotent.</summary>
+    procedure StartSlimServer;
+    property SlimServer: TSlimServer read FSlimServer;
   end;
 
 implementation
@@ -55,9 +60,26 @@ begin
     LPort := 9000;
 
   FSlimServer.DefaultPort := LPort;
-  FSlimServer.Active := True;
   FSlimServer.OnReadRequest := ReadRequestHandler;
   FSlimServer.OnWriteResponse := WriteResponseHandler;
+
+  if AutoStartSlimServer then
+    StartSlimServer;
+end;
+
+/// <summary>
+///   False lets a descendant activate the server later - that is what makes
+///   a delayed start up simulable.
+/// </summary>
+function TLogSlimMainForm.AutoStartSlimServer: Boolean;
+begin
+  Result := True;
+end;
+
+procedure TLogSlimMainForm.StartSlimServer;
+begin
+  if not FSlimServer.Active then
+    FSlimServer.Active := True;
 end;
 
 procedure TLogSlimMainForm.Log(const AMessage: String);
