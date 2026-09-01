@@ -89,6 +89,8 @@ type
     [Test]
     procedure HostDeathIsReportedWithItsExitCode;
     [Test]
+    procedure WaitForHostExitOutlivesASelfEndingHost;
+    [Test]
     procedure AForeignProcessHoldingThePortIsRefused;
   public // Read timeout and watchdog against a running host
     [Test]
@@ -363,6 +365,25 @@ begin
 
   Assert.Contains(LMessage, 'Host died', 'the death of the host has to be named');
   Assert.Contains(LMessage, 'exit code 9', 'together with its exit code');
+end;
+
+procedure TestSlimProxyGuiHost.WaitForHostExitOutlivesASelfEndingHost;
+var
+  LPid: Cardinal;
+begin
+  RequireSimulationTarget;
+
+  // A host that ends itself, like an application restarting into another client:
+  // nothing may be sent to it, the wait has to end with its death.
+  LPid := StartRaw('--StartupDelay=60000 --DieAfter=1500');
+
+  Assert.IsFalse(FHost.WaitForHostExit(Integer(LPid), 0),
+    'no premature True while the host is still alive');
+  Assert.IsTrue(FHost.WaitForHostExit(Integer(LPid), 15),
+    'the wait has to end with the self-chosen death');
+  Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'the host really is gone');
+  Assert.IsTrue(FHost.WaitForHostExit(Integer(LPid), 0),
+    'an already dead pid counts as gone at once');
 end;
 
 procedure TestSlimProxyGuiHost.AForeignProcessHoldingThePortIsRefused;

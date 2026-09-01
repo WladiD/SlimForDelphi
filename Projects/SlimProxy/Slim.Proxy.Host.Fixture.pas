@@ -60,6 +60,7 @@ type
     function CloseHost(APid, ATimeoutSeconds: Integer): Boolean;
     function KillHost(APid: Integer): Boolean;
     function IsHostRunning(APid: Integer): Boolean;
+    function WaitForHostExit(APid, ATimeoutSeconds: Integer): Boolean;
     function LastHostProcessId: Integer;
     function ListenerProcessId(APort: Integer): Integer;
   public // Diagnostics
@@ -319,6 +320,30 @@ end;
 function TSlimProxyHostFixture.IsHostRunning(APid: Integer): Boolean;
 begin
   Result := SlimProxyIsProcessRunning(EffectivePid(APid));
+end;
+
+/// <summary>
+///   Passively waits until the host has exited on its own - True once it is
+///   gone (an already dead pid counts as gone), False if it is still alive
+///   after ATimeoutSeconds. Unlike Close Host nothing is sent to the process:
+///   made for hosts that end themselves, e.g. an application restarting into
+///   another client, where the successor reuses the same port and a reconnect
+///   must not hit the dying predecessor.
+/// </summary>
+function TSlimProxyHostFixture.WaitForHostExit(APid, ATimeoutSeconds: Integer): Boolean;
+var
+  LHandle: THandle;
+  LPid   : Cardinal;
+begin
+  LPid := EffectivePid(APid);
+  LHandle := OpenProcess(SYNCHRONIZE, False, LPid);
+  if LHandle = 0 then
+    Exit(True); // already gone
+  try
+    Result := WaitForSingleObject(LHandle, Cardinal(ATimeoutSeconds) * 1000) = WAIT_OBJECT_0;
+  finally
+    CloseHandle(LHandle);
+  end;
 end;
 
 /// <summary>Process id of the host started last.</summary>
