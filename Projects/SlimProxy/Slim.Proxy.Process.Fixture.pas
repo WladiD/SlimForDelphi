@@ -39,6 +39,8 @@ type
     function OutputContainsCount(const AText: String): Integer;
     function OutputMatches(const APattern: String): Boolean;
     function OutputMatchCount(const APattern: String): Integer;
+    function OutputMatchFirst(const APattern: String; ACaptureIndex: Integer): String;
+    function OutputMatchLast(const APattern: String; ACaptureIndex: Integer): String;
     function Run(const ACommand: String): Boolean;
 
     procedure AddEnvironmentVarValue(const AName, AValue: String);
@@ -79,6 +81,29 @@ end;
 function TSlimProxyProcessFixture.OutputMatches(const APattern: String): Boolean;
 begin
   Result := TRegEx.IsMatch(FLastOutput, APattern, [roIgnoreCase, roMultiLine]);
+end;
+
+/// <summary>Value of capture group ACaptureIndex of the FIRST regex match in the last
+///  output, '' if the pattern does not match at all (index 0 = the whole match).</summary>
+function TSlimProxyProcessFixture.OutputMatchFirst(const APattern: String; ACaptureIndex: Integer): String;
+var
+  LMatch: TMatch;
+begin
+  Result := '';
+  LMatch := TRegEx.Match(FLastOutput, APattern, [roIgnoreCase, roMultiLine]);
+  if LMatch.Success then
+    Result := LMatch.Groups[ACaptureIndex].Value;
+end;
+
+/// <summary>Like OutputMatchFirst, but taken from the LAST match.</summary>
+function TSlimProxyProcessFixture.OutputMatchLast(const APattern: String; ACaptureIndex: Integer): String;
+var
+  LMatches: TMatchCollection;
+begin
+  Result := '';
+  LMatches := TRegEx.Matches(FLastOutput, APattern, [roIgnoreCase, roMultiLine]);
+  if LMatches.Count > 0 then
+    Result := LMatches[LMatches.Count - 1].Groups[ACaptureIndex].Value;
 end;
 
 function TSlimProxyProcessFixture.RunCommand(const ACommandLine: String; out AOutput: String): Integer;

@@ -38,7 +38,6 @@ type
     procedure Log(const AMessage: String);
   public
     procedure AfterConstruction; override;
-    /// <summary>Activates the Slim server. Idempotent.</summary>
     procedure StartSlimServer;
     property SlimServer: TSlimServer read FSlimServer;
   end;
@@ -76,6 +75,7 @@ begin
   Result := True;
 end;
 
+/// <summary>Activates the Slim server. Idempotent.</summary>
 procedure TLogSlimMainForm.StartSlimServer;
 begin
   if not FSlimServer.Active then
