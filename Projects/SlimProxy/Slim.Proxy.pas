@@ -122,6 +122,24 @@ type
 
 function SlimProxyExceptionResponse(const AMessage: String): String;
 
+const
+
+  /// <summary>Statement id of the liveness probe, so it is recognizable in a log.</summary>
+  SlimProxyPingId = 'slim_proxy_ping';
+
+  /// <summary>
+  ///   Instance name of the liveness probe. Reserved: a test page never creates
+  ///   an instance under this name, so the target always answers NO_INSTANCE.
+  /// </summary>
+  SlimProxyPingInstance = 'slim_proxy_ping_probe';
+
+/// <summary>
+///   The single statement of the liveness probe. Public on purpose, so a test can
+///   drive the EXACT instruction the proxy puts on the wire instead of a copy of
+///   it that can drift away from it.
+/// </summary>
+function SlimProxyPingStatement: TSlimList;
+
 implementation
 
 uses
@@ -137,6 +155,18 @@ begin
     Result := AMessage
   else
     Result := TSlimConsts.ExceptionResponse + ':' + AMessage;
+end;
+/// <summary>
+///   The single statement of the liveness probe: a 'call' on an instance that was
+///   never created. The target runs it through its whole statement pipeline and
+///   answers NO_INSTANCE - which proves it is answering - and it writes NOTHING.
+///   An 'import' would look just as harmless, but TSlimStmtImport registers the
+///   namespace in the target, and TSlimFixtureResolver then stops matching
+///   UNQUALIFIED fixture names for the rest of the connection.
+/// </summary>
+function SlimProxyPingStatement: TSlimList;
+begin
+  Result := SlimList([SlimProxyPingId, 'call', SlimProxyPingInstance, 'Ping']);
 end;
 
 { TSlimProxyTarget }
@@ -492,11 +522,13 @@ begin
   LTarget.Logger := FLogger;
 
   try
-    // A REAL round trip: an 'import' is answered by every Slim server and changes
-    // nothing. Anything less would not notice a host that died, because a socket
-    // only fails on the next actual IO. The one-shot read timeout is deliberately
-    // left alone - a ping must not consume it.
-    LStmts := SlimList([SlimList(['slim_proxy_ping', 'import', 'SlimProxyPing'])]);
+    // A REAL round trip: anything less would not notice a host that died, because
+    // a socket only fails on the next actual IO. The answer is a NO_INSTANCE
+    // exception result and that is exactly right - it proves the target is
+    // answering, and the probe leaves nothing behind in it (see
+    // SlimProxyPingStatement). The one-shot read timeout is deliberately left
+    // alone - a ping must not consume it.
+    LStmts := SlimList([SlimProxyPingStatement]);
     try
       LTarget.SendCommand(SlimListSerialize(LStmts), FReadTimeout);
       Result := 'OK';

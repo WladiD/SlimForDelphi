@@ -375,7 +375,8 @@ end;
 
 function TSlimStmtImport.Execute: TSlimList;
 begin
-  Context.ImportedNamespaces.Add(PathParam);
+  if Context.ImportedNamespaces.IndexOf(PathParam) < 0 then
+    Context.ImportedNamespaces.Add(PathParam);
   Result := ResponseOk;
 end;
 
