@@ -35,13 +35,43 @@ type
 
   TLogger = class
     class procedure OnConnect(AContext: TIdContext);
+    class procedure OnDisconnect(AContext: TIdContext);
     class procedure OnException(AContext: TIdContext; AException: Exception);
+    class procedure OnReadRequest(const AValue: String);
   end;
 
 class procedure TLogger.OnConnect(AContext: TIdContext);
 begin
   Writeln('Incoming connection from: ' + AContext.Binding.PeerIP);
   Flush(Output);
+end;
+
+/// <summary>
+///   FitNesse holds exactly one connection per test system. When the run is
+///   over it sends "bye", KEEPS THE SOCKET OPEN and waits for this process to
+///   end; only after a timeout does it log "Could not detect death of command
+///   line test runner" and kill it. So the stop has to be triggered by the
+///   "bye" itself, not by the disconnect. Ending here makes "Stop Proxy" in a
+///   SuiteTearDown unnecessary - which matters as soon as nested SuiteSetUp/
+///   SuiteTearDown pages switch the data context mid-run: a teardown must not
+///   kill the proxy the next group still needs.
+/// </summary>
+class procedure TLogger.OnReadRequest(const AValue: String);
+begin
+  if AValue = 'bye' then
+  begin
+    Writeln('FitNesse said bye - shutting down.');
+    Flush(Output);
+    SlimProxyStopRequested := True;
+  end;
+end;
+
+/// <summary>Safety net for clients that drop the connection without "bye".</summary>
+class procedure TLogger.OnDisconnect(AContext: TIdContext);
+begin
+  Writeln('Connection closed by ' + AContext.Binding.PeerIP + ' - shutting down.');
+  Flush(Output);
+  SlimProxyStopRequested := True;
 end;
 
 class procedure TLogger.OnException(AContext: TIdContext; AException: Exception);
@@ -181,17 +211,20 @@ begin
       LServer.Logger := TSlimFileLogger.Create(Format('Logs\SlimProxy_%s.log',
         [FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]));
       LServer.OnConnect := TLogger.OnConnect;
+      LServer.OnDisconnect := TLogger.OnDisconnect;
       LServer.OnException := TLogger.OnException;
+      LServer.OnReadRequest := TLogger.OnReadRequest;
       LServer.ExecutorClass := TSlimProxyExecutor;
       LServer.Active := True;
 
       Writeln('SlimProxy running on port ', LPort, '. Press Ctrl+C to exit. IsConsole=', IsConsole);
       Flush(Output);
 
-      // Wait loop - simply sleep until terminated. Polled in short slices, so a
-      // "Stop Proxy" from a SuiteTearDown page ends the process promptly: a
-      // launcher script cannot clean up the host behind us before we are gone,
-      // and FitNesse already starts the next test system.
+      // Wait loop - simply sleep until terminated. Polled in short slices, so the
+      // stop request (FitNesse closed its connection, or "Stop Proxy" from a
+      // SuiteTearDown page) ends the process promptly: a launcher script cannot
+      // clean up the host behind us before we are gone, and FitNesse already
+      // starts the next test system.
       while LServer.Active do
       begin
         if SlimProxyStopRequested then
