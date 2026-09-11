@@ -262,33 +262,53 @@ end;
 ///   wait for the process to really end. Deliberately NO TerminateProcess - a
 ///   hard killed process can leave locks or half states behind and the next
 ///   start then fails without a visible reason.
+///   The close request is REPEATED every two seconds until the process is
+///   gone or the timeout runs out. A host may still refuse the first WM_CLOSE
+///   shortly after start up, and the main window may not even exist yet or 
+///   may be replaced meanwhile - so the window is looked up again for every 
+///   request.
 /// </summary>
 function TSlimProxyHostFixture.CloseHost(APid, ATimeoutSeconds: Integer): Boolean;
+const
+  SliceMs = 500;
+  SlicesPerRequest = 4; // one WM_CLOSE every two seconds
 var
-  LConfig: TSlimProxyWindowConfig;
-  LHandle: THandle;
-  LMain  : HWND;
-  LPid   : Cardinal;
+  LConfig  : TSlimProxyWindowConfig;
+  LHandle  : THandle;
+  LMain    : HWND;
+  LPid     : Cardinal;
+  LRequests: Integer;
 begin
   LPid := EffectivePid(APid);
   LConfig := Config;
-
-  LMain := SlimProxyFindMainWindow(LPid);
-  if LMain <> 0 then
-    PostMessage(LMain, WM_CLOSE, 0, 0);
 
   LHandle := OpenProcess(SYNCHRONIZE, False, LPid);
   if LHandle = 0 then
     Exit(True); // already gone
   try
-    for var I: Integer := 1 to ATimeoutSeconds * 2 do
+    LRequests := 0;
+    for var I: Integer := 0 to (ATimeoutSeconds * 1000 div SliceMs) - 1 do
     begin
+      if I mod SlicesPerRequest = 0 then
+      begin
+        LMain := SlimProxyFindMainWindow(LPid);
+        if LMain <> 0 then
+        begin
+          PostMessage(LMain, WM_CLOSE, 0, 0);
+          Inc(LRequests);
+        end;
+      end;
       // A confirmation may be standing in the way of the shutdown - it has to be
       // clicked away, otherwise the wait just runs out.
       SlimProxyDismissDialogs(LPid, LConfig);
-      if WaitForSingleObject(LHandle, 500) = WAIT_OBJECT_0 then
+      if WaitForSingleObject(LHandle, SliceMs) = WAIT_OBJECT_0 then
+      begin
+        if LRequests > 1 then
+          Log(Format('host %d closed after %d close requests', [LPid, LRequests]));
         Exit(True);
+      end;
     end;
+    Log(Format('host %d still alive after %d close requests within %ds', [LPid, LRequests, ATimeoutSeconds]));
     Result := False;
   finally
     CloseHandle(LHandle);
