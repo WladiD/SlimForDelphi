@@ -107,6 +107,8 @@ begin
   Writeln('  --ErrorPatterns=<list>     Wordings that mark a message window as an error.');
   Writeln('  --FatalPatterns=<list>     Wordings that mean: abort the run.');
   Writeln('  --ExemptWindows=<list>     Windows the watchdog never touches.');
+  Writeln('  --LogDir=<folder>          Folder for SlimProxy_*.log (default Logs, relative to');
+  Writeln('                             the working directory); created if missing.');
   Writeln('  --Help                     This text.');
   Writeln;
   Writeln('Lists are semicolon separated. Every default lives as a named constant in');
@@ -183,7 +185,13 @@ begin
     else if TryGetSwitch(LParam, 'FatalPatterns', LValue) then
       SlimProxyFatalPatterns := LValue
     else if TryGetSwitch(LParam, 'ExemptWindows', LValue) then
-      SlimProxyExemptWindows := LValue;
+      SlimProxyExemptWindows := LValue
+    else if TryGetSwitch(LParam, 'LogDir', LValue) then
+    begin
+      if LValue <> '' then
+        SlimProxyLogDir := LValue;
+      Writeln('LogDir: ', SlimProxyLogDir);
+    end;
   end;
   Flush(Output);
 end;
@@ -208,8 +216,8 @@ begin
     LServer := TSlimServer.Create;
     try
       LServer.DefaultPort := LPort;
-      LServer.Logger := TSlimFileLogger.Create(Format('Logs\SlimProxy_%s.log',
-        [FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]));
+      LServer.Logger := TSlimFileLogger.Create(Format('%sSlimProxy_%s.log',
+        [IncludeTrailingPathDelimiter(SlimProxyLogDir), FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]));
       LServer.OnConnect := TLogger.OnConnect;
       LServer.OnDisconnect := TLogger.OnDisconnect;
       LServer.OnException := TLogger.OnException;

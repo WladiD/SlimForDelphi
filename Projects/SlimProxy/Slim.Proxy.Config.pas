@@ -36,6 +36,14 @@ const
   DefaultReadTimeoutMs = 0;
 
   /// <summary>
+  ///   Folder for the SlimProxy_*.log files (--LogDir=), relative to the
+  ///   working directory unless absolute. A runner that executes several
+  ///   proxies side by side gives each one its own folder, so the logs of one
+  ///   run do not mix with those of another.
+  /// </summary>
+  DefaultLogDir = 'Logs';
+
+  /// <summary>
   ///   Captions of buttons that may be pressed to get rid of a start up or
   ///   shutdown dialog. Semicolon separated, the ampersand of an accelerator
   ///   is ignored while matching, matching is case insensitive.
@@ -184,6 +192,7 @@ var
   SlimProxyErrorPatterns      : String  = DefaultErrorPatterns;
   SlimProxyExemptWindows      : String  = DefaultExemptWindowPatterns;
   SlimProxyFatalPatterns      : String  = DefaultFatalPatterns;
+  SlimProxyLogDir             : String  = DefaultLogDir;
   SlimProxyPostStartDismissMs : Integer = DefaultPostStartDismissMs;
   SlimProxyReadTimeout        : Integer = DefaultReadTimeoutMs;
 
