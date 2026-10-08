@@ -571,10 +571,21 @@ begin
 end;
 
 procedure TestSlimExecutor.DelayedCallMustNotOutliveItsFixture;
+var
+  HookCalls: Integer;
+  HookInFlight: Integer;
 begin
   TSlimDelayedFixture.ReleaseDialog := False;
   TSlimDelayedFixture.ReturnedAfterDestroy := 0;
   TSlimDelayedFixture.LastDestroyed := nil;
+  HookCalls := 0;
+  HookInFlight := 0;
+  TSlimFixture.OnReleasedWhileDelayedCallInFlight :=
+    procedure(AFixture: TSlimFixture; AInFlight: Integer)
+    begin
+      Inc(HookCalls);
+      HookInFlight := AInFlight;
+    end;
   var Done: TEvent := TEvent.Create(nil, True, False, '');
   try
     var Response: IFuture<String> := RunDelayedCallInExecutorThread('HoldLikeModalDialog', Done,
@@ -589,7 +600,10 @@ begin
     Assert.AreEqual(TSlimConsts.VoidResponse, Response.Value);
     Assert.IsNotNull(TSlimDelayedFixture.LastDestroyed, 'The executor should have freed the fixture');
     Assert.AreEqual(0, TSlimDelayedFixture.ReturnedAfterDestroy, 'The delayed call returned on an already destroyed fixture');
+    Assert.AreEqual(1, HookCalls, 'The diagnostic hook should report the deferred release once');
+    Assert.AreEqual(1, HookInFlight, 'One delayed call was in flight at the release');
   finally
+    TSlimFixture.OnReleasedWhileDelayedCallInFlight := nil;
     TSlimDelayedFixture.ReleaseDialog := True;
     Done.Free;
   end;

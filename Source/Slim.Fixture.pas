@@ -108,6 +108,13 @@ type
     /// </summary>
     procedure EndDelayedCall;
   public
+    /// <summary>
+    ///   Diagnostic hook: called when the owner of a fixture lets go while delayed calls on it are
+    ///   still in flight (the instance then lives on until the last of them ends). Runs in the
+    ///   thread that releases the fixture, usually the executor thread, with the instance still
+    ///   alive; the second argument is the number of calls in flight.
+    /// </summary>
+    class var OnReleasedWhileDelayedCallInFlight: TProc<TSlimFixture, Integer>;
     destructor Destroy; override;
     function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
@@ -369,17 +376,19 @@ end;
 
 procedure TSlimFixture.ReleaseByOwner;
 var
-  MustFree: Boolean;
+  InFlight: Integer;
 begin
   TMonitor.Enter(Self);
   try
     FReleasedByOwner := True;
-    MustFree := FDelayedCallsInFlight = 0;
+    InFlight := FDelayedCallsInFlight;
   finally
     TMonitor.Exit(Self);
   end;
-  if MustFree then
-    Free;
+  if InFlight = 0 then
+    Free
+  else if Assigned(OnReleasedWhileDelayedCallInFlight) then
+    OnReleasedWhileDelayedCallInFlight(Self, InFlight);
 end;
 
 { TSlimDecisionTableFixture }
