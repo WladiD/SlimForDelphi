@@ -59,6 +59,8 @@ type
   private
     procedure Execute(AStmts: TSlimList; ACheckResponseProc: TProc<TSlimList>);
     procedure PumpMessages;
+    function RunDelayedCallInExecutorThread(const AMethodName: String; ADone: TEvent; const AAfterFree: TProc): IFuture<String>;
+    function ServeDelayedCall(ADone: TEvent; const ABetweenPasses: TProc): Boolean;
     procedure WaitForDone(AEvent: TEvent);
   protected
     function CreateStmtsFromFile(const AFileName: String): TSlimList;
@@ -69,6 +71,25 @@ type
     [TestCase('Method', 'RunDelayed,Void,False')]
     [TestCase('Exception', 'ThrowDelayed,Exception,True')]
     procedure FixtureWithDelayedExecution(const AMethodName, AExpectedResult: String; AExpectException: Boolean);
+    /// <summary>
+    ///   Delayed call whose method keeps running in a message loop (like a modal dialog): the
+    ///   delayed event is triggered while the method still runs, the executor finishes and frees
+    ///   the fixture, and only then the method returns. The fixture must outlive its own call.
+    /// </summary>
+    [Test]
+    procedure DelayedCallMustNotOutliveItsFixture;
+    /// <summary>
+    ///   Delayed call whose method destroys the owner of the delayed trigger: the trigger never
+    ///   fires, and the executor thread must not wait forever for it.
+    /// </summary>
+    [Test]
+    procedure DelayedWaitMustNotHangWhenTriggerOwnerDies;
+    /// <summary>
+    ///   The owner of a scheduled delayed call dies before the call runs: the executor thread
+    ///   must get an exception response instead of waiting forever.
+    /// </summary>
+    [Test]
+    procedure DelayedWaitMustNotHangWhenOwnerDiesBeforeCall;
     [Test]
     procedure FixtureWithProperties;
     [Test]
@@ -83,6 +104,14 @@ type
     procedure StopTestExceptionTest;
     [Test]
     procedure SutOnLibInstance;
+    /// <summary>
+    ///   Stress test for the smSynchronized path: several executor threads hammer the main thread
+    ///   with synchronized calls, while the main thread pumps CheckSynchronize re-entrantly (as a
+    ///   modal message loop inside a fixture method would do). Every response must carry the value
+    ///   computed in the main thread, and no synchronize entry may be left behind.
+    /// </summary>
+    [TestCase('Default', '4,500')]
+    procedure SynchronizedCallsUnderReentrantPump(AWorkerCount, ACallsPerWorker: Integer);
     [Test]
     procedure TwoMinuteExample;
   end;
@@ -121,14 +150,50 @@ type
   private
     FDummyOwner: TComponent;
   public
+    /// <summary>Instance pointer of the fixture destroyed last - for use-after-free detection</summary>
+    class var LastDestroyed: Pointer;
+    /// <summary>Fixture instance created last - lets a test unblock a hanging delayed wait</summary>
+    class var LastInstance: TSlimDelayedFixture;
+    /// <summary>Set by a test to let HoldLikeModalDialog return</summary>
+    class var ReleaseDialog: Boolean;
+    /// <summary>Counts delayed calls that returned after their fixture was destroyed</summary>
+    class var ReturnedAfterDestroy: Integer;
+    /// <summary>Destroys the DelayedOwner of the last instance once a delayed call is scheduled on it</summary>
+    class procedure FreeOwnerIfCallScheduled;
     constructor Create;
     destructor Destroy; override;
+    [SlimMemberSyncMode(smSynchronizedAndDelayed)]
+    procedure FreeOwnerDuringCall;
+    [SlimMemberSyncMode(smSynchronizedAndDelayed)]
+    procedure HoldLikeModalDialog;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure ThrowDelayed;
     [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
     procedure RunDelayedManual;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure RunDelayed;
+  end;
+
+  [SlimFixture('SyncStress')]
+  TSlimSyncStressFixture = class(TSlimFixture)
+  public
+    class var ExecutedCount: Integer;
+    class var NestedPumpEnabled: Boolean;
+    function Echo(const AValue: String): String;
+    function SyncMode(AMember: TRttiMember): TSyncMode; override;
+  end;
+
+  TSyncStressWorker = class
+  private
+    FCallCount  : Integer;
+    FDone       : TCountdownEvent;
+    FFailure    : String;
+    FIndex      : Integer;
+    procedure Run;
+  public
+    constructor Create(AIndex, ACallCount: Integer; ADone: TCountdownEvent);
+    function Start: ITask;
+    property Failure: String read FFailure;
   end;
 
   [SlimFixture('MySutFixture')]
@@ -385,6 +450,224 @@ begin
     end
     else
       Assert.AreEqual(TSlimConsts.VoidResponse, Task.Value);
+  finally
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.SynchronizedCallsUnderReentrantPump(AWorkerCount, ACallsPerWorker: Integer);
+var
+  Done      : TCountdownEvent;
+  NoiseCount: Integer;
+  NoiseStop : Boolean;
+  NoiseTask : ITask;
+  Tasks     : TArray<ITask>;
+  Workers   : TObjectList<TSyncStressWorker>;
+begin
+  TSlimSyncStressFixture.ExecutedCount := 0;
+  TSlimSyncStressFixture.NestedPumpEnabled := True;
+  NoiseCount := 0;
+  NoiseStop := False;
+  Done := TCountdownEvent.Create(AWorkerCount);
+  Workers := TObjectList<TSyncStressWorker>.Create(True);
+  try
+    SetLength(Tasks, AWorkerCount);
+    for var Loop: Integer := 0 to AWorkerCount - 1 do
+    begin
+      Workers.Add(TSyncStressWorker.Create(Loop, ACallsPerWorker, Done));
+      Tasks[Loop] := Workers.Last.Start;
+    end;
+
+    // Background noise: queued (heap based) synchronize entries compete with the blocking ones
+    NoiseTask := TTask.Run(
+      procedure
+      begin
+        while not NoiseStop do
+        begin
+          TThread.Queue(nil,
+            procedure
+            begin
+              Inc(NoiseCount);
+            end);
+          TThread.Yield;
+        end;
+      end);
+
+    // The main thread acts like a GUI message loop: it serves synchronize requests and messages
+    while Done.WaitFor(0) = wrTimeout do
+    begin
+      CheckSynchronize(1);
+      PumpMessages;
+    end;
+    TTask.WaitForAll(Tasks);
+    NoiseStop := True;
+    NoiseTask.Wait;
+    CheckSynchronize; // drains the last queued noise entries
+
+    for var Worker: TSyncStressWorker in Workers do
+      Assert.IsEmpty(Worker.Failure, Worker.Failure);
+    Assert.AreEqual(AWorkerCount * ACallsPerWorker, TSlimSyncStressFixture.ExecutedCount, 'Executed count');
+    Assert.IsTrue(NoiseCount > 0, 'Noise entries were executed');
+    // No synchronize entry may survive its caller
+    Assert.IsFalse(CheckSynchronize, 'A stale synchronize entry was executed after all workers finished');
+  finally
+    TSlimSyncStressFixture.NestedPumpEnabled := False;
+    Workers.Free;
+    Done.Free;
+  end;
+end;
+
+function TestSlimExecutor.RunDelayedCallInExecutorThread(const AMethodName: String; ADone: TEvent; const AAfterFree: TProc): IFuture<String>;
+begin
+  Result := TTask.Future<String>(
+    function: String
+    var
+      CallResponse: TSlimList;
+      Context     : TSlimStatementContext;
+      Executor    : TSlimExecutor;
+      Reply       : TSlimList;
+      Stmts       : TSlimList;
+    begin
+      Result := '';
+      Context := nil;
+      Executor := nil;
+      try
+        try
+          Context := TSlimStatementContext.Create;
+          Context.InitAllMembers;
+          Executor := TSlimExecutor.Create(Context);
+          Stmts := SlimList([
+            SlimList(['id_1', 'make', 'instance_1', 'DelayedFixture']),
+            SlimList(['id_2', 'call', 'instance_1', AMethodName])]);
+          try
+            Reply := Executor.Execute(Stmts);
+            try
+              if TryGetSlimListById(Reply, 'id_2', CallResponse) then
+                Result := CallResponse[1].ToString
+              else
+                Result := 'no response: ' + SlimListSerialize(Reply);
+            finally
+              Reply.Free;
+            end;
+          finally
+            Stmts.Free;
+          end;
+        finally
+          try
+            // Like TSlimServer at the end of a connection: the executor thread frees the fixtures
+            Executor.Free;
+            Context.Free;
+          finally
+            if Assigned(AAfterFree) then
+              AAfterFree;
+            ADone.SetEvent;
+          end;
+        end;
+      except
+        on E: Exception do
+          Result := E.ClassName + ': ' + E.Message;
+      end;
+    end);
+end;
+
+procedure TestSlimExecutor.DelayedCallMustNotOutliveItsFixture;
+begin
+  TSlimDelayedFixture.ReleaseDialog := False;
+  TSlimDelayedFixture.ReturnedAfterDestroy := 0;
+  TSlimDelayedFixture.LastDestroyed := nil;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Response: IFuture<String> := RunDelayedCallInExecutorThread('HoldLikeModalDialog', Done,
+      procedure
+      begin
+        // The "dialog" closes only after the executor has freed the fixture
+        TSlimDelayedFixture.ReleaseDialog := True;
+      end);
+
+    WaitForDone(Done);
+
+    Assert.AreEqual(TSlimConsts.VoidResponse, Response.Value);
+    Assert.IsNotNull(TSlimDelayedFixture.LastDestroyed, 'The executor should have freed the fixture');
+    Assert.AreEqual(0, TSlimDelayedFixture.ReturnedAfterDestroy, 'The delayed call returned on an already destroyed fixture');
+  finally
+    TSlimDelayedFixture.ReleaseDialog := True;
+    Done.Free;
+  end;
+end;
+
+/// <summary>
+///   Serves the main thread part of a delayed call for a bounded time. Returns True, if the executor
+///   thread did not finish within that time, i.e. it hangs in WaitForDelayedEvent.
+/// </summary>
+function TestSlimExecutor.ServeDelayedCall(ADone: TEvent; const ABetweenPasses: TProc): Boolean;
+const
+  GracePeriodMs = 1500;
+var
+  PassError: Exception;
+begin
+  PassError := nil;
+  try
+    var Started: UInt64 := GetTickCount64;
+    while (ADone.WaitFor(0) = wrTimeout) and (GetTickCount64 - Started < GracePeriodMs) do
+    begin
+      CheckSynchronize(1);
+      if Assigned(ABetweenPasses) and not Assigned(PassError) then
+      begin
+        try
+          ABetweenPasses;
+        except
+          PassError := Exception(AcquireExceptionObject);
+        end;
+      end;
+      PumpMessages;
+    end;
+    Result := ADone.WaitFor(0) = wrTimeout;
+    // Unblock the executor thread by hand, so the test leaves no thread behind in WaitForDelayedEvent
+    if Result and Assigned(TSlimDelayedFixture.LastInstance) then
+      TSlimDelayedFixture.LastInstance.TriggerDelayedEvent;
+    WaitForDone(ADone);
+    if Assigned(PassError) then
+    begin
+      var RaiseError: Exception := PassError;
+      PassError := nil;
+      raise RaiseError;
+    end;
+  finally
+    PassError.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.DelayedWaitMustNotHangWhenTriggerOwnerDies;
+begin
+  TSlimDelayedFixture.LastInstance := nil;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Response: IFuture<String> := RunDelayedCallInExecutorThread('FreeOwnerDuringCall', Done, nil);
+    var HangDetected: Boolean := ServeDelayedCall(Done, nil);
+
+    Assert.IsFalse(HangDetected, 'The executor thread waited forever for a delayed trigger that died with its owner');
+    Assert.AreEqual(TSlimConsts.VoidResponse, Response.Value);
+  finally
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.DelayedWaitMustNotHangWhenOwnerDiesBeforeCall;
+begin
+  TSlimDelayedFixture.LastInstance := nil;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Response: IFuture<String> := RunDelayedCallInExecutorThread('RunDelayed', Done, nil);
+    var HangDetected: Boolean := ServeDelayedCall(Done,
+      procedure
+      begin
+        // Right after the call was scheduled, before the message loop gets to run it
+        TSlimDelayedFixture.FreeOwnerIfCallScheduled;
+      end);
+
+    Assert.IsFalse(HangDetected, 'The executor thread waited forever for a delayed call that died with its owner');
+    Assert.Contains(Response.Value, TSlimConsts.ExceptionResponse);
+    Assert.Contains(Response.Value, 'destroyed before the call could run');
   finally
     Done.Free;
   end;
@@ -780,12 +1063,57 @@ begin
   inherited;
   FDummyOwner := TComponent.Create(nil);
   DelayedOwner := FDummyOwner;
+  LastInstance := Self;
 end;
 
 destructor TSlimDelayedFixture.Destroy;
 begin
+  LastDestroyed := Self;
+  if LastInstance = Self then
+    LastInstance := nil;
   FDummyOwner.Free;
   inherited;
+end;
+
+procedure TSlimDelayedFixture.FreeOwnerDuringCall;
+begin
+  // Like a method that closes the form serving as DelayedOwner: the pending trigger dies with it
+  FreeAndNil(FDummyOwner);
+  DelayedOwner := nil;
+end;
+
+class procedure TSlimDelayedFixture.FreeOwnerIfCallScheduled;
+begin
+  // The delayed event exists from the moment the call was scheduled in the main thread
+  var Instance: TSlimDelayedFixture := LastInstance;
+  if Assigned(Instance) and Assigned(Instance.FDelayedEvent) and Assigned(Instance.FDummyOwner) then
+  begin
+    // Detach first: destroying the owner wakes the executor thread, which may free the fixture
+    // while the owner is still being destroyed
+    var Owner: TComponent := Instance.FDummyOwner;
+    Instance.FDummyOwner := nil;
+    Instance.DelayedOwner := nil;
+    Owner.Free;
+  end;
+end;
+
+procedure TSlimDelayedFixture.HoldLikeModalDialog;
+var
+  Msg: TMsg;
+begin
+  // Keeps the main thread in a message loop, like ShowModal would, until the test releases it
+  while not ReleaseDialog do
+  begin
+    CheckSynchronize(1);
+    while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do
+    begin
+      TranslateMessage(Msg);
+      DispatchMessage(Msg);
+    end;
+  end;
+  // No field access here on purpose: Self may already be freed, which is exactly what is measured
+  if Pointer(Self) = LastDestroyed then
+    AtomicIncrement(ReturnedAfterDestroy);
 end;
 
 procedure TSlimDelayedFixture.ThrowDelayed;
@@ -802,8 +1130,106 @@ procedure TSlimDelayedFixture.RunDelayed;
 begin
 end;
 
+{ TSlimSyncStressFixture }
+
+function TSlimSyncStressFixture.Echo(const AValue: String): String;
+begin
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+    raise Exception.Create('Echo must be executed in the main thread');
+  AtomicIncrement(ExecutedCount);
+  // A fixture method that runs a modal dialog pumps messages, and with them the pending
+  // synchronize entries of other threads. Do the same here, so CheckSynchronize nests.
+  if NestedPumpEnabled then
+    CheckSynchronize;
+  Result := AValue + '!';
+end;
+
+function TSlimSyncStressFixture.SyncMode(AMember: TRttiMember): TSyncMode;
+begin
+  Result := smSynchronized;
+end;
+
+{ TSyncStressWorker }
+
+constructor TSyncStressWorker.Create(AIndex, ACallCount: Integer; ADone: TCountdownEvent);
+begin
+  inherited Create;
+  FIndex := AIndex;
+  FCallCount := ACallCount;
+  FDone := ADone;
+end;
+
+function TSyncStressWorker.Start: ITask;
+begin
+  Result := TTask.Run(Run);
+end;
+
+procedure TSyncStressWorker.Run;
+var
+  CallResponse: TSlimList;
+  Context     : TSlimStatementContext;
+  Executor    : TSlimExecutor;
+  Junk        : TArray<TBytes>;
+  Response    : TSlimList;
+  Stmts       : TSlimList;
+  Value       : String;
+begin
+  Context := nil;
+  Executor := nil;
+  try
+    try
+      Context := TSlimStatementContext.Create;
+      Context.InitAllMembers;
+      Executor := TSlimExecutor.Create(Context);
+
+      Stmts := SlimList([SlimList(['id_make', 'make', 'inst', 'SyncStress'])]);
+      try
+        Response := Executor.Execute(Stmts);
+        try
+          if not (TryGetSlimListById(Response, 'id_make', CallResponse) and (CallResponse[1].ToString = 'OK')) then
+            raise Exception.Create('make failed: ' + SlimListSerialize(Response));
+        finally
+          Response.Free;
+        end;
+      finally
+        Stmts.Free;
+      end;
+
+      SetLength(Junk, 64);
+      for var Loop: Integer := 1 to FCallCount do
+      begin
+        Value := Format('w%d-%d', [FIndex, Loop]);
+        Stmts := SlimList([SlimList(['id_call', 'call', 'inst', 'Echo', Value])]);
+        try
+          Response := Executor.Execute(Stmts);
+          try
+            if not TryGetSlimListById(Response, 'id_call', CallResponse) then
+              raise Exception.Create('no response for ' + Value + ': ' + SlimListSerialize(Response));
+            if CallResponse[1].ToString <> Value + '!' then
+              raise Exception.CreateFmt('wrong response for %s: "%s"', [Value, CallResponse[1].ToString]);
+          finally
+            Response.Free;
+          end;
+        finally
+          Stmts.Free;
+        end;
+        // Churn the heap, so freed memory of the previous round trip is reused quickly
+        SetLength(Junk[Loop mod Length(Junk)], 16 + Random(240));
+      end;
+    except
+      on E: Exception do
+        FFailure := Format('Worker %d: %s: %s', [FIndex, E.ClassName, E.Message]);
+    end;
+  finally
+    Executor.Free;
+    Context.Free;
+    FDone.Signal;
+  end;
+end;
+
 initialization
 
+RegisterSlimFixture(TSlimSyncStressFixture);
 RegisterSlimFixture(TMySutFixture);
 RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);

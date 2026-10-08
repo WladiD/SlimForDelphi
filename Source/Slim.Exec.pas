@@ -171,6 +171,52 @@ implementation
 type
   TSlimFixtureAccess = class(TSlimFixture);
 
+  /// <summary>
+  ///   Watches over a scheduled delayed call. The call lives in a TDelayedMethod owned by the
+  ///   DelayedOwner of the fixture: if that owner is destroyed before the call ran, the guard dies
+  ///   with it and wakes the waiting executor thread with an exception, instead of leaving it in
+  ///   WaitForDelayedEvent forever. The delayed call disarms the guard when it starts.
+  /// </summary>
+  TSlimDelayedCallGuard = class(TComponent)
+  private
+    FFixture   : TSlimFixture;
+    FMemberName: String;
+    FOwnerName : String;
+  public
+    constructor Create(AOwner: TComponent; AFixture: TSlimFixture; const AMemberName: String); reintroduce;
+    destructor Destroy; override;
+    procedure Disarm;
+  end;
+
+{ TSlimDelayedCallGuard }
+
+constructor TSlimDelayedCallGuard.Create(AOwner: TComponent; AFixture: TSlimFixture; const AMemberName: String);
+begin
+  inherited Create(AOwner);
+  FFixture := AFixture;
+  FMemberName := AMemberName;
+  // Owner is already detached when the destructor runs during the destruction of the owner
+  FOwnerName := AOwner.ClassName;
+end;
+
+destructor TSlimDelayedCallGuard.Destroy;
+begin
+  if Assigned(FFixture) then
+  begin
+    TSlimFixtureAccess(FFixture).SetDelayedException(
+      ESlim.CreateFmt('The delayed call of "%s" was dropped: its owner "%s" was destroyed before the call could run',
+        [FMemberName, FOwnerName]));
+    FFixture.TriggerDelayedEvent;
+  end;
+  inherited;
+end;
+
+procedure TSlimDelayedCallGuard.Disarm;
+begin
+  FFixture := nil;
+  Free;
+end;
+
 function StringToSlimInstruction(const AValue: String): TSlimInstruction;
 begin
   if SameText(AValue, 'call') then
@@ -531,7 +577,8 @@ begin
     TThread.Synchronize(TThread.Current,
       procedure
       var
-        Info: TDelayedInfo;
+        Guard: TSlimDelayedCallGuard;
+        Info : TDelayedInfo;
       begin
         try
           if AFixtureInstance.HasDelayedInfo(ASlimMember, Info) then
@@ -539,29 +586,42 @@ begin
           else
             raise Exception.CreateFmt('%s.HasDelayedInfo for the method "%s" not defined', [AInstance.ClassName, ASlimMember.Name]);
 
-          TDelayedMethod.Execute(
-            procedure
-            begin
-              if not Info.ManualDelayedEvent then
+          Guard := TSlimDelayedCallGuard.Create(Info.Owner, AFixtureInstance, ASlimMember.Name);
+          try
+            TDelayedMethod.Execute(
+              procedure
               begin
-                TDelayedMethod.Execute(
-                  procedure
-                  begin
-                    AFixtureInstance.TriggerDelayedEvent;
-                  end, Info.Owner);
-              end;
+                Guard.Disarm;
+                // From here on the fixture outlives this call, even if its owner lets go meanwhile
+                TSlimFixtureAccess(AFixtureInstance).BeginDelayedCall;
+                try
+                  // The trigger must not depend on Info.Owner. It fires at the next pass of the
+                  // message loop: inside a modal dialog opened by the member, or after the call.
+                  if not Info.ManualDelayedEvent then
+                    TThread.ForceQueue(nil,
+                      procedure
+                      begin
+                        AFixtureInstance.TriggerDelayedEvent;
+                      end);
 
-              try
-                SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
-              except
-                on E: Exception do
-                begin
-                  TSlimFixtureAccess(AFixtureInstance).SetDelayedException(Exception(AcquireExceptionObject));
-                  if Info.ManualDelayedEvent then
-                    AFixtureInstance.TriggerDelayedEvent;
+                  try
+                    SyncResult := ExecuteMember(AInstance, ASlimMember, AInvokeArgs);
+                  except
+                    on E: Exception do
+                    begin
+                      TSlimFixtureAccess(AFixtureInstance).SetDelayedException(Exception(AcquireExceptionObject));
+                      if Info.ManualDelayedEvent then
+                        AFixtureInstance.TriggerDelayedEvent;
+                    end;
+                  end;
+                finally
+                  TSlimFixtureAccess(AFixtureInstance).EndDelayedCall;
                 end;
-              end;
-            end, Info.Owner);
+              end, Info.Owner);
+          except
+            Guard.Disarm;
+            raise;
+          end;
         except
           on E: Exception do
           begin

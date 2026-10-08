@@ -82,6 +82,10 @@ type
   /// </summary>
   {$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) PROPERTIES([vcPublic, vcPublished]) FIELDS([]) }
   TSlimFixture = class
+  private
+    FDelayedCallsInFlight: Integer;
+    FReleasedByOwner: Boolean;
+    procedure ReleaseByOwner;
   protected
     FDelayedEvent: TEvent;
     FDelayedException: Exception;
@@ -92,6 +96,17 @@ type
     procedure StopTest(const AMessage: String = '');
     procedure SetDelayedException(AException: Exception);
     procedure CheckAndRaiseDelayedException;
+    /// <summary>
+    ///   Marks the begin of a delayed member call on this instance. While a delayed call is in
+    ///   flight, the owning TSlimFixtureDictionary does not free the instance but leaves that to
+    ///   EndDelayedCall, so a method that still runs (e.g. in a modal dialog) keeps its instance.
+    /// </summary>
+    procedure BeginDelayedCall;
+    /// <summary>
+    ///   Marks the end of a delayed member call. Frees the instance, if its owner let go meanwhile.
+    ///   Self must not be touched after this call.
+    /// </summary>
+    procedure EndDelayedCall;
   public
     destructor Destroy; override;
     function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
@@ -143,7 +158,18 @@ type
   TSymbolResolveFunc = function(const AValue: String): String of object;
   TSymbolObjectFunc = function(const AValue: String): TObject of object;
 
-  TSlimFixtureDictionary = TObjectDictionary<String, TSlimFixture>;
+  /// <summary>
+  ///   Owning dictionary of the fixture instances. A fixture with a delayed call in flight is not
+  ///   freed on removal, but hands its destruction over to the end of that call.
+  /// </summary>
+  TSlimFixtureDictionary = class(TObjectDictionary<String, TSlimFixture>)
+  private
+    FOwnsFixtures: Boolean;
+  protected
+    procedure ValueNotify(const Value: TSlimFixture; Action: TCollectionNotification); override;
+  public
+    constructor Create(Ownerships: TDictionaryOwnerships; ACapacity: NativeInt = 0);
+  end;
 
   TScriptTableActorStack = class(TSlimFixture)
   private
@@ -312,6 +338,50 @@ begin
   end;
 end;
 
+procedure TSlimFixture.BeginDelayedCall;
+begin
+  TMonitor.Enter(Self);
+  try
+    Inc(FDelayedCallsInFlight);
+  finally
+    TMonitor.Exit(Self);
+  end;
+end;
+
+procedure TSlimFixture.EndDelayedCall;
+var
+  MustFree: Boolean;
+begin
+  TMonitor.Enter(Self);
+  try
+    Dec(FDelayedCallsInFlight);
+    MustFree := FReleasedByOwner and (FDelayedCallsInFlight = 0);
+  finally
+    TMonitor.Exit(Self);
+  end;
+  if MustFree then
+  begin
+    // The owner is gone, so nobody is left to receive a delayed exception
+    FreeAndNil(FDelayedException);
+    Free;
+  end;
+end;
+
+procedure TSlimFixture.ReleaseByOwner;
+var
+  MustFree: Boolean;
+begin
+  TMonitor.Enter(Self);
+  try
+    FReleasedByOwner := True;
+    MustFree := FDelayedCallsInFlight = 0;
+  finally
+    TMonitor.Exit(Self);
+  end;
+  if MustFree then
+    Free;
+end;
+
 { TSlimDecisionTableFixture }
 
 procedure TSlimDecisionTableFixture.Table(AList: TSlimList);
@@ -361,6 +431,22 @@ end;
 procedure TSlimDynamicDecisionTableFixture.&Set(const AFieldName, AFieldValue: String);
 begin
 
+end;
+
+{ TSlimFixtureDictionary }
+
+constructor TSlimFixtureDictionary.Create(Ownerships: TDictionaryOwnerships; ACapacity: NativeInt);
+begin
+  inherited Create(Ownerships, ACapacity);
+  FOwnsFixtures := doOwnsValues in Ownerships;
+end;
+
+procedure TSlimFixtureDictionary.ValueNotify(const Value: TSlimFixture; Action: TCollectionNotification);
+begin
+  if FOwnsFixtures and (Action = cnRemoved) and Assigned(Value) then
+    Value.ReleaseByOwner
+  else
+    inherited;
 end;
 
 { TScriptTableActorStack }
