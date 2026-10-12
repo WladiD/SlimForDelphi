@@ -319,7 +319,7 @@ begin
     if not Assigned(FResolver.SymbolResolveFunc) then
       FResolver.SymbolResolveFunc := FSymbols.EvalSymbols;
     if not Assigned(FResolver.SymbolObjectFunc) then
-      FResolver.SymbolObjectFunc := FSymbols.SymbolObject;
+      FResolver.SymbolObjectFunc := FSymbols.SymbolObjectAs;
   end;
 end;
 
@@ -811,7 +811,7 @@ var
   SlimMember  : TRttiMember;
 begin
   MemberResult := ExecuteInternal(SlimMember, InvokeArgs);
-  Context.Symbols.AddOrSetValue(SymbolParam, MemberResult);
+  Context.Symbols.SetSymbol(SymbolParam, MemberResult);
   Result := ResponseExecute(SlimMember, MemberResult);
 end;
 
@@ -829,7 +829,7 @@ end;
 
 function TSlimStmtAssign.Execute: TSlimList;
 begin
-  Context.Symbols.AddOrSetValue(SymbolParam, ValueParam);
+  Context.Symbols.SetSymbol(SymbolParam, ValueParam);
   Result := ResponseOk;
 end;
 

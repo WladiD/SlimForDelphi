@@ -163,7 +163,7 @@ type
 
   TSlimFixtureClass = class of TSlimFixture;
   TSymbolResolveFunc = function(const AValue: String): String of object;
-  TSymbolObjectFunc = function(const AValue: String): TObject of object;
+  TSymbolObjectFunc = function(const AValue: String; AClass: TClass): TObject of object;
 
   /// <summary>
   ///   Owning dictionary of the fixture instances. A fixture with a delayed call in flight is not
@@ -540,8 +540,10 @@ var
     Result := Assigned(FSymbolObjectFunc);
     if Result then
     begin
-      AObject := FSymbolObjectFunc(AValueRaw.ToString);
-      Result := Assigned(AObject) and (AObject is ParamClass);
+      // The class check runs inside the symbol dictionary, under its lock: a symbol that holds a
+      // destroyed component is already cleared there, so a dead pointer is never dereferenced.
+      AObject := FSymbolObjectFunc(AValueRaw.ToString, ParamClass);
+      Result := Assigned(AObject);
     end;
   end;
 
