@@ -63,6 +63,7 @@ type
   TSlimProxyWatchdog = class(TThread)
   private
     FConfig            : TSlimProxyWindowConfig;
+    FFatalDumpDir      : String;
     FFindings          : TSlimProxyFindings;
     FFlatSinceTick     : Cardinal;
     FHandledWindows    : TList<HWND>;
@@ -81,6 +82,7 @@ type
     procedure AddFinding(AKind: TSlimProxyFindingKind; const AText: String);
     procedure CheckStall;
     procedure CheckWindows;
+    procedure WriteFatalDump;
   protected
     procedure Execute; override;
   public
@@ -90,6 +92,11 @@ type
     procedure StopAndWait;
     function GetFindings: TSlimProxyFindings;
     function Report: String;
+    /// <summary>
+    ///   Folder for a full memory dump of the target, written when a fatal report
+    ///   shows up and BEFORE it is dismissed. Empty = no dump.
+    /// </summary>
+    property FatalDumpDir: String read FFatalDumpDir write FFatalDumpDir;
     /// <summary>True if an error dialog was dismissed - the result is unreliable then.</summary>
     property HasDismissedError: Boolean read FHasDismissedError;
     /// <summary>True if a fatal report was seen - do not fire any further call.</summary>
@@ -244,14 +251,46 @@ begin
           FHandledWindows.Add(LInfo.Handle);
           // Capture the report INCLUDING its stack first, then unblock the call.
           // The process state is unreliable afterwards, so the run has to stop.
+          // The memory dump has to be written while the report is still on
+          // screen: the dialog holds the thread that detected the damage.
           FHasFatal := True;
           AddFinding(fkFatal, LInfo.Describe);
+          WriteFatalDump;
           var LClicked: String := SlimProxyDismissWindow(LInfo.Handle, FConfig);
           if LClicked <> '' then
             AddFinding(fkFatal, 'dismissed to unblock the pending call -> ' + LClicked);
         end;
     end;
   end;
+end;
+
+/// <summary>
+///   Writes a full memory dump of the target while its fatal report is still
+///   on screen. Such a dialog holds the thread that detected the damage at
+///   exactly that point - its stack is in the dump, together with every other
+///   thread and the whole heap, which the report text alone cannot preserve.
+///   Nothing is written without a folder. The outcome is a finding, so the dump
+///   file travels with the Slim result.
+/// </summary>
+procedure TSlimProxyWatchdog.WriteFatalDump;
+var
+  LError   : String;
+  LFileName: String;
+  LImage   : String;
+  LStart   : Cardinal;
+begin
+  if FFatalDumpDir = '' then
+    Exit;
+  LImage := ChangeFileExt(ExtractFileName(SlimProxyProcessImagePath(FPid)), '');
+  if LImage = '' then
+    LImage := 'Process';
+  LFileName := Format('%s%s_%d_%s.dmp', [IncludeTrailingPathDelimiter(FFatalDumpDir), LImage, FPid,
+    FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]);
+  LStart := GetTickCount;
+  if SlimProxyWriteMemoryDump(FPid, LFileName, True, LError) then
+    AddFinding(fkFatal, Format('memory dump written in %dms: %s', [GetTickCount - LStart, LFileName]))
+  else
+    AddFinding(fkFatal, 'memory dump failed: ' + LError);
 end;
 
 procedure TSlimProxyWatchdog.CheckStall;

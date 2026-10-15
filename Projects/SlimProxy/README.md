@@ -50,7 +50,11 @@ SlimProxy.exe [options]
   --AbortWindows=<list>      Classes/titles that prove Slim will never come up.
   --ErrorPatterns=<list>     Wordings that mark a message window as an error.
   --FatalPatterns=<list>     Wordings that mean: abort the run.
+  --FatalDump[=on|off]       Write a full memory dump of the target before a fatal
+                             report is dismissed, into --LogDir (default on).
   --ExemptWindows=<list>     Windows the watchdog never touches.
+  --LogDir=<folder>          Folder for SlimProxy_*.log and the memory dumps (default
+                             Logs, relative to the working directory); created if missing.
   --Help                     Usage text.
 ```
 
@@ -146,7 +150,8 @@ forwarded call is open.** A script next to the run has to guess that from file s
 
 *   **Occupied error dialogs** - an error wording in title or text - are captured completely and dismissed, so the call unblocks and the page goes red instead of hanging.
 *   **Messages without an error wording** are reported but **never** dismissed. A yes/no is a decision of the application, not something to click away; a blind "OK" could let a call run through to a success it never had.
-*   **Fatal patterns** (memory corruption and the like) are treated as fatal: the report including its stack is captured, the run is aborted (`ABORT_SLIM_SUITE`), no further call is fired. The process state is unreliable afterwards, every further result would be garbage.
+*   **Fatal patterns** (memory corruption and the like, including every error report of the FastMM memory manager) are treated as fatal: the report including its stack is captured, the run is aborted (`ABORT_SLIM_SUITE`), no further call is fired. The process state is unreliable afterwards, every further result would be garbage.
+*   **A memory dump of the target** is written for a fatal report *before* the report is dismissed (`--FatalDump`, on by default, into `--LogDir`). The report dialog holds the thread that detected the damage at exactly that point, so its stack is in the dump - together with every other thread and the whole heap. That is what a heap corruption needs when it only shows up without the memory manager's debug support (FastMM without its FullDebugMode DLL reports no stack at all, and with the DLL the timing changes so much that a race may not show up any more). The finding names the file. A 32 bit proxy cannot dump a 64 bit target; the finding says so instead of writing a broken file.
 *   **A stall** is told apart from computing. That a window pumps no messages says nothing - a long calculation on the main thread looks exactly the same. The CPU delta separates them: a busy core means computing, a flat value means blocked.
 *   Findings land in the **Slim result of the affected call**, not only in the log.
 *   A dismissed error dialog makes the result **unreliable** - confirming buttons can let a call run through and the page end up undeservedly green. The result says so.

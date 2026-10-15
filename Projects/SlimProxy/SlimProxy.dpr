@@ -106,6 +106,8 @@ begin
   Writeln('  --AbortWindows=<list>      Classes/titles that prove Slim will never come up.');
   Writeln('  --ErrorPatterns=<list>     Wordings that mark a message window as an error.');
   Writeln('  --FatalPatterns=<list>     Wordings that mean: abort the run.');
+  Writeln('  --FatalDump[=on|off]       Write a full memory dump of the target before a fatal');
+  Writeln('                             report is dismissed, into --LogDir (default on).');
   Writeln('  --ExemptWindows=<list>     Windows the watchdog never touches.');
   Writeln('  --LogDir=<folder>          Folder for SlimProxy_*.log (default Logs, relative to');
   Writeln('                             the working directory); created if missing.');
@@ -171,6 +173,17 @@ begin
     begin
       SlimProxyWatchdogEnabled := True;
       Writeln('Watchdog: enabled');
+    end
+    else if TryGetSwitch(LParam, 'FatalDump', LValue) then
+    begin
+      SlimProxyFatalDump := not (SameText(LValue, 'off') or SameText(LValue, '0') or
+                                 SameText(LValue, 'false'));
+      Writeln('FatalDump: ', BoolToStr(SlimProxyFatalDump, True));
+    end
+    else if SameText(LParam, '--FatalDump') then
+    begin
+      SlimProxyFatalDump := True;
+      Writeln('FatalDump: enabled');
     end
     else if TryGetSwitch(LParam, 'DismissButtons', LValue) then
       SlimProxyDismissButtons := LValue

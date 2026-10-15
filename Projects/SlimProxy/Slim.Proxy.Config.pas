@@ -84,8 +84,22 @@ const
   /// <summary>
   ///   Wordings that mean: abort the run, the process state is not trustworthy
   ///   any more. Everything measured after such a report would be garbage.
+  ///   "fastmm" catches every error report of the FastMM memory manager: their
+  ///   titles are translated ("Speicherfehler entdeckt"), but every message text
+  ///   names FastMM in any translation ("FastMM has detected ...").
   /// </summary>
-  DefaultFatalPatterns = 'memory manager;memory corruption;heap corruption;buffer overrun;stack overflow';
+  DefaultFatalPatterns = 'memory manager;memory corruption;heap corruption;buffer overrun;stack overflow;fastmm';
+
+  /// <summary>
+  ///   Write a full memory dump of the target before a fatal report is
+  ///   dismissed (--FatalDump=on|off), into the log folder. The report dialog
+  ///   holds the thread that detected the damage at exactly that point; the dump
+  ///   keeps that moment with every thread and the whole heap, which the report
+  ///   text alone cannot - a memory manager without its debug support shows no
+  ///   stack at all. Costs nothing until a fatal report shows up, then disk space
+  ///   in the size of the target's memory. Only effective with the watchdog.
+  /// </summary>
+  DefaultFatalDump = True;
 
   /// <summary>
   ///   Windows that are never touched even if they match. This list has exactly
@@ -191,6 +205,7 @@ var
   SlimProxyDismissButtons     : String  = DefaultDismissButtonCaptions;
   SlimProxyErrorPatterns      : String  = DefaultErrorPatterns;
   SlimProxyExemptWindows      : String  = DefaultExemptWindowPatterns;
+  SlimProxyFatalDump          : Boolean = DefaultFatalDump;
   SlimProxyFatalPatterns      : String  = DefaultFatalPatterns;
   SlimProxyLogDir             : String  = DefaultLogDir;
   SlimProxyPostStartDismissMs : Integer = DefaultPostStartDismissMs;
@@ -210,6 +225,8 @@ function SlimProxyMatchPrefix(const AValue, AList: String): String;
 function SlimProxyMatchSubstring(const AValue, AList: String): String;
 
 function SlimProxyNormalizeCaption(const AValue: String): String;
+
+function SlimProxyFatalDumpDir: String;
 
 implementation
 
@@ -260,6 +277,19 @@ end;
 function SlimProxyNormalizeCaption(const AValue: String): String;
 begin
   Result := AValue.Replace('&', '', [rfReplaceAll]).Trim;
+end;
+
+/// <summary>
+///   Folder for the memory dump of a fatal report: the log folder as an
+///   absolute path, so the finding names a file one can open, or an empty
+///   string when dumps are switched off.
+/// </summary>
+function SlimProxyFatalDumpDir: String;
+begin
+  if SlimProxyFatalDump then
+    Result := ExpandFileName(SlimProxyLogDir)
+  else
+    Result := '';
 end;
 
 { TSlimProxyWindowConfig }

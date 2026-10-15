@@ -37,6 +37,7 @@ uses
   Winapi.Windows,
 
   System.Classes,
+  System.IOUtils,
   System.SysUtils,
 
   DUnitX.TestFramework,
@@ -102,6 +103,8 @@ type
     [Test]
     procedure WatchdogTreatsAConfiguredFatalWordingAsAbortSuite;
     [Test]
+    procedure WatchdogDumpsTheTargetBeforeDismissingAFatalReport;
+    [Test]
     procedure WatchdogTellsAnIdleProcessFromAComputingOne;
   end;
 
@@ -137,6 +140,7 @@ begin
   SlimProxyErrorPatterns := DefaultErrorPatterns;
   SlimProxyExemptWindows := DefaultExemptWindowPatterns;
   SlimProxyFatalPatterns := DefaultFatalPatterns;
+  SlimProxyFatalDump := False; // only the dump test wants one, the others must not litter
   SlimProxyPostStartDismissMs := 1000;
   SlimProxyReadTimeout := DefaultReadTimeoutMs;
   SlimProxyWatchdogEnabled := False;
@@ -156,6 +160,8 @@ begin
   FHost.Free;
   SlimProxyPostStartDismissMs := DefaultPostStartDismissMs;
   SlimProxyWatchdogEnabled := False;
+  SlimProxyFatalDump := DefaultFatalDump;
+  SlimProxyLogDir := DefaultLogDir;
 end;
 
 function TestSlimProxyGuiHost.Exe: String;
@@ -526,6 +532,46 @@ begin
   // rather than left sitting out the self close timeout.
   Assert.IsTrue(LElapsed < Cardinal(StrToInt(DialogSelfCloseMs) div 2),
     Format('the fatal dialog released the call after %dms', [LElapsed]));
+end;
+
+procedure TestSlimProxyGuiHost.WatchdogDumpsTheTargetBeforeDismissingAFatalReport;
+var
+  LDumpDir: String;
+  LDumps  : TArray<String>;
+  LPort   : Integer;
+  LReport : String;
+begin
+  RequireSimulationTarget;
+  LDumpDir := TPath.Combine(TPath.GetTempPath, Format('SlimProxyFatalDump_%d', [GetCurrentProcessId]));
+  try
+    // The dump lands next to the logs: a runner collects both from one folder.
+    SlimProxyLogDir := LDumpDir;
+    SlimProxyFatalDump := True;
+    LPort := TestFindFreePort;
+    StartHost(Format('--SlimPort=%d', [LPort]), LPort, 25);
+    FHost.SetFatalPatterns('while processing the request');
+    FHost.EnableWatchdog;
+    ConnectExecutorTo(LPort, 20000);
+    Assert.AreEqual('OK', ForwardStmt('id_make', 'make', 'dialog', 'ShowErrorDialog'));
+
+    Assert.Contains(ForwardStmt('id_fatal', 'call', 'dialog', 'ShowFor', [DialogSelfCloseMs]),
+      'ABORT_SLIM_SUITE', 'a fatal finding still stops the run');
+    LReport := FExecutor.LastWatchdogReport;
+    LDumps := TDirectory.GetFiles(LDumpDir, '*.dmp');
+    Assert.AreEqual(1, Integer(Length(LDumps)), 'exactly one dump for one fatal report');
+    Assert.IsTrue(TFile.GetSize(LDumps[0]) > 0, 'the dump must not be empty');
+    Assert.Contains(LReport, LDumps[0], 'the finding names the file, so it travels with the Slim result');
+    // Only while the report is on screen does the dump hold the stack of the
+    // thread that raised it - after the click that thread has moved on.
+    Assert.IsTrue((Pos('memory dump written', LReport) > 0) and
+      (Pos('memory dump written', LReport) < Pos('dismissed to unblock', LReport)),
+      'the dump has to be written BEFORE the report is dismissed:' + sLineBreak + LReport);
+  finally
+    SlimProxyFatalDump := False;
+    SlimProxyLogDir := DefaultLogDir;
+    if TDirectory.Exists(LDumpDir) then
+      TDirectory.Delete(LDumpDir, True);
+  end;
 end;
 
 procedure TestSlimProxyGuiHost.WatchdogTellsAnIdleProcessFromAComputingOne;

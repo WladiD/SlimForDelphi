@@ -77,6 +77,11 @@ function SlimProxyIsProcessRunning(APid: Cardinal): Boolean;
 
 function SlimProxyTryGetExitCode(AHandle: THandle; out AExitCode: DWORD): Boolean;
 
+function SlimProxyProcessImagePath(APid: Cardinal): String;
+
+function SlimProxyWriteMemoryDump(APid: Cardinal; const AFileName: String; AFullMemory: Boolean;
+  out AError: String): Boolean;
+
 implementation
 
 uses
@@ -536,6 +541,140 @@ function SlimProxyTryGetExitCode(AHandle: THandle; out AExitCode: DWORD): Boolea
 begin
   AExitCode := 0;
   Result := GetExitCodeProcess(AHandle, AExitCode) and (AExitCode <> STILL_ACTIVE);
+end;
+
+{ ----------------------------------------------------------------------- }
+{ Memory dumps                                                            }
+{ ----------------------------------------------------------------------- }
+
+const
+  // MINIDUMP_TYPE flags (DbgHelp.h), not declared by the RTL. Full memory plus
+  // handles, unloaded modules, memory and thread info is what "procdump -ma"
+  // writes.
+  MiniDumpNormal              = $00000000;
+  MiniDumpWithFullMemory      = $00000002;
+  MiniDumpWithHandleData      = $00000004;
+  MiniDumpWithUnloadedModules = $00000020;
+  MiniDumpWithFullMemoryInfo  = $00000800;
+  MiniDumpWithThreadInfo      = $00001000;
+
+// Delay loaded: a proxy that never writes a dump does not need dbghelp.dll.
+function SlimProxyMiniDumpWriteDump(AProcess: THandle; AProcessId: DWORD; AFile: THandle; ADumpType: DWORD;
+  AExceptionParam, AUserStreamParam, ACallbackParam: Pointer): BOOL; stdcall;
+  external 'dbghelp.dll' name 'MiniDumpWriteDump' delayed;
+
+function SlimProxyQueryFullProcessImageName(AProcess: THandle; AFlags: DWORD; AExeName: PWideChar;
+  var ASize: DWORD): BOOL; stdcall; external kernel32 name 'QueryFullProcessImageNameW';
+
+/// <summary>Full path of the program file of a process, or an empty string.</summary>
+function SlimProxyProcessImagePath(APid: Cardinal): String;
+var
+  LBuffer: array[0..1023] of WideChar;
+  LHandle: THandle;
+  LSize  : DWORD;
+begin
+  Result := '';
+  LHandle := OpenProcess(ProcessQueryLimitedInformation, False, APid);
+  if LHandle = 0 then
+    Exit;
+  try
+    LSize := Length(LBuffer);
+    if SlimProxyQueryFullProcessImageName(LHandle, 0, @LBuffer[0], LSize) then
+      SetString(Result, PWideChar(@LBuffer[0]), LSize);
+  finally
+    CloseHandle(LHandle);
+  end;
+end;
+
+/// <summary>
+///   True if this process cannot read AProcess: a 32 bit proxy on a 64 bit
+///   Windows runs under WOW64 and sees a native 64 bit process only in part.
+/// </summary>
+function IsBeyondOwnBitness(AProcess: THandle): Boolean;
+{$IFDEF WIN32}
+var
+  LSelf  : BOOL;
+  LTarget: BOOL;
+begin
+  Result := IsWow64Process(GetCurrentProcess, LSelf) and LSelf and
+            IsWow64Process(AProcess, LTarget) and not LTarget;
+end;
+{$ELSE}
+begin
+  Result := False;
+end;
+{$ENDIF}
+
+/// <summary>
+///   Writes a memory dump of a running process to AFileName: with AFullMemory
+///   the complete address space plus handles, modules and thread info,
+///   otherwise threads, stacks and modules only. Returns False with the reason
+///   in AError if the process cannot be opened or read; a partly written file
+///   is removed then. A dump of a 64 bit process from a 32 bit proxy is refused
+///   up front instead of producing a broken file.
+/// </summary>
+function SlimProxyWriteMemoryDump(APid: Cardinal; const AFileName: String; AFullMemory: Boolean;
+  out AError: String): Boolean;
+var
+  LDumpType : DWORD;
+  LErrorCode: DWORD;
+  LFile     : THandle;
+  LProcess  : THandle;
+begin
+  Result := False;
+  AError := '';
+  LProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ or PROCESS_DUP_HANDLE, False, APid);
+  if LProcess = 0 then
+  begin
+    AError := Format('process %d cannot be opened for reading: %s', [APid, SysErrorMessage(GetLastError)]);
+    Exit;
+  end;
+  try
+    if IsBeyondOwnBitness(LProcess) then
+    begin
+      AError := Format('process %d is a 64 bit process - a 32 bit SlimProxy cannot dump it', [APid]);
+      Exit;
+    end;
+    var LDir: String := ExtractFileDir(AFileName);
+    if (LDir <> '') and not ForceDirectories(LDir) then
+    begin
+      AError := Format('folder "%s" cannot be created: %s', [LDir, SysErrorMessage(GetLastError)]);
+      Exit;
+    end;
+    LFile := CreateFile(PChar(AFileName), GENERIC_WRITE, 0, nil, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if LFile = INVALID_HANDLE_VALUE then
+    begin
+      AError := Format('"%s" cannot be created: %s', [AFileName, SysErrorMessage(GetLastError)]);
+      Exit;
+    end;
+    try
+      if AFullMemory then
+        LDumpType := MiniDumpWithFullMemory or MiniDumpWithHandleData or MiniDumpWithUnloadedModules or
+                     MiniDumpWithFullMemoryInfo or MiniDumpWithThreadInfo
+      else
+        LDumpType := MiniDumpNormal or MiniDumpWithThreadInfo;
+      try
+        Result := SlimProxyMiniDumpWriteDump(LProcess, APid, LFile, LDumpType, nil, nil, nil);
+        if not Result then
+        begin
+          // The last error is an HRESULT here.
+          LErrorCode := GetLastError;
+          AError := Format('MiniDumpWriteDump failed for process %d: %s (0x%.8x)',
+            [APid, SysErrorMessage(LErrorCode), LErrorCode]);
+        end;
+      except
+        // dbghelp.dll is delay loaded - a missing one surfaces here, not at start up.
+        on E: Exception do
+          AError := Format('MiniDumpWriteDump is not available: %s', [E.Message]);
+      end;
+    finally
+      CloseHandle(LFile);
+    end;
+    if not Result then
+      System.SysUtils.DeleteFile(AFileName);
+  finally
+    CloseHandle(LProcess);
+  end;
 end;
 
 end.

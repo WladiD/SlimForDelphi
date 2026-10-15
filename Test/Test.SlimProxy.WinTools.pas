@@ -16,6 +16,7 @@ uses
 
   Winapi.Windows,
 
+  System.IOUtils,
   System.SysUtils,
 
   DUnitX.TestFramework,
@@ -63,6 +64,15 @@ type
     procedure AbortWindowsMatchClassAndTitle;
     [Test]
     procedure WindowDumpNamesTheAbsenceOfWindows;
+    [Test]
+    procedure FastMMReportsAreFatalInEveryTranslation;
+  public // Memory dumps
+    [Test]
+    procedure TheDumpFolderFollowsTheSwitchAndTheLogFolder;
+    [Test]
+    procedure AMemoryDumpOfARunningProcessIsWritten;
+    [Test]
+    procedure AMemoryDumpOfAMissingProcessNamesTheReason;
   end;
 
 implementation
@@ -240,6 +250,71 @@ begin
   // dump has to say so instead of returning an empty string.
   Assert.AreEqual('(no visible window)',
     SlimProxyDumpWindows(GetCurrentProcessId, TSlimProxyWindowConfig.CreateDefaults));
+end;
+
+procedure TestSlimProxyWinTools.FastMMReportsAreFatalInEveryTranslation;
+var
+  LConfig: TSlimProxyWindowConfig;
+  LHit   : String;
+begin
+  LConfig := TSlimProxyWindowConfig.CreateDefaults;
+  // The titles are translated, the texts all name FastMM. Without "fastmm" in the
+  // defaults only the one untranslated message ("... memory manager sharing
+  // settings") was fatal; every other report was dismissed as a plain error and
+  // the run went on with a corrupted heap.
+  Assert.AreEqual(Ord(wkFatal), Ord(LConfig.ClassifyWindow('#32770', 'App.exe: Memory Error Detected',
+    'FastMM has detected an attempt to call a virtual method on a freed object.', LHit)));
+  Assert.AreEqual(Ord(wkFatal), Ord(LConfig.ClassifyWindow('#32770', 'App.exe: Speicherfehler entdeckt',
+    'FastMM hat einen Versuch entdeckt, eine virtuelle Methode eines freigegebenen Objektes aufzurufen.',
+    LHit)));
+  Assert.AreEqual('fastmm', LHit, 'the FastMM wording is what made it fatal');
+end;
+
+procedure TestSlimProxyWinTools.TheDumpFolderFollowsTheSwitchAndTheLogFolder;
+begin
+  try
+    SlimProxyLogDir := 'Logs';
+    SlimProxyFatalDump := True;
+    // Relative to the working directory like the log files, but absolute, so the
+    // finding names a path one can open.
+    Assert.AreEqual(ExpandFileName('Logs'), SlimProxyFatalDumpDir);
+    SlimProxyFatalDump := False;
+    Assert.AreEqual('', SlimProxyFatalDumpDir, 'switched off means no folder, and no folder means no dump');
+  finally
+    SlimProxyFatalDump := DefaultFatalDump;
+    SlimProxyLogDir := DefaultLogDir;
+  end;
+end;
+
+procedure TestSlimProxyWinTools.AMemoryDumpOfARunningProcessIsWritten;
+var
+  LError: String;
+  LFile : String;
+begin
+  LFile := TPath.Combine(TPath.GetTempPath, Format('SlimProxyDumpTest_%d.dmp', [GetCurrentProcessId]));
+  try
+    // The own process is the one process that is guaranteed to run. The small
+    // dump keeps the test fast; the full one only differs in its flags.
+    Assert.IsTrue(SlimProxyWriteMemoryDump(GetCurrentProcessId, LFile, False, LError), LError);
+    Assert.AreEqual('', LError);
+    Assert.IsTrue(TFile.Exists(LFile), 'the dump file has to exist');
+    Assert.IsTrue(TFile.GetSize(LFile) > 0, 'and must not be empty');
+  finally
+    System.SysUtils.DeleteFile(LFile);
+  end;
+end;
+
+procedure TestSlimProxyWinTools.AMemoryDumpOfAMissingProcessNamesTheReason;
+var
+  LError: String;
+  LFile : String;
+begin
+  LFile := TPath.Combine(TPath.GetTempPath, Format('SlimProxyDumpTest_missing_%d.dmp', [GetCurrentProcessId]));
+  // Far above any process id Windows hands out, and a multiple of four: the low
+  // bits of a process id are ignored, an odd value could open a real process.
+  Assert.IsFalse(SlimProxyWriteMemoryDump($7FFFFFF0, LFile, True, LError), 'there is no such process');
+  Assert.Contains(LError, 'cannot be opened', 'the reason has to be named');
+  Assert.IsFalse(TFile.Exists(LFile), 'and no file may be left behind');
 end;
 
 initialization

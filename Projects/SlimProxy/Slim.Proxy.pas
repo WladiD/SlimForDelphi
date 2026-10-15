@@ -651,6 +651,7 @@ begin
         if LPid <> 0 then
         begin
           LWatchdog := TSlimProxyWatchdog.Create(LPid, TSlimProxyWindowConfig.CreateFromGlobals);
+          LWatchdog.FatalDumpDir := SlimProxyFatalDumpDir;
           LWatchdog.StartWatching;
         end;
       end;
