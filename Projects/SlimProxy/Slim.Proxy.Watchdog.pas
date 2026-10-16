@@ -276,16 +276,11 @@ procedure TSlimProxyWatchdog.WriteFatalDump;
 var
   LError   : String;
   LFileName: String;
-  LImage   : String;
   LStart   : Cardinal;
 begin
   if FFatalDumpDir = '' then
     Exit;
-  LImage := ChangeFileExt(ExtractFileName(SlimProxyProcessImagePath(FPid)), '');
-  if LImage = '' then
-    LImage := 'Process';
-  LFileName := Format('%s%s_%d_%s.dmp', [IncludeTrailingPathDelimiter(FFatalDumpDir), LImage, FPid,
-    FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]);
+  LFileName := SlimProxyDumpFileName(FFatalDumpDir, FPid);
   LStart := GetTickCount;
   if SlimProxyWriteMemoryDump(FPid, LFileName, True, LError) then
     AddFinding(fkFatal, Format('memory dump written in %dms: %s', [GetTickCount - LStart, LFileName]))

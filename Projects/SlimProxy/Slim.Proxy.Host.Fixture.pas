@@ -48,6 +48,7 @@ type
     FWorkingDir    : String;
     function  Config: TSlimProxyWindowConfig;
     function  EffectivePid(APid: Integer): Cardinal;
+    function  EndOrphanedHost(APid: Cardinal): Boolean;
     procedure Log(const AText: String);
     procedure RaiseHostError(APid: Cardinal; const AMessage: String);
     procedure ReleaseLastHostHandle;
@@ -259,14 +260,23 @@ end;
 
 /// <summary>
 ///   Orderly shutdown: WM_CLOSE on the main window, dismiss confirmations,
-///   wait for the process to really end. Deliberately NO TerminateProcess - a
-///   hard killed process can leave locks or half states behind and the next
-///   start then fails without a visible reason.
+///   wait for the process to really end. Deliberately NO TerminateProcess for
+///   a host that still shows a window - a hard killed process can leave locks
+///   or half states behind and the next start then fails without a visible
+///   reason.
 ///   The close request is REPEATED every two seconds until the process is
 ///   gone or the timeout runs out. A host may still refuse the first WM_CLOSE
-///   shortly after start up, and the main window may not even exist yet or 
-///   may be replaced meanwhile - so the window is looked up again for every 
+///   shortly after start up, and the main window may not even exist yet or
+///   may be replaced meanwhile - so the window is looked up again for every
 ///   request.
+///   One exception: a process that is still alive when the time is up but has
+///   no main window left is an orphan - a host that began its own shutdown
+///   and got stuck in it, with nothing on screen a WM_CLOSE could reach. It
+///   never ends on its own, its Slim port stays open, and the next page would
+///   connect to it and time out on every call. So it is dumped (into the
+///   fatal dump folder, if dumps are on) and then terminated: the dump holds
+///   the stuck threads, the only evidence such a state leaves behind.
+///   True means the process is gone, by whichever way.
 /// </summary>
 function TSlimProxyHostFixture.CloseHost(APid, ATimeoutSeconds: Integer): Boolean;
 const
@@ -309,10 +319,41 @@ begin
       end;
     end;
     Log(Format('host %d still alive after %d close requests within %ds', [LPid, LRequests, ATimeoutSeconds]));
-    Result := False;
+    if SlimProxyFindMainWindow(LPid) <> 0 then
+      Exit(False);
   finally
     CloseHandle(LHandle);
   end;
+  Result := EndOrphanedHost(LPid);
+end;
+
+/// <summary>
+///   Dumps and terminates a host that is alive without a main window, see
+///   Close Host. The dump comes first: a terminated process has no stacks.
+/// </summary>
+function TSlimProxyHostFixture.EndOrphanedHost(APid: Cardinal): Boolean;
+var
+  LDumpDir : String;
+  LError   : String;
+  LFileName: String;
+  LStart   : Cardinal;
+begin
+  Log(Format('host %d has no main window left - an orphan that never ends on its own', [APid]));
+  LDumpDir := SlimProxyFatalDumpDir;
+  if LDumpDir <> '' then
+  begin
+    LFileName := SlimProxyDumpFileName(LDumpDir, APid);
+    LStart := GetTickCount;
+    if SlimProxyWriteMemoryDump(APid, LFileName, True, LError) then
+      Log(Format('memory dump written in %dms: %s', [GetTickCount - LStart, LFileName]))
+    else
+      Log('memory dump failed: ' + LError);
+  end;
+  Result := KillHost(Integer(APid));
+  if Result then
+    Log(Format('host %d terminated', [APid]))
+  else
+    Log(Format('host %d could not be terminated', [APid]));
 end;
 
 /// <summary>

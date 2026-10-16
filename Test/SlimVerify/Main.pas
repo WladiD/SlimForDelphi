@@ -84,6 +84,15 @@ begin
     SlimVerifyShowStandingWindow(FOptions.AbortWindowClass, 'SlimVerify start up aborted');
   end;
 
+  if FOptions.VanishAfterMs > 0 then
+  begin
+    Log(Format('--VanishAfter=%d: every window will be hidden, the process stays alive',
+      [FOptions.VanishAfterMs]));
+    // The application window too: it is the unowned fallback the proxy would
+    // otherwise take for the main window.
+    SlimVerifyVanishAfter([Handle, Application.Handle], FOptions.VanishAfterMs);
+  end;
+
   if not AutoStartSlimServer and not FOptions.SuppressesSlimServer then
   begin
     // The start up pathologies block the main thread, so they must not run

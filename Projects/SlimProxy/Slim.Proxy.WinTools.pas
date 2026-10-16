@@ -82,6 +82,8 @@ function SlimProxyProcessImagePath(APid: Cardinal): String;
 function SlimProxyWriteMemoryDump(APid: Cardinal; const AFileName: String; AFullMemory: Boolean;
   out AError: String): Boolean;
 
+function SlimProxyDumpFileName(const ADir: String; APid: Cardinal): String;
+
 implementation
 
 uses
@@ -675,6 +677,21 @@ begin
   finally
     CloseHandle(LProcess);
   end;
+end;
+
+/// <summary>
+///   Name of a memory dump of APid inside ADir: image name, process id and the
+///   time, so several dumps of one run stay apart and the file says whose it is.
+/// </summary>
+function SlimProxyDumpFileName(const ADir: String; APid: Cardinal): String;
+var
+  LImage: String;
+begin
+  LImage := ChangeFileExt(ExtractFileName(SlimProxyProcessImagePath(APid)), '');
+  if LImage = '' then
+    LImage := 'Process';
+  Result := Format('%s%s_%d_%s.dmp', [IncludeTrailingPathDelimiter(ADir), LImage, APid,
+    FormatDateTime('yyyy-mm-dd_hh-nn-ss', Now)]);
 end;
 
 end.

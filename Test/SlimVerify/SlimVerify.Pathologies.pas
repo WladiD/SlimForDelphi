@@ -22,6 +22,8 @@
 ///     --DieExitCode=&lt;code&gt;    exit code used by --DieAfter (default 3)
 ///     --HoldPort=&lt;port&gt;       occupy that port without serving Slim
 ///     --BlockMax=&lt;ms&gt;         upper bound for the "Block Forever" fixture
+///     --VanishAfter=&lt;ms&gt;      hide every window after that time and stay
+///                             alive - a host stuck in its own shutdown
 /// </summary>
 unit SlimVerify.Pathologies;
 
@@ -73,6 +75,7 @@ type
     HoldPort        : Integer;
     StartupDelayMs  : Integer;
     StartupDialogMs : Integer;
+    VanishAfterMs   : Integer;
     class function FromCommandLine: TSlimVerifyOptions; static;
     function SuppressesSlimServer: Boolean;
   end;
@@ -87,6 +90,8 @@ procedure SlimVerifyHoldPort(APort: Integer);
 procedure SlimVerifyDieAfter(ADelayMs, AExitCode: Integer);
 
 procedure SlimVerifyCloseWindowAfter(AWnd: HWND; ADelayMs: Integer);
+
+procedure SlimVerifyVanishAfter(const AWnds: TArray<HWND>; ADelayMs: Integer);
 
 procedure SlimVerifyPumpFor(ADurationMs: Integer);
 
@@ -133,7 +138,9 @@ begin
     else if TryGetSwitch(LParam, 'HoldPort', LValue) and TryStrToInt(LValue, LNum) then
       Result.HoldPort := LNum
     else if TryGetSwitch(LParam, 'BlockMax', LValue) and TryStrToInt(LValue, LNum) then
-      Result.BlockMaxMs := LNum;
+      Result.BlockMaxMs := LNum
+    else if TryGetSwitch(LParam, 'VanishAfter', LValue) and TryStrToInt(LValue, LNum) then
+      Result.VanishAfterMs := LNum;
   end;
 end;
 
@@ -403,6 +410,22 @@ begin
       // WM_CLOSE, not TerminateProcess: this is the orderly counterpart of
       // "Stop Proxy", not the simulated death of a host.
       PostMessage(AWnd, WM_CLOSE, 0, 0);
+    end).Start;
+end;
+
+/// <summary>
+///   Hides the given windows after ADelayMs and leaves the process alive: the
+///   shape of a host that began its own shutdown and got stuck in it. Nothing
+///   is left on screen for a WM_CLOSE, the process and its Slim port stay.
+/// </summary>
+procedure SlimVerifyVanishAfter(const AWnds: TArray<HWND>; ADelayMs: Integer);
+begin
+  TThread.CreateAnonymousThread(
+    procedure
+    begin
+      Sleep(ADelayMs);
+      for var LWnd in AWnds do
+        ShowWindowAsync(LWnd, SW_HIDE);
     end).Start;
 end;
 

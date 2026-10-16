@@ -82,6 +82,8 @@ type
     [Test]
     procedure GoodCase_ThePortBelongsToOurOwnHost;
     [Test]
+    procedure CloseHostDumpsAndEndsAHostThatLostItsMainWindow;
+    [Test]
     procedure StartupDialogBlocksSlimWithoutTheConfiguredButtonClass;
     [Test]
     procedure StartupDialogIsDismissedWithTheConfiguredButtonClass;
@@ -281,6 +283,48 @@ begin
   // Orderly shutdown, no TerminateProcess.
   Assert.IsTrue(FHost.CloseHost(Integer(LPid), 15), 'the host has to close in an orderly way');
   Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'and it really has to be gone');
+  Assert.DoesNotContain(FHost.LastStartupLog, 'orphan', 'a host with a window is never terminated');
+end;
+
+procedure TestSlimProxyGuiHost.CloseHostDumpsAndEndsAHostThatLostItsMainWindow;
+var
+  LDumpDir: String;
+  LDumps  : TArray<String>;
+  LPid    : Cardinal;
+  LPort   : Integer;
+  LStart  : Cardinal;
+begin
+  RequireSimulationTarget;
+  LDumpDir := TPath.Combine(TPath.GetTempPath, Format('SlimProxyOrphanDump_%d', [GetCurrentProcessId]));
+  try
+    SlimProxyLogDir := LDumpDir;
+    SlimProxyFatalDump := True;
+    LPort := TestFindFreePort;
+    LPid := StartHost(Format('--SlimPort=%d --VanishAfter=500', [LPort]), LPort, 25);
+
+    // The shape of a host stuck in its own shutdown: no window left for a
+    // WM_CLOSE, but the process and its Slim port are still there.
+    LStart := GetTickCount;
+    while (SlimProxyFindMainWindow(LPid) <> 0) and (GetTickCount - LStart < 10000) do
+      Sleep(100);
+    Assert.IsTrue(SlimProxyFindMainWindow(LPid) = 0, 'the simulation has to hide its windows first');
+    Assert.IsTrue(FHost.IsHostRunning(Integer(LPid)), 'and keep the process alive');
+
+    // Left alone, the next page would connect to the port and time out on every
+    // call - so the orphan is ended, and the dump keeps what it was stuck in.
+    Assert.IsTrue(FHost.CloseHost(Integer(LPid), 3), 'an orphan is ended, so the next page gets a fresh host');
+    Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'the orphan really has to be gone');
+    Assert.Contains(FHost.LastStartupLog, 'no main window left', 'the log names the reason');
+    LDumps := TDirectory.GetFiles(LDumpDir, '*.dmp');
+    Assert.AreEqual(1, Integer(Length(LDumps)), 'the dump is the only evidence of what the host was stuck in');
+    Assert.IsTrue(TFile.GetSize(LDumps[0]) > 0, 'the dump must not be empty');
+    Assert.Contains(FHost.LastStartupLog, LDumps[0], 'the log names the file');
+  finally
+    SlimProxyFatalDump := False;
+    SlimProxyLogDir := DefaultLogDir;
+    if TDirectory.Exists(LDumpDir) then
+      TDirectory.Delete(LDumpDir, True);
+  end;
 end;
 
 procedure TestSlimProxyGuiHost.StartupDialogBlocksSlimWithoutTheConfiguredButtonClass;

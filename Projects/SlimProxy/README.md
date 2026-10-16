@@ -109,7 +109,7 @@ The default is `0` (unlimited), so an existing setup does not change behaviour. 
 |---|---|
 | `Start Host And Wait For Slim;` *path*, *args*, *port*, *timeoutSeconds* | Bring a host up and return only once the listening socket on *port* is **owned by this process**. Returns the process id |
 | `Start Host And Wait For Slim In;` *path*, *args*, *dir*, *port*, *timeoutSeconds* | Same with an explicit working directory |
-| `Close Host;` *pid*, *timeoutSeconds* | Orderly shutdown: `WM_CLOSE` on the main window, dismiss confirmations, wait for the real end. **No** `TerminateProcess` |
+| `Close Host;` *pid*, *timeoutSeconds* | Orderly shutdown: `WM_CLOSE` on the main window, dismiss confirmations, wait for the real end. **No** `TerminateProcess` for a host that still shows a window. A host that is alive when the time is up but has **no main window left** is an orphan stuck in its own shutdown: it is dumped (`--FatalDump`, into `--LogDir`) and then terminated, so the next page gets a fresh host instead of a port that times out on every call |
 | `Kill Host` *pid* | Force the death of a host - deliberately separate and named that way, for test cases that want exactly that |
 | `Is Host Running` *pid* | Process state |
 | `Last Host Process Id` | Process id of the host started last |
@@ -151,7 +151,8 @@ forwarded call is open.** A script next to the run has to guess that from file s
 *   **Occupied error dialogs** - an error wording in title or text - are captured completely and dismissed, so the call unblocks and the page goes red instead of hanging.
 *   **Messages without an error wording** are reported but **never** dismissed. A yes/no is a decision of the application, not something to click away; a blind "OK" could let a call run through to a success it never had.
 *   **Fatal patterns** (memory corruption and the like, including every error report of the FastMM memory manager) are treated as fatal: the report including its stack is captured, the run is aborted (`ABORT_SLIM_SUITE`), no further call is fired. The process state is unreliable afterwards, every further result would be garbage.
-*   **A memory dump of the target** is written for a fatal report *before* the report is dismissed (`--FatalDump`, on by default, into `--LogDir`). The report dialog holds the thread that detected the damage at exactly that point, so its stack is in the dump - together with every other thread and the whole heap. That is what a heap corruption needs when it only shows up without the memory manager's debug support (FastMM without its FullDebugMode DLL reports no stack at all, and with the DLL the timing changes so much that a race may not show up any more). The finding names the file. A 32 bit proxy cannot dump a 64 bit target; the finding says so instead of writing a broken file.
+*   **A memory dump of the target** is written for a fatal report *before* the report is dismissed (`--FatalDump`, on by default, into `--LogDir`). The report dialog holds the thread that detected the damage at exactly that point, so its stack is in the dump - together with every other thread and the whole heap. That is what a heap corruption needs when it only shows up without the memory manager's debug support (FastMM without its FullDebugMode DLL reports no stack at all, and with the DLL the timing changes so much that a race may not show up any more). The finding names the file. A 32 bit proxy cannot dump a 64 bit target; the finding says so instead of writing a broken file - a 64 bit target needs the 64 bit build of the proxy.
+*   **An orphaned host** - alive when `Close Host` gives up, but without a main window, the shape of a host stuck in its own shutdown - gets the same dump before it is terminated (see `Close Host`). Its stuck threads are the only evidence such a state leaves behind.
 *   **A stall** is told apart from computing. That a window pumps no messages says nothing - a long calculation on the main thread looks exactly the same. The CPU delta separates them: a busy core means computing, a flat value means blocked.
 *   Findings land in the **Slim result of the affected call**, not only in the log.
 *   A dismissed error dialog makes the result **unreliable** - confirming buttons can let a call run through and the page end up undeservedly green. The result says so.
@@ -268,6 +269,8 @@ SlimVerify.exe --SlimPort=<port> [pathologies]
   --DieExitCode=<code>    exit code used by --DieAfter (default 3)
   --HoldPort=<port>       occupy that port without serving Slim
   --BlockMax=<ms>         upper bound for the "Block Forever" fixture
+  --VanishAfter=<ms>      hide every window after that time and stay alive - a host
+                          stuck in its own shutdown
 ```
 
 Its fixtures `Block Forever`, `Show Error Dialog` and `Show Question` cover the pending-call cases.
