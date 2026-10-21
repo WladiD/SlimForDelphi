@@ -82,7 +82,7 @@ type
     [Test]
     procedure GoodCase_ThePortBelongsToOurOwnHost;
     [Test]
-    procedure CloseHostDumpsAndEndsAHostThatLostItsMainWindow;
+    procedure CloseHostDumpsEndsAndReportsAHostThatLostItsMainWindow;
     [Test]
     procedure StartupDialogBlocksSlimWithoutTheConfiguredButtonClass;
     [Test]
@@ -286,10 +286,11 @@ begin
   Assert.DoesNotContain(FHost.LastStartupLog, 'orphan', 'a host with a window is never terminated');
 end;
 
-procedure TestSlimProxyGuiHost.CloseHostDumpsAndEndsAHostThatLostItsMainWindow;
+procedure TestSlimProxyGuiHost.CloseHostDumpsEndsAndReportsAHostThatLostItsMainWindow;
 var
   LDumpDir: String;
   LDumps  : TArray<String>;
+  LMessage: String;
   LPid    : Cardinal;
   LPort   : Integer;
   LStart  : Cardinal;
@@ -311,13 +312,22 @@ begin
     Assert.IsTrue(FHost.IsHostRunning(Integer(LPid)), 'and keep the process alive');
 
     // Left alone, the next page would connect to the port and time out on every
-    // call - so the orphan is ended, and the dump keeps what it was stuck in.
-    Assert.IsTrue(FHost.CloseHost(Integer(LPid), 3), 'an orphan is ended, so the next page gets a fresh host');
-    Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'the orphan really has to be gone');
+    // call - so the orphan is ended, and the dump keeps what it was stuck in. A
+    // host hanging in its own shutdown is still a defect of the application, so
+    // Close Host does not report it as closed but raises with the reason.
+    LMessage := ExpectedFailure(
+      procedure
+      begin
+        FHost.CloseHost(Integer(LPid), 3);
+      end);
+    Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'the orphan really has to be gone, so the next page gets a fresh host');
+    Assert.Contains(LMessage, 'hung without a main window in its own shutdown', 'the error names the hang');
+    Assert.Contains(LMessage, 'was terminated', 'and that the host was ended anyway');
     Assert.Contains(FHost.LastStartupLog, 'no main window left', 'the log names the reason');
     LDumps := TDirectory.GetFiles(LDumpDir, '*.dmp');
     Assert.AreEqual(1, Integer(Length(LDumps)), 'the dump is the only evidence of what the host was stuck in');
     Assert.IsTrue(TFile.GetSize(LDumps[0]) > 0, 'the dump must not be empty');
+    Assert.Contains(LMessage, LDumps[0], 'the error names the dump file');
     Assert.Contains(FHost.LastStartupLog, LDumps[0], 'the log names the file');
   finally
     SlimProxyFatalDump := False;

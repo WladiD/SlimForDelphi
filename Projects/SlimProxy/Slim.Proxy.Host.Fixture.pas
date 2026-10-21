@@ -48,7 +48,7 @@ type
     FWorkingDir    : String;
     function  Config: TSlimProxyWindowConfig;
     function  EffectivePid(APid: Integer): Cardinal;
-    function  EndOrphanedHost(APid: Cardinal): Boolean;
+    function  EndOrphanedHost(APid: Cardinal; AHandle: THandle): Boolean;
     procedure Log(const AText: String);
     procedure RaiseHostError(APid: Cardinal; const AMessage: String);
     procedure ReleaseLastHostHandle;
@@ -274,9 +274,10 @@ end;
 ///   and got stuck in it, with nothing on screen a WM_CLOSE could reach. It
 ///   never ends on its own, its Slim port stays open, and the next page would
 ///   connect to it and time out on every call. So it is dumped (into the
-///   fatal dump folder, if dumps are on) and then terminated: the dump holds
-///   the stuck threads, the only evidence such a state leaves behind.
-///   True means the process is gone, by whichever way.
+///   fatal dump folder, if dumps are on), terminated, and reported as an
+///   error: the dump holds the stuck threads, the only evidence such a state
+///   leaves behind, and the red page is what makes the hang visible at all.
+///   True means the process closed; False means it still shows a window.
 /// </summary>
 function TSlimProxyHostFixture.CloseHost(APid, ATimeoutSeconds: Integer): Boolean;
 const
@@ -292,9 +293,15 @@ begin
   LPid := EffectivePid(APid);
   LConfig := Config;
 
-  LHandle := OpenProcess(SYNCHRONIZE, False, LPid);
+  // PROCESS_TERMINATE right away: an orphan is ended through this very handle,
+  // and as long as it is open Windows cannot hand the process id to another process.
+  LHandle := OpenProcess(SYNCHRONIZE or PROCESS_TERMINATE, False, LPid);
   if LHandle = 0 then
-    Exit(True); // already gone
+  begin
+    if GetLastError = ERROR_INVALID_PARAMETER then
+      Exit(True); // already gone
+    RaiseLastOSError; // alive but not accessible - that is no closed host
+  end;
   try
     LRequests := 0;
     for var I: Integer := 0 to (ATimeoutSeconds * 1000 div SliceMs) - 1 do
@@ -321,39 +328,62 @@ begin
     Log(Format('host %d still alive after %d close requests within %ds', [LPid, LRequests, ATimeoutSeconds]));
     if SlimProxyFindMainWindow(LPid) <> 0 then
       Exit(False);
+    Result := EndOrphanedHost(LPid, LHandle);
   finally
     CloseHandle(LHandle);
   end;
-  Result := EndOrphanedHost(LPid);
 end;
 
 /// <summary>
 ///   Dumps and terminates a host that is alive without a main window, see
-///   Close Host. The dump comes first: a terminated process has no stacks.
+///   Close Host, and then raises: a host stuck in its own shutdown is a defect
+///   of the application, not a closed host. Ending it only frees the port for
+///   the next page; the page that closed it turns red with the reason and the
+///   dump. The dump comes first: a terminated process has no stacks.
+///   Works on the handle of Close Host, so the process id cannot be handed out
+///   again in between. Returns True only if the host ended on its own while
+///   being dumped.
 /// </summary>
-function TSlimProxyHostFixture.EndOrphanedHost(APid: Cardinal): Boolean;
+function TSlimProxyHostFixture.EndOrphanedHost(APid: Cardinal; AHandle: THandle): Boolean;
 var
   LDumpDir : String;
+  LDumpInfo: String;
   LError   : String;
   LFileName: String;
   LStart   : Cardinal;
 begin
   Log(Format('host %d has no main window left - an orphan that never ends on its own', [APid]));
+  LDumpInfo := 'no memory dump, dumps are off';
   LDumpDir := SlimProxyFatalDumpDir;
   if LDumpDir <> '' then
   begin
     LFileName := SlimProxyDumpFileName(LDumpDir, APid);
     LStart := GetTickCount;
     if SlimProxyWriteMemoryDump(APid, LFileName, True, LError) then
-      Log(Format('memory dump written in %dms: %s', [GetTickCount - LStart, LFileName]))
+    begin
+      Log(Format('memory dump written in %dms: %s', [GetTickCount - LStart, LFileName]));
+      LDumpInfo := 'memory dump: ' + LFileName;
+    end
     else
+    begin
       Log('memory dump failed: ' + LError);
+      LDumpInfo := 'memory dump failed: ' + LError;
+    end;
   end;
-  Result := KillHost(Integer(APid));
-  if Result then
-    Log(Format('host %d terminated', [APid]))
-  else
-    Log(Format('host %d could not be terminated', [APid]));
+
+  // Ending right now after all makes it a slow shutdown, not a hang.
+  if WaitForSingleObject(AHandle, 0) = WAIT_OBJECT_0 then
+  begin
+    Log(Format('host %d ended on its own while being dumped', [APid]));
+    Exit(True);
+  end;
+
+  if not (TerminateProcess(AHandle, 1) and (WaitForSingleObject(AHandle, 5000) = WAIT_OBJECT_0)) then
+    raise ESlim.CreateFmt('Host %d hung without a main window in its own shutdown and could not be ' +
+      'terminated - its port stays blocked (%s).' + sLineBreak + '%s', [APid, LDumpInfo, FStartupLog]);
+  Log(Format('host %d terminated', [APid]));
+  raise ESlim.CreateFmt('Host %d hung without a main window in its own shutdown and was terminated ' +
+    '(%s).' + sLineBreak + '%s', [APid, LDumpInfo, FStartupLog]);
 end;
 
 /// <summary>

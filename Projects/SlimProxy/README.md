@@ -109,7 +109,7 @@ The default is `0` (unlimited), so an existing setup does not change behaviour. 
 |---|---|
 | `Start Host And Wait For Slim;` *path*, *args*, *port*, *timeoutSeconds* | Bring a host up and return only once the listening socket on *port* is **owned by this process**. Returns the process id |
 | `Start Host And Wait For Slim In;` *path*, *args*, *dir*, *port*, *timeoutSeconds* | Same with an explicit working directory |
-| `Close Host;` *pid*, *timeoutSeconds* | Orderly shutdown: `WM_CLOSE` on the main window, dismiss confirmations, wait for the real end. **No** `TerminateProcess` for a host that still shows a window. A host that is alive when the time is up but has **no main window left** is an orphan stuck in its own shutdown: it is dumped (`--FatalDump`, into `--LogDir`) and then terminated, so the next page gets a fresh host instead of a port that times out on every call |
+| `Close Host;` *pid*, *timeoutSeconds* | Orderly shutdown: `WM_CLOSE` on the main window, dismiss confirmations, wait for the real end. **No** `TerminateProcess` for a host that still shows a window. A host that is alive when the time is up but has **no main window left** is an orphan stuck in its own shutdown: it is dumped (`--FatalDump`, into `--LogDir`) and then terminated, so the next page gets a fresh host instead of a port that times out on every call. The verb still **raises** in that case, naming the hang and the dump: a host stuck in its own shutdown is a defect of the application, and the red row is what makes it visible |
 | `Kill Host` *pid* | Force the death of a host - deliberately separate and named that way, for test cases that want exactly that |
 | `Is Host Running` *pid* | Process state |
 | `Last Host Process Id` | Process id of the host started last |
