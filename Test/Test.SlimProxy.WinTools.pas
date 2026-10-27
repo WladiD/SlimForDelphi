@@ -65,6 +65,8 @@ type
     [Test]
     procedure WindowDumpNamesTheAbsenceOfWindows;
     [Test]
+    procedure ACancelledCollectionReadsNoWindow;
+    [Test]
     procedure FastMMReportsAreFatalInEveryTranslation;
   public // Memory dumps
     [Test]
@@ -250,6 +252,33 @@ begin
   // dump has to say so instead of returning an empty string.
   Assert.AreEqual('(no visible window)',
     SlimProxyDumpWindows(GetCurrentProcessId, TSlimProxyWindowConfig.CreateDefaults));
+end;
+
+procedure TestSlimProxyWinTools.ACancelledCollectionReadsNoWindow;
+var
+  LConfig: TSlimProxyWindowConfig;
+  LWnd   : HWND;
+begin
+  // The runner has no visible window (see above), so the test makes one: a bare
+  // popup of this process. The probes reach it directly, it belongs to the
+  // calling thread.
+  LWnd := CreateWindowEx(0, 'STATIC', 'SlimProxy probe target', WS_POPUP or WS_VISIBLE,
+    0, 0, 10, 10, 0, 0, HInstance, nil);
+  Assert.IsTrue(LWnd <> 0, 'the probe target has to exist');
+  try
+    LConfig := TSlimProxyWindowConfig.CreateDefaults;
+    Assert.AreEqual(1, Length(SlimProxyCollectWindows(GetCurrentProcessId, LConfig)),
+      'without a stop the window is read');
+    // The watchdog stops the pass the moment the call is over; a stop that is
+    // already set must not read a single window - the response waits for it.
+    Assert.AreEqual(0, Length(SlimProxyCollectWindows(GetCurrentProcessId, LConfig,
+      function: Boolean
+      begin
+        Result := True;
+      end)), 'a stop before the first probe reads nothing');
+  finally
+    DestroyWindow(LWnd);
+  end;
 end;
 
 procedure TestSlimProxyWinTools.FastMMReportsAreFatalInEveryTranslation;

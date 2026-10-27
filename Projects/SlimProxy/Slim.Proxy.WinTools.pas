@@ -30,6 +30,15 @@ type
   /// <summary>Result of a window visit. Return False to stop enumerating.</summary>
   TSlimProxyWindowVisitor = reference to function(AWnd: HWND): Boolean;
 
+  /// <summary>
+  ///   Asked between two window probes: True stops the collection. A probe of a
+  ///   foreign window is a cross process round trip (WM_GETTEXT per child); a
+  ///   target that merely sleeps between message pumps answers each one only on
+  ///   its next pump, so a pass over a few hundred controls takes seconds. Nil
+  ///   never cancels.
+  /// </summary>
+  TSlimProxyCancelFunc = reference to function: Boolean;
+
   /// <summary>Everything that is known about one top level window of a process.</summary>
   TSlimProxyWindowInfo = record
     Buttons  : String;
@@ -55,13 +64,17 @@ function SlimProxyWindowClassName(AWnd: HWND): String;
 
 function SlimProxyWindowText(AWnd: HWND): String;
 
-function SlimProxyCollectChildText(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): String;
+function SlimProxyCollectChildText(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc = nil): String;
 
-function SlimProxyCollectButtonCaptions(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): String;
+function SlimProxyCollectButtonCaptions(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc = nil): String;
 
-function SlimProxyReadWindowInfo(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): TSlimProxyWindowInfo;
+function SlimProxyReadWindowInfo(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc = nil): TSlimProxyWindowInfo;
 
-function SlimProxyCollectWindows(APid: Cardinal; const AConfig: TSlimProxyWindowConfig): TSlimProxyWindowInfos;
+function SlimProxyCollectWindows(APid: Cardinal; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc = nil): TSlimProxyWindowInfos;
 
 function SlimProxyDumpWindows(APid: Cardinal; const AConfig: TSlimProxyWindowConfig): String;
 
@@ -240,8 +253,19 @@ begin
     Result := String(PChar(@LBuf[0]));
 end;
 
-/// <summary>Collects the texts of all child controls, i.e. the message of a dialog.</summary>
-function SlimProxyCollectChildText(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): String;
+/// <summary>Nil never cancels - callers without a stop condition pass nothing.</summary>
+function SlimProxyIsCancelled(const ACancelled: TSlimProxyCancelFunc): Boolean;
+begin
+  Result := Assigned(ACancelled) and ACancelled;
+end;
+
+/// <summary>
+///   Collects the texts of all child controls, i.e. the message of a dialog.
+///   Stops at the first child after ACancelled says so - the result is then
+///   incomplete and must not be classified.
+/// </summary>
+function SlimProxyCollectChildText(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc): String;
 var
   LSb: TStringBuilder;
 begin
@@ -252,7 +276,9 @@ begin
       var
         LText: String;
       begin
-        Result := True;
+        Result := not SlimProxyIsCancelled(ACancelled);
+        if not Result then
+          Exit;
         // Button captions are collected separately - taking them as message text
         // would let an "OK" caption satisfy a wording search.
         if AConfig.IsButtonClass(SlimProxyWindowClassName(AChild)) then
@@ -271,8 +297,9 @@ begin
   end;
 end;
 
-/// <summary>Collects the captions of all button like child controls.</summary>
-function SlimProxyCollectButtonCaptions(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): String;
+/// <summary>Collects the captions of all button like child controls. Stops like SlimProxyCollectChildText.</summary>
+function SlimProxyCollectButtonCaptions(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc): String;
 var
   LSb: TStringBuilder;
 begin
@@ -283,7 +310,9 @@ begin
       var
         LText: String;
       begin
-        Result := True;
+        Result := not SlimProxyIsCancelled(ACancelled);
+        if not Result then
+          Exit;
         if not AConfig.IsButtonClass(SlimProxyWindowClassName(AChild)) then
           Exit;
         LText := SlimProxyWindowText(AChild);
@@ -299,31 +328,54 @@ begin
   end;
 end;
 
-/// <summary>Reads one top level window into a TSlimProxyWindowInfo and classifies it.</summary>
-function SlimProxyReadWindowInfo(AWnd: HWND; const AConfig: TSlimProxyWindowConfig): TSlimProxyWindowInfo;
+/// <summary>
+///   Reads one top level window into a TSlimProxyWindowInfo and classifies it.
+///   A read that ACancelled interrupted has an incomplete Text and is classified
+///   as wkIgnore - a cut message must never pass as "no error wording".
+/// </summary>
+function SlimProxyReadWindowInfo(AWnd: HWND; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc): TSlimProxyWindowInfo;
 begin
   Result.Handle := AWnd;
   Result.ClassName := SlimProxyWindowClassName(AWnd);
   Result.Title := SlimProxyWindowText(AWnd);
-  Result.Text := SlimProxyCollectChildText(AWnd, AConfig);
-  Result.Buttons := SlimProxyCollectButtonCaptions(AWnd, AConfig);
+  Result.Text := SlimProxyCollectChildText(AWnd, AConfig, ACancelled);
+  Result.Buttons := SlimProxyCollectButtonCaptions(AWnd, AConfig, ACancelled);
   Result.HasMenu := GetMenu(AWnd) <> 0;
-  Result.Kind := AConfig.ClassifyWindow(Result.ClassName, Result.Title, Result.Text, Result.Hit);
+  if SlimProxyIsCancelled(ACancelled) then
+  begin
+    Result.Kind := wkIgnore;
+    Result.Hit := '';
+  end
+  else
+    Result.Kind := AConfig.ClassifyWindow(Result.ClassName, Result.Title, Result.Text, Result.Hit);
 end;
 
-/// <summary>All visible top level windows of APid, classified.</summary>
-function SlimProxyCollectWindows(APid: Cardinal; const AConfig: TSlimProxyWindowConfig): TSlimProxyWindowInfos;
+/// <summary>
+///   All visible top level windows of APid, classified. With ACancelled the
+///   collection stops between two probes and leaves out the window it was
+///   reading - the caller gets what was complete up to then.
+/// </summary>
+function SlimProxyCollectWindows(APid: Cardinal; const AConfig: TSlimProxyWindowConfig;
+  const ACancelled: TSlimProxyCancelFunc): TSlimProxyWindowInfos;
 var
   LResult: TSlimProxyWindowInfos;
 begin
   LResult := [];
   SlimProxyForEachTopWindow(APid,
     function(AWnd: HWND): Boolean
+    var
+      LInfo: TSlimProxyWindowInfo;
     begin
-      Result := True;
+      Result := not SlimProxyIsCancelled(ACancelled);
+      if not Result then
+        Exit;
       if not IsWindowVisible(AWnd) then
         Exit;
-      LResult := LResult + [SlimProxyReadWindowInfo(AWnd, AConfig)];
+      LInfo := SlimProxyReadWindowInfo(AWnd, AConfig, ACancelled);
+      if SlimProxyIsCancelled(ACancelled) then
+        Exit(False);
+      LResult := LResult + [LInfo];
     end);
   Result := LResult;
 end;

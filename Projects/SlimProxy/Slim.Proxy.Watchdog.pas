@@ -212,7 +212,17 @@ end;
 
 procedure TSlimProxyWatchdog.CheckWindows;
 begin
-  for var LInfo in SlimProxyCollectWindows(FPid, FConfig) do
+  // The pass stops as soon as the call is over (StopAndWait terminates the
+  // thread): each child probe is a cross process round trip that a target
+  // sleeping between message pumps answers only on its next pump, and a pass
+  // over a few hundred controls took 2-4 s - paid by EVERY call while such a
+  // form was open, because the response waits for the pass. A window the stop
+  // interrupted is left out; the next call's pass reads it in full.
+  for var LInfo in SlimProxyCollectWindows(FPid, FConfig,
+    function: Boolean
+    begin
+      Result := Terminated;
+    end) do
   begin
     // The main window is not a message window. Clicking inside it would press a
     // button of a legitimate form.
