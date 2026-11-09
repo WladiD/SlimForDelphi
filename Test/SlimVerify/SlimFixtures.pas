@@ -114,6 +114,14 @@ type
     function Ask: String;
     [SlimMemberSyncMode(smSynchronized)]
     function AskFor(ATimeoutMs: Integer): String;
+    /// <summary>
+    ///   A question whose buttons match none of the default dismiss captions -
+    ///   the shape of a host that nobody can close from the outside: Close Host
+    ///   keeps posting WM_CLOSE, nothing answers the window, the main window
+    ///   stays, the process stays.
+    /// </summary>
+    [SlimMemberSyncMode(smSynchronized)]
+    function AskUnanswerableFor(ATimeoutMs: Integer): String;
   end;
 
 implementation
@@ -211,6 +219,17 @@ begin
   Result := SlimVerifyShowModalWindow(SlimVerifyDialogClass, 'Button',
     'SlimVerify Question', 'Continue with the current operation?',
     ['Yes', 'No'], ATimeoutMs);
+  if Result = '' then
+    Result := '(closed itself, nobody answered it)';
+end;
+
+function TSlimShowQuestionFixture.AskUnanswerableFor(ATimeoutMs: Integer): String;
+begin
+  // "Later" and "Abort" are on no dismiss list, and the wording carries no error:
+  // neither the watchdog nor Close Host has a button to press here.
+  Result := SlimVerifyShowModalWindow(SlimVerifyDialogClass, 'Button',
+    'SlimVerify Question', 'The operation needs a decision nobody can make from the outside.',
+    ['Later', 'Abort'], ATimeoutMs);
   if Result = '' then
     Result := '(closed itself, nobody answered it)';
 end;

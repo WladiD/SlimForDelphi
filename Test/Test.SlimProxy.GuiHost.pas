@@ -84,6 +84,10 @@ type
     [Test]
     procedure CloseHostDumpsEndsAndReportsAHostThatLostItsMainWindow;
     [Test]
+    procedure CloseHostDumpsEndsAndReportsAHostStuckBehindAModalWindow;
+    [Test]
+    procedure CloseHostLeavesAForeignHostStuckBehindAModalWindowAlone;
+    [Test]
     procedure StartupDialogBlocksSlimWithoutTheConfiguredButtonClass;
     [Test]
     procedure StartupDialogIsDismissedWithTheConfiguredButtonClass;
@@ -335,6 +339,87 @@ begin
     if TDirectory.Exists(LDumpDir) then
       TDirectory.Delete(LDumpDir, True);
   end;
+end;
+
+procedure TestSlimProxyGuiHost.CloseHostDumpsEndsAndReportsAHostStuckBehindAModalWindow;
+var
+  LDumpDir: String;
+  LDumps  : TArray<String>;
+  LMessage: String;
+  LPid    : Cardinal;
+  LPort   : Integer;
+  LResult : String;
+begin
+  RequireSimulationTarget;
+  LDumpDir := TPath.Combine(TPath.GetTempPath, Format('SlimProxyModalDump_%d', [GetCurrentProcessId]));
+  try
+    SlimProxyLogDir := LDumpDir;
+    SlimProxyFatalDump := True;
+    LPort := TestFindFreePort;
+    LPid := StartHost(Format('--SlimPort=%d', [LPort]), LPort, 25);
+
+    // The shape of a host that asked a question nobody answers: the call runs
+    // into the read timeout, the main window stays, and no button on the window
+    // is on the dismiss list - so a WM_CLOSE changes nothing either.
+    ConnectExecutorTo(LPort, 2000);
+    Assert.AreEqual('OK', ForwardStmt('id_make', 'make', 'dialog', 'ShowQuestion'));
+    LResult := ForwardStmt('id_question', 'call', 'dialog', 'AskUnanswerableFor', ['60000']);
+    Assert.Contains(LResult, 'did not answer', 'the blocked call ends in the read timeout');
+    Assert.IsTrue(SlimProxyFindMainWindow(LPid) <> 0, 'the main window has to be standing');
+    Assert.IsTrue(FHost.IsHostRunning(Integer(LPid)), 'and the process alive');
+
+    // Left alone, this host would hold its port until somebody kills it by hand,
+    // and every later suite on that port would refuse to start. The proxy
+    // started this host, so the proxy ends it - dumped first, because the dump
+    // is the only evidence of what it was waiting for - and reports it as an
+    // error, because a host that cannot be closed is a defect of the application.
+    LMessage := ExpectedFailure(
+      procedure
+      begin
+        FHost.CloseHost(Integer(LPid), 3);
+      end);
+    Assert.IsFalse(FHost.IsHostRunning(Integer(LPid)), 'the stuck host really has to be gone, so the next page gets a fresh host');
+    Assert.Contains(LMessage, 'did not close', 'the error names the hang');
+    Assert.Contains(LMessage, 'SlimVerify Question', 'and the window that stood in the way');
+    Assert.Contains(LMessage, 'was terminated', 'and that the host was ended anyway');
+    Assert.Contains(FHost.LastStartupLog, 'window stands in the way', 'the log names the reason');
+    LDumps := TDirectory.GetFiles(LDumpDir, '*.dmp');
+    Assert.AreEqual(1, Integer(Length(LDumps)), 'the dump keeps what the host was waiting for');
+    Assert.IsTrue(TFile.GetSize(LDumps[0]) > 0, 'the dump must not be empty');
+    Assert.Contains(LMessage, LDumps[0], 'the error names the dump file');
+  finally
+    SlimProxyFatalDump := False;
+    SlimProxyLogDir := DefaultLogDir;
+    if TDirectory.Exists(LDumpDir) then
+      TDirectory.Delete(LDumpDir, True);
+  end;
+end;
+
+procedure TestSlimProxyGuiHost.CloseHostLeavesAForeignHostStuckBehindAModalWindowAlone;
+var
+  LPid  : Cardinal;
+  LPort : Integer;
+  LStart: Cardinal;
+begin
+  RequireSimulationTarget;
+  LPort := TestFindFreePort;
+  // Started past the fixture: this proxy did not bring the host up, so it has no
+  // business ending it. A foreign process behind a question is reported as "not
+  // closed" and left exactly as it was.
+  LPid := StartRaw(Format('--SlimPort=%d', [LPort]));
+  LStart := GetTickCount;
+  while (SlimProxyGetListenerPid(LPort) <> LPid) and (GetTickCount - LStart < 25000) do
+    Sleep(100);
+  Assert.AreEqual(LPid, SlimProxyGetListenerPid(LPort), 'the simulation has to come up on its own');
+
+  ConnectExecutorTo(LPort, 2000);
+  Assert.AreEqual('OK', ForwardStmt('id_make', 'make', 'dialog', 'ShowQuestion'));
+  Assert.Contains(ForwardStmt('id_question', 'call', 'dialog', 'AskUnanswerableFor', ['60000']),
+    'did not answer', 'the blocked call ends in the read timeout');
+
+  Assert.IsFalse(FHost.CloseHost(Integer(LPid), 3), 'a foreign host behind a window is not closed');
+  Assert.IsTrue(FHost.IsHostRunning(Integer(LPid)), 'and it is not terminated either');
+  Assert.DoesNotContain(FHost.LastStartupLog, 'terminated', 'nothing was ended');
 end;
 
 procedure TestSlimProxyGuiHost.StartupDialogBlocksSlimWithoutTheConfiguredButtonClass;

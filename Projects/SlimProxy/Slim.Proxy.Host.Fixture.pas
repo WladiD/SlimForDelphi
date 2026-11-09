@@ -48,7 +48,7 @@ type
     FWorkingDir    : String;
     function  Config: TSlimProxyWindowConfig;
     function  EffectivePid(APid: Integer): Cardinal;
-    function  EndOrphanedHost(APid: Cardinal; AHandle: THandle): Boolean;
+    function  EndStuckHost(APid: Cardinal; AHandle: THandle; const ALogReason, AShape: String): Boolean;
     procedure Log(const AText: String);
     procedure RaiseHostError(APid: Cardinal; const AMessage: String);
     procedure ReleaseLastHostHandle;
@@ -83,6 +83,29 @@ type
   end;
 
 implementation
+
+var
+  /// <summary>
+  ///   Process ids of every host this proxy process brought up, across fixture
+  ///   instances: a page makes a fresh Host fixture for the close, so the
+  ///   instance that started the host is long gone by then. Only a host of our
+  ///   own may be ended by force - a foreign process behind a window is not ours
+  ///   to kill.
+  /// </summary>
+  GStartedHostPids: TArray<Cardinal>;
+
+procedure RememberStartedHost(APid: Cardinal);
+begin
+  GStartedHostPids := GStartedHostPids + [APid];
+end;
+
+function HostStartedHere(APid: Cardinal): Boolean;
+begin
+  for var LPid in GStartedHostPids do
+    if LPid = APid then
+      Exit(True);
+  Result := False;
+end;
 
 { TSlimProxyHostFixture }
 
@@ -191,6 +214,7 @@ begin
   ReleaseLastHostHandle;
   FLastHostHandle := LPi.hProcess;
   FLastHostPid := LPi.dwProcessId;
+  RememberStartedHost(LPi.dwProcessId);
   Result := Integer(LPi.dwProcessId);
   Log(Format('started "%s" %s in "%s" -> PID %d, waiting up to %ds for port %d',
     [APath, AArgs, LWorkingDir, LPi.dwProcessId, ATimeoutSeconds, APort]));
@@ -269,15 +293,23 @@ end;
 ///   shortly after start up, and the main window may not even exist yet or
 ///   may be replaced meanwhile - so the window is looked up again for every
 ///   request.
-///   One exception: a process that is still alive when the time is up but has
-///   no main window left is an orphan - a host that began its own shutdown
-///   and got stuck in it, with nothing on screen a WM_CLOSE could reach. It
-///   never ends on its own, its Slim port stays open, and the next page would
-///   connect to it and time out on every call. So it is dumped (into the
-///   fatal dump folder, if dumps are on), terminated, and reported as an
-///   error: the dump holds the stuck threads, the only evidence such a state
-///   leaves behind, and the red page is what makes the hang visible at all.
-///   True means the process closed; False means it still shows a window.
+///   Two exceptions, both for a process that is still alive when the time is
+///   up. Without a main window left it is an orphan - a host that began its
+///   own shutdown and got stuck in it, with nothing on screen a WM_CLOSE could
+///   reach. With its main window still standing it is stuck behind a window
+///   nobody can answer from the outside - a question whose buttons are on no
+///   dismiss list, a progress box with only an abort button - and the main
+///   window swallows every WM_CLOSE behind that modal state. Neither ends on
+///   its own, the Slim port stays open, and the next page would connect to it
+///   and time out on every call; the next proxy refuses the port altogether.
+///   So the host is dumped (into the fatal dump folder, if dumps are on),
+///   terminated, and reported as an error: the dump holds the stuck threads,
+///   the only evidence such a state leaves behind, and the red page is what
+///   makes the hang visible at all. The second exception only holds for a host
+///   this proxy process started itself; a foreign process behind a window is
+///   left alone and reported as not closed.
+///   True means the process closed; False means a foreign host still shows a
+///   window.
 /// </summary>
 function TSlimProxyHostFixture.CloseHost(APid, ATimeoutSeconds: Integer): Boolean;
 const
@@ -326,25 +358,37 @@ begin
       end;
     end;
     Log(Format('host %d still alive after %d close requests within %ds', [LPid, LRequests, ATimeoutSeconds]));
-    if SlimProxyFindMainWindow(LPid) <> 0 then
+    if SlimProxyFindMainWindow(LPid) = 0 then
+      Exit(EndStuckHost(LPid, LHandle,
+        'has no main window left - an orphan that never ends on its own',
+        'hung without a main window in its own shutdown'));
+    if not HostStartedHere(LPid) then
+    begin
+      Log(Format('host %d keeps its main window and was not started by this proxy - left alone', [LPid]));
       Exit(False);
-    Result := EndOrphanedHost(LPid, LHandle);
+    end;
+    var LWindows: String := SlimProxyDumpWindows(LPid, LConfig);
+    Result := EndStuckHost(LPid, LHandle,
+      'keeps its main window but does not close - a window stands in the way:' + sLineBreak + LWindows,
+      Format('did not close within %ds - a window stands in the way:' + sLineBreak + '%s',
+        [ATimeoutSeconds, LWindows]));
   finally
     CloseHandle(LHandle);
   end;
 end;
 
 /// <summary>
-///   Dumps and terminates a host that is alive without a main window, see
-///   Close Host, and then raises: a host stuck in its own shutdown is a defect
-///   of the application, not a closed host. Ending it only frees the port for
-///   the next page; the page that closed it turns red with the reason and the
-///   dump. The dump comes first: a terminated process has no stacks.
-///   Works on the handle of Close Host, so the process id cannot be handed out
-///   again in between. Returns True only if the host ended on its own while
-///   being dumped.
+///   Dumps and terminates a host that will not end on its own, see Close Host,
+///   and then raises: a host stuck in its own shutdown or behind a window is a
+///   defect of the application, not a closed host. Ending it only frees the
+///   port for the next page; the page that closed it turns red with the reason
+///   and the dump. The dump comes first: a terminated process has no stacks.
+///   ALogReason goes to the log, AShape into the error message. Works on the
+///   handle of Close Host, so the process id cannot be handed out again in
+///   between. Returns True only if the host ended on its own while being dumped.
 /// </summary>
-function TSlimProxyHostFixture.EndOrphanedHost(APid: Cardinal; AHandle: THandle): Boolean;
+function TSlimProxyHostFixture.EndStuckHost(APid: Cardinal; AHandle: THandle;
+  const ALogReason, AShape: String): Boolean;
 var
   LDumpDir : String;
   LDumpInfo: String;
@@ -352,7 +396,7 @@ var
   LFileName: String;
   LStart   : Cardinal;
 begin
-  Log(Format('host %d has no main window left - an orphan that never ends on its own', [APid]));
+  Log(Format('host %d %s', [APid, ALogReason]));
   LDumpInfo := 'no memory dump, dumps are off';
   LDumpDir := SlimProxyFatalDumpDir;
   if LDumpDir <> '' then
@@ -379,11 +423,11 @@ begin
   end;
 
   if not (TerminateProcess(AHandle, 1) and (WaitForSingleObject(AHandle, 5000) = WAIT_OBJECT_0)) then
-    raise ESlim.CreateFmt('Host %d hung without a main window in its own shutdown and could not be ' +
-      'terminated - its port stays blocked (%s).' + sLineBreak + '%s', [APid, LDumpInfo, FStartupLog]);
+    raise ESlim.CreateFmt('Host %d %s and could not be terminated - its port stays blocked (%s).' +
+      sLineBreak + '%s', [APid, AShape, LDumpInfo, FStartupLog]);
   Log(Format('host %d terminated', [APid]));
-  raise ESlim.CreateFmt('Host %d hung without a main window in its own shutdown and was terminated ' +
-    '(%s).' + sLineBreak + '%s', [APid, LDumpInfo, FStartupLog]);
+  raise ESlim.CreateFmt('Host %d %s and was terminated (%s).' + sLineBreak + '%s',
+    [APid, AShape, LDumpInfo, FStartupLog]);
 end;
 
 /// <summary>
