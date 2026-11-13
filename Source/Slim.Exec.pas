@@ -286,7 +286,7 @@ begin
 
   if not Assigned(FLibInstances) and (cmLibInstances in AContextMembers) then
   begin
-    FLibInstances := TObjectList.Create(True);
+    FLibInstances := TSlimFixtureList.Create(True);
     Include(FOwnedMembers, cmLibInstances);
   end;
 

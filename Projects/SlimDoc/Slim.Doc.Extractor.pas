@@ -172,6 +172,7 @@ begin
     // CPP_ABI methods (Delphi 12+ Win64 compatibility)
     AMethodName.StartsWith('CPP_ABI_', True) or
     // TSlimFixture methods
+    SameText(AMethodName, 'DestroyInMainThread') or
     SameText(AMethodName, 'HasDelayedInfo') or
     SameText(AMethodName, 'InitDelayedEvent') or
     SameText(AMethodName, 'SyncMode') or

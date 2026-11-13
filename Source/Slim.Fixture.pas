@@ -85,6 +85,7 @@ type
   private
     FDelayedCallsInFlight: Integer;
     FReleasedByOwner: Boolean;
+    procedure FreeByOwner;
     procedure ReleaseByOwner;
   protected
     FDelayedEvent: TEvent;
@@ -116,6 +117,16 @@ type
     /// </summary>
     class var OnReleasedWhileDelayedCallInFlight: TProc<TSlimFixture, Integer>;
     destructor Destroy; override;
+    /// <summary>
+    ///   Tells the owner of the instance where to destroy it. A fixture that owns objects of the
+    ///   main thread (windows, timers, components of a form) returns True: an owner that lets go
+    ///   in another thread then hands the destruction over to the main thread and waits for it.
+    ///   Destroying a window from a foreign thread fails, while its window procedure instance is
+    ///   freed regardless - the next message to that window calls into freed memory.
+    ///   The default is False: a host whose main thread serves no synchronize queue would never
+    ///   run the handover.
+    /// </summary>
+    function  DestroyInMainThread: Boolean; virtual;
     function  HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean; virtual;
     procedure InitDelayedEvent;
     function  SyncMode(AMember: TRttiMember): TSyncMode; virtual;
@@ -178,6 +189,15 @@ type
     constructor Create(Ownerships: TDictionaryOwnerships; ACapacity: NativeInt = 0);
   end;
 
+  /// <summary>
+  ///   Owning list of fixture instances (library instances, stacked script table actors). Releases
+  ///   them the way TSlimFixtureDictionary does.
+  /// </summary>
+  TSlimFixtureList = class(TObjectList)
+  protected
+    procedure Notify(Ptr: Pointer; Action: TListNotification); override;
+  end;
+
   TScriptTableActorStack = class(TSlimFixture)
   private
     FInstances: TSlimFixtureDictionary;
@@ -218,6 +238,81 @@ procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 
 implementation
 
+type
+
+  ISlimMainThreadFree = interface
+    ['{5E1B0C52-6C0E-4B5D-9A63-0F0B6C2D7A41}']
+    procedure Run;
+    procedure WaitAndRaise;
+  end;
+
+  /// <summary>
+  ///   Carries the destruction of a fixture from the releasing thread to the main thread. The
+  ///   releasing thread waits for it, unless it gets terminated meanwhile: a host that shuts down
+  ///   waits for its server threads without serving the synchronize queue, and both would wait
+  ///   forever. The destruction then stays queued for the main thread.
+  /// </summary>
+  TSlimMainThreadFree = class(TInterfacedObject, ISlimMainThreadFree)
+  private
+    const
+      WaitSliceMs = 20;
+    var
+    FDone     : TEvent;
+    FException: Exception;
+    FFixture  : TSlimFixture;
+  public
+    constructor Create(AFixture: TSlimFixture);
+    destructor Destroy; override;
+    procedure Run;
+    procedure WaitAndRaise;
+  end;
+
+{ TSlimMainThreadFree }
+
+constructor TSlimMainThreadFree.Create(AFixture: TSlimFixture);
+begin
+  inherited Create;
+  FFixture := AFixture;
+  FDone := TEvent.Create(nil, True, False, '');
+end;
+
+destructor TSlimMainThreadFree.Destroy;
+begin
+  FException.Free;
+  FDone.Free;
+  inherited;
+end;
+
+procedure TSlimMainThreadFree.Run;
+begin
+  try
+    try
+      FFixture.Free;
+    except
+      FException := Exception(AcquireExceptionObject);
+    end;
+  finally
+    FDone.SetEvent;
+  end;
+end;
+
+procedure TSlimMainThreadFree.WaitAndRaise;
+begin
+  var Current: TThread := TThread.Current;
+  while FDone.WaitFor(WaitSliceMs) = wrTimeout do
+  begin
+    if not Current.ExternalThread and TThread.CheckTerminated then
+      Exit;
+  end;
+
+  if Assigned(FException) then
+  begin
+    var DestroyException: Exception := FException;
+    FException := nil;
+    raise DestroyException;
+  end;
+end;
+
 procedure RegisterSlimFixture(AFixtureClass: TSlimFixtureClass);
 begin
   TSlimFixtureResolver.RegisterFixture(AFixtureClass);
@@ -250,6 +345,11 @@ begin
     FDelayedEvent.Free;
     inherited;
   end;
+end;
+
+function TSlimFixture.DestroyInMainThread: Boolean;
+begin
+  Result := False;
 end;
 
 function TSlimFixture.HasDelayedInfo(AMember: TRttiMember; var AInfo: TDelayedInfo): Boolean;
@@ -374,6 +474,24 @@ begin
   end;
 end;
 
+procedure TSlimFixture.FreeByOwner;
+begin
+  if not DestroyInMainThread or (TThread.CurrentThread.ThreadID = MainThreadID) then
+  begin
+    Free;
+    Exit;
+  end;
+
+  var Handover: ISlimMainThreadFree := TSlimMainThreadFree.Create(Self);
+  // Queued without a thread reference: the entry must survive the releasing thread
+  TThread.Queue(nil,
+    procedure
+    begin
+      Handover.Run;
+    end);
+  Handover.WaitAndRaise;
+end;
+
 procedure TSlimFixture.ReleaseByOwner;
 var
   InFlight: Integer;
@@ -386,7 +504,7 @@ begin
     TMonitor.Exit(Self);
   end;
   if InFlight = 0 then
-    Free
+    FreeByOwner
   else if Assigned(OnReleasedWhileDelayedCallInFlight) then
     OnReleasedWhileDelayedCallInFlight(Self, InFlight);
 end;
@@ -458,6 +576,16 @@ begin
     inherited;
 end;
 
+{ TSlimFixtureList }
+
+procedure TSlimFixtureList.Notify(Ptr: Pointer; Action: TListNotification);
+begin
+  if OwnsObjects and (Action = lnDeleted) and (TObject(Ptr) is TSlimFixture) then
+    TSlimFixture(Ptr).ReleaseByOwner
+  else
+    inherited;
+end;
+
 { TScriptTableActorStack }
 
 constructor TScriptTableActorStack.Create(AInstances: TSlimFixtureDictionary);
@@ -465,7 +593,7 @@ begin
   if not Assigned(AInstances) then
     raise ESlim.Create('AInstances is required');
   FInstances := AInstances;
-  FList := TObjectList.Create(True);
+  FList := TSlimFixtureList.Create(True);
 end;
 
 destructor TScriptTableActorStack.Destroy;

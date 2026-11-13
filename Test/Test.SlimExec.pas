@@ -90,6 +90,28 @@ type
     /// </summary>
     [Test]
     procedure DelayedWaitMustNotHangWhenOwnerDiesBeforeCall;
+    /// <summary>
+    ///   A fixture that owns a window of the main thread (as every fixture does that schedules a
+    ///   delayed call on a form) is replaced by a second make on the executor thread. The fixture
+    ///   must be destroyed in the main thread: DestroyWindow fails from any other thread, while the
+    ///   window procedure instance is freed regardless, and the next message to that window calls
+    ///   into freed memory.
+    /// </summary>
+    [Test]
+    procedure FixtureOwningMainThreadWindowIsDestroyedInMainThread;
+    /// <summary>
+    ///   A fixture that does not ask for the main thread is destroyed where its owner lets go.
+    ///   A host without a message loop in the main thread depends on that.
+    /// </summary>
+    [Test]
+    procedure FixtureIsDestroyedInExecutorThreadByDefault;
+    /// <summary>
+    ///   The main thread waits for a terminated executor thread without serving its synchronize
+    ///   queue, as a host does that shuts its server down. The executor thread must not wait for
+    ///   the main thread in return; the destruction stays queued and runs with the next pass.
+    /// </summary>
+    [Test]
+    procedure TerminatedExecutorThreadDoesNotWaitForMainThread;
     [Test]
     procedure FixtureWithProperties;
     [Test]
@@ -172,6 +194,27 @@ type
     procedure RunDelayedManual;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure RunDelayed;
+  end;
+
+  /// <summary>
+  ///   Owns a window of the main thread and records in which thread it was destroyed.
+  /// </summary>
+  [SlimFixture('WindowOwner')]
+  TSlimWindowOwnerFixture = class(TSlimFixture)
+  private
+    FWindow: HWND;
+    procedure WndProc(var AMessage: TMessage);
+  public
+    class var DestroyedOffMainThread: Integer;
+    class var DestroyedTotal: Integer;
+    /// <summary>Answer of DestroyInMainThread, set by the tests</summary>
+    class var DestroyInMainThreadRequested: Boolean;
+    /// <summary>Window opened last - it must be gone once its fixture is destroyed</summary>
+    class var LastWindow: HWND;
+    destructor Destroy; override;
+    function DestroyInMainThread: Boolean; override;
+    procedure OpenWindow;
+    function SyncMode(AMember: TRttiMember): TSyncMode; override;
   end;
 
   [SlimFixture('SyncStress')]
@@ -340,6 +383,186 @@ begin
   begin
     CheckSynchronize;
     PumpMessages;
+  end;
+end;
+
+procedure TestSlimExecutor.FixtureIsDestroyedInExecutorThreadByDefault;
+begin
+  TSlimWindowOwnerFixture.DestroyInMainThreadRequested := False;
+  TSlimWindowOwnerFixture.DestroyedOffMainThread := 0;
+  TSlimWindowOwnerFixture.DestroyedTotal := 0;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    TTask.Run(
+      procedure
+      begin
+        try
+          var Context: TSlimStatementContext := TSlimStatementContext.Create;
+          try
+            Context.InitAllMembers;
+            var Executor: TSlimExecutor := TSlimExecutor.Create(Context);
+            try
+              var Stmts: TSlimList := SlimList([
+                SlimList(['id_1', 'make', 'inst', 'WindowOwner']),
+                SlimList(['id_2', 'make', 'inst', 'WindowOwner'])]);
+              try
+                Executor.Execute(Stmts).Free;
+              finally
+                Stmts.Free;
+              end;
+            finally
+              Executor.Free;
+            end;
+          finally
+            Context.Free;
+          end;
+        finally
+          Done.SetEvent;
+        end;
+      end);
+
+    // No CheckSynchronize here: the executor thread must get along without the main thread
+    Assert.IsTrue(Done.WaitFor(5000) = wrSignaled, 'The executor thread waited for the main thread');
+    Assert.AreEqual(2, TSlimWindowOwnerFixture.DestroyedTotal, 'Both instances should be destroyed');
+    Assert.AreEqual(2, TSlimWindowOwnerFixture.DestroyedOffMainThread, 'The instances should be destroyed in the executor thread');
+  finally
+    WaitForDone(Done);
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.TerminatedExecutorThreadDoesNotWaitForMainThread;
+begin
+  TSlimWindowOwnerFixture.DestroyInMainThreadRequested := True;
+  TSlimWindowOwnerFixture.DestroyedOffMainThread := 0;
+  TSlimWindowOwnerFixture.DestroyedTotal := 0;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  var Running: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Thread: TThread := TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Running.SetEvent;
+        try
+          var Context: TSlimStatementContext := TSlimStatementContext.Create;
+          try
+            Context.InitAllMembers;
+            var Executor: TSlimExecutor := TSlimExecutor.Create(Context);
+            try
+              var Stmts: TSlimList := SlimList([
+                SlimList(['id_1', 'make', 'inst', 'WindowOwner']),
+                SlimList(['id_2', 'make', 'inst', 'WindowOwner'])]);
+              try
+                Executor.Execute(Stmts).Free;
+              finally
+                Stmts.Free;
+              end;
+            finally
+              Executor.Free;
+            end;
+          finally
+            Context.Free;
+          end;
+        finally
+          Done.SetEvent;
+        end;
+      end);
+    Thread.FreeOnTerminate := False;
+    try
+      Thread.Start;
+      // A thread terminated before it started never runs
+      Running.WaitFor(5000);
+      Thread.Terminate;
+
+      // Deliberately no CheckSynchronize while waiting
+      var Finished: Boolean := Done.WaitFor(5000) = wrSignaled;
+      var DestroyedBeforePump: Integer := TSlimWindowOwnerFixture.DestroyedTotal;
+      WaitForDone(Done);
+      Thread.WaitFor;
+
+      var Started: UInt64 := GetTickCount64;
+      while (TSlimWindowOwnerFixture.DestroyedTotal < 2) and (GetTickCount64 - Started < 2000) do
+        CheckSynchronize(1);
+
+      Assert.IsTrue(Finished, 'The terminated executor thread waited for the main thread');
+      Assert.AreEqual(0, DestroyedBeforePump, 'Nothing can be destroyed before the main thread serves its queue');
+      Assert.AreEqual(2, TSlimWindowOwnerFixture.DestroyedTotal, 'The queued destructions should run with the next pass');
+      Assert.AreEqual(0, TSlimWindowOwnerFixture.DestroyedOffMainThread, 'A fixture was destroyed outside the main thread');
+    finally
+      Thread.Free;
+    end;
+  finally
+    Running.Free;
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.FixtureOwningMainThreadWindowIsDestroyedInMainThread;
+var
+  Failure: String;
+begin
+  TSlimWindowOwnerFixture.DestroyInMainThreadRequested := True;
+  TSlimWindowOwnerFixture.DestroyedOffMainThread := 0;
+  TSlimWindowOwnerFixture.DestroyedTotal := 0;
+  TSlimWindowOwnerFixture.LastWindow := 0;
+  Failure := '';
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    TTask.Run(
+      procedure
+      var
+        Context : TSlimStatementContext;
+        Executor: TSlimExecutor;
+        Response: TSlimList;
+        Stmts   : TSlimList;
+      begin
+        Context := nil;
+        Executor := nil;
+        try
+          try
+            Context := TSlimStatementContext.Create;
+            Context.InitAllMembers;
+            Executor := TSlimExecutor.Create(Context);
+            // The second make replaces the first instance, as a new script table does
+            Stmts := SlimList([
+              SlimList(['id_1', 'make', 'inst', 'WindowOwner']),
+              SlimList(['id_2', 'call', 'inst', 'OpenWindow']),
+              SlimList(['id_3', 'make', 'inst', 'WindowOwner'])]);
+            try
+              Response := Executor.Execute(Stmts);
+              Response.Free;
+            finally
+              Stmts.Free;
+            end;
+          except
+            on E: Exception do
+              Failure := E.ClassName + ': ' + E.Message;
+          end;
+        finally
+          Executor.Free;
+          Context.Free;
+          Done.SetEvent;
+        end;
+      end);
+
+    WaitForDone(Done);
+
+    var Window: HWND := TSlimWindowOwnerFixture.LastWindow;
+    var WindowOutlivedFixture: Boolean := (Window <> 0) and IsWindow(Window);
+    if WindowOutlivedFixture then
+    begin
+      // Its window procedure instance is freed already: detach it, before DestroyWindow sends messages
+      SetWindowLongPtr(Window, GWLP_WNDPROC, LONG_PTR(@DefWindowProc));
+      DestroyWindow(Window);
+    end;
+
+    Assert.AreEqual('', Failure);
+    Assert.AreNotEqual(HWND(0), Window, 'OpenWindow did not run');
+    Assert.AreEqual(2, TSlimWindowOwnerFixture.DestroyedTotal, 'Both instances should be destroyed');
+    Assert.IsFalse(WindowOutlivedFixture, 'The window of the main thread outlived its fixture');
+    Assert.AreEqual(0, TSlimWindowOwnerFixture.DestroyedOffMainThread, 'A fixture was destroyed outside the main thread');
+  finally
+    Done.Free;
   end;
 end;
 
@@ -1144,6 +1367,39 @@ procedure TSlimDelayedFixture.RunDelayed;
 begin
 end;
 
+{ TSlimWindowOwnerFixture }
+
+destructor TSlimWindowOwnerFixture.Destroy;
+begin
+  AtomicIncrement(DestroyedTotal);
+  if TThread.CurrentThread.ThreadID <> MainThreadID then
+    AtomicIncrement(DestroyedOffMainThread);
+  if FWindow <> 0 then
+    DeallocateHWnd(FWindow);
+  inherited;
+end;
+
+function TSlimWindowOwnerFixture.DestroyInMainThread: Boolean;
+begin
+  Result := DestroyInMainThreadRequested;
+end;
+
+procedure TSlimWindowOwnerFixture.OpenWindow;
+begin
+  FWindow := AllocateHWnd(WndProc);
+  LastWindow := FWindow;
+end;
+
+function TSlimWindowOwnerFixture.SyncMode(AMember: TRttiMember): TSyncMode;
+begin
+  Result := smSynchronized;
+end;
+
+procedure TSlimWindowOwnerFixture.WndProc(var AMessage: TMessage);
+begin
+  AMessage.Result := DefWindowProc(FWindow, AMessage.Msg, AMessage.WParam, AMessage.LParam);
+end;
+
 { TSlimSyncStressFixture }
 
 function TSlimSyncStressFixture.Echo(const AValue: String): String;
@@ -1244,6 +1500,7 @@ end;
 initialization
 
 RegisterSlimFixture(TSlimSyncStressFixture);
+RegisterSlimFixture(TSlimWindowOwnerFixture);
 RegisterSlimFixture(TMySutFixture);
 RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);
