@@ -67,6 +67,7 @@ type
     FRawStmt: TSlimList;
   protected
     FArgStartIndex: Integer;
+    FExceptionReported: Boolean;
     function GetRawStmtString(AIndex: Integer): String;
     function HasRawArguments(out AStartIndex: Integer): Boolean;
     property Context: TSlimStatementContext read FContext;
@@ -79,6 +80,11 @@ type
   public
     constructor Create(ARawStmt: TSlimList; AContext: TSlimStatementContext); virtual;
     function Execute: TSlimList; virtual;
+    /// <summary>
+    ///   True, if the exception Execute ended with was already handed to
+    ///   TSlimFixture.OnUnexpectedException, in the thread that raised it.
+    /// </summary>
+    property ExceptionReported: Boolean read FExceptionReported;
     property IdParam: String index 0 read GetRawStmtString;
   end;
 
@@ -457,7 +463,11 @@ begin
     InstanceValue := SlimMethod.Invoke(FixtureClass.MetaclassType, InvokeArgs);
   except
     on E: Exception do
+    begin
+      // The standard exception that takes its place keeps the message only
+      TSlimFixtureAccess.ReportUnexpectedException(E);
       raise ESlimCouldNotInvokeConstructor.Create(ClassParam + ': ' + E.Message);
+    end;
   end;
 
   Instance := TSlimFixture(InstanceValue.AsObject);
@@ -556,6 +566,8 @@ begin
         except
           on E: Exception do
           begin
+            // Only class and message leave the main thread
+            TSlimFixtureAccess.ReportUnexpectedException(E);
             CatchedExceptClass := ExceptClass(E.ClassType);
             ExceptMessage := E.Message;
           end;
@@ -609,6 +621,7 @@ begin
                   except
                     on E: Exception do
                     begin
+                      // SetDelayedException reports the exception, as this is its handler
                       TSlimFixtureAccess(AFixtureInstance).SetDelayedException(Exception(AcquireExceptionObject));
                       if Info.ManualDelayedEvent then
                         AFixtureInstance.TriggerDelayedEvent;
@@ -625,6 +638,7 @@ begin
         except
           on E: Exception do
           begin
+            TSlimFixtureAccess.ReportUnexpectedException(E);
             CatchedExceptClass := ExceptClass(E.ClassType);
             ExceptMessage := E.Message;
           end;
@@ -640,6 +654,8 @@ begin
     end;
 
     AFixtureInstance.WaitForDelayedEvent;
+    // A delayed exception reported at its origin must not be reported again from this thread
+    FExceptionReported := TSlimFixtureAccess(AFixtureInstance).DelayedExceptionReported;
     TSlimFixtureAccess(AFixtureInstance).CheckAndRaiseDelayedException;
     Result := SyncResult;
   end;
@@ -887,7 +903,11 @@ begin
         Exit(Stmt.ResponseException(ExceptClass(E.ClassType), E.Message));
       end;
       on E: Exception do
+      begin
+        if not Stmt.ExceptionReported then
+          TSlimFixtureAccess.ReportUnexpectedException(E);
         Exit(Stmt.ResponseException(ExceptClass(E.ClassType), E.Message));
+      end;
     end;
   finally
     Stmt.Free;

@@ -136,6 +136,34 @@ type
     procedure SynchronizedCallsUnderReentrantPump(AWorkerCount, ACallsPerWorker: Integer);
     [Test]
     procedure TwoMinuteExample;
+    /// <summary>
+    ///   An exception of a fixture member reaches FitNesse as class name and message only. The
+    ///   diagnostic hook must see it exactly once and inside an exception handler, in the main
+    ///   thread for synchronized and delayed members. A delayed exception that was set without
+    ///   ever being raised has no origin; the executor thread reports it when it raises it.
+    /// </summary>
+    [TestCase('Unsynchronized', 'ThrowUnsynchronized,False')]
+    [TestCase('Synchronized', 'ThrowSynchronized,True')]
+    [TestCase('Delayed', 'ThrowDelayed,True')]
+    [TestCase('DelayedNeverRaised', 'FailDelayedWithoutRaise,False')]
+    procedure UnexpectedExceptionIsReportedOnce(const AMethodName: String; AExpectMainThread: Boolean);
+    /// <summary>
+    ///   The constructor of a fixture fails: the response is the standard exception
+    ///   COULD_NOT_INVOKE_CONSTRUCTOR, the hook gets the exception the constructor raised.
+    /// </summary>
+    [Test]
+    procedure UnexpectedExceptionInConstructorIsReported;
+    /// <summary>
+    ///   The standard exceptions of Slim are answers of the protocol (NO_CLASS,
+    ///   NO_METHOD_IN_CLASS) or raised on purpose (ABORT_SLIM_TEST). The hook must not see them.
+    /// </summary>
+    [Test]
+    procedure StandardExceptionsAreNotReported;
+    /// <summary>
+    ///   A hook that fails itself must not replace the exception it was told about.
+    /// </summary>
+    [Test]
+    procedure FailingUnexpectedExceptionHookKeepsTheResponse;
   end;
 
   [TestFixture]
@@ -167,6 +195,15 @@ type
     function HelloWorld: String;
   end;
 
+  /// <summary>Stands for an exception no fixture raises on purpose, like an access violation</summary>
+  EUnexpectedCrash = class(Exception);
+
+  [SlimFixture('BrokenConstructor')]
+  TSlimBrokenConstructorFixture = class(TSlimFixture)
+  public
+    constructor Create;
+  end;
+
   [SlimFixture('DelayedFixture')]
   TSlimDelayedFixture = class(TSlimFixture)
   private
@@ -190,6 +227,13 @@ type
     procedure HoldLikeModalDialog;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
     procedure ThrowDelayed;
+    [SlimMemberSyncMode(smSynchronized)]
+    procedure ThrowSynchronized;
+    [SlimMemberSyncMode(smUnsynchronized)]
+    procedure ThrowUnsynchronized;
+    /// <summary>Sets a delayed exception that was created, but never raised</summary>
+    [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
+    procedure FailDelayedWithoutRaise;
     [SlimMemberSyncMode(smSynchronizedAndDelayedManual)]
     procedure RunDelayedManual;
     [SlimMemberSyncMode(smSynchronizedAndDelayed)]
@@ -250,6 +294,7 @@ type
     function AnyObject: TObject;
     procedure RaiseStopException;
     procedure RaiseIgnoreAllTestsException;
+    procedure RaiseUnexpected;
     function SystemUnderTest: TObject; override;
   end;
 
@@ -974,6 +1019,141 @@ begin
     end);
 end;
 
+procedure TestSlimExecutor.UnexpectedExceptionIsReportedOnce(const AMethodName: String; AExpectMainThread: Boolean);
+var
+  HookCalls    : Integer;
+  HookInHandler: Boolean;
+  HookReport   : String;
+  HookThreadId : TThreadID;
+begin
+  HookCalls := 0;
+  HookInHandler := False;
+  HookThreadId := 0;
+  TSlimFixture.OnUnexpectedException :=
+    procedure(AException: Exception)
+    begin
+      Inc(HookCalls);
+      HookReport := AException.ClassName + ': ' + AException.Message;
+      HookInHandler := ExceptAddr <> nil;
+      HookThreadId := TThread.CurrentThread.ThreadID;
+    end;
+  var Done: TEvent := TEvent.Create(nil, True, False, '');
+  try
+    var Response: IFuture<String> := RunDelayedCallInExecutorThread(AMethodName, Done, nil);
+
+    WaitForDone(Done);
+
+    Assert.AreEqual(1, HookCalls, 'The hook should see the exception exactly once');
+    Assert.AreEqual(TSlimConsts.ExceptionResponse + ':' + HookReport, Response.Value,
+      'The hook should see the exception the response reports');
+    Assert.IsTrue(HookInHandler, 'The hook should run inside an exception handler');
+    Assert.IsTrue(AExpectMainThread = (HookThreadId = MainThreadID), 'The hook ran in the wrong thread');
+  finally
+    TSlimFixture.OnUnexpectedException := nil;
+    Done.Free;
+  end;
+end;
+
+procedure TestSlimExecutor.UnexpectedExceptionInConstructorIsReported;
+var
+  HookCalls : Integer;
+  HookReport: String;
+begin
+  HookCalls := 0;
+  TSlimFixture.OnUnexpectedException :=
+    procedure(AException: Exception)
+    begin
+      Inc(HookCalls);
+      HookReport := AException.ClassName + ': ' + AException.Message;
+    end;
+  try
+    Execute(
+      FGarbage.Collect(SlimList([
+        SlimList(['id_1', 'make', 'instance_1', 'BrokenConstructor'])
+      ])),
+      procedure(AResponse: TSlimList)
+      var
+        CallResponse: TSlimList;
+      begin
+        Assert.IsTrue(TryGetSlimListById(AResponse, 'id_1', CallResponse));
+        Assert.Contains(CallResponse[1].ToString, 'COULD_NOT_INVOKE_CONSTRUCTOR');
+      end);
+
+    Assert.AreEqual(1, HookCalls, 'The hook should see the exception of the constructor exactly once');
+    Assert.AreEqual('EUnexpectedCrash: The constructor failed', HookReport);
+  finally
+    TSlimFixture.OnUnexpectedException := nil;
+  end;
+end;
+
+procedure TestSlimExecutor.StandardExceptionsAreNotReported;
+var
+  HookCalls: Integer;
+begin
+  HookCalls := 0;
+  TSlimFixture.OnUnexpectedException :=
+    procedure(AException: Exception)
+    begin
+      Inc(HookCalls);
+    end;
+  try
+    Execute(
+      FGarbage.Collect(SlimList([
+        SlimList(['id_1', 'make', 'instance_1', 'MySutFixture']),
+        SlimList(['id_2', 'make', 'instance_2', 'NoSuchFixture']),
+        SlimList(['id_3', 'call', 'instance_1', 'NoSuchMethod']),
+        SlimList(['id_4', 'call', 'instance_1', 'RaiseStopException'])
+      ])),
+      procedure(AResponse: TSlimList)
+      var
+        CallResponse: TSlimList;
+      begin
+        Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+        Assert.Contains(CallResponse[1].ToString, 'NO_CLASS');
+
+        Assert.IsTrue(TryGetSlimListById(AResponse, 'id_3', CallResponse));
+        Assert.Contains(CallResponse[1].ToString, 'NO_METHOD_IN_CLASS');
+
+        Assert.IsTrue(TryGetSlimListById(AResponse, 'id_4', CallResponse));
+        Assert.Contains(CallResponse[1].ToString, 'ABORT_SLIM_TEST');
+      end);
+
+    Assert.AreEqual(0, HookCalls, 'The standard exceptions of Slim are not unexpected');
+  finally
+    TSlimFixture.OnUnexpectedException := nil;
+  end;
+end;
+
+procedure TestSlimExecutor.FailingUnexpectedExceptionHookKeepsTheResponse;
+begin
+  var FailuresBefore: Integer := TSlimFixture.OnUnexpectedExceptionFailures;
+  TSlimFixture.OnUnexpectedException :=
+    procedure(AException: Exception)
+    begin
+      raise EInvalidOpException.Create('The hook itself failed');
+    end;
+  try
+    Execute(
+      FGarbage.Collect(SlimList([
+        SlimList(['id_1', 'make', 'instance_1', 'MySutFixture']),
+        SlimList(['id_2', 'call', 'instance_1', 'RaiseUnexpected'])
+      ])),
+      procedure(AResponse: TSlimList)
+      var
+        CallResponse: TSlimList;
+      begin
+        Assert.IsTrue(TryGetSlimListById(AResponse, 'id_2', CallResponse));
+        Assert.AreEqual(TSlimConsts.ExceptionResponse + ':EUnexpectedCrash: Raised by the fixture',
+          CallResponse[1].ToString);
+      end);
+
+    Assert.AreEqual(FailuresBefore + 1, TSlimFixture.OnUnexpectedExceptionFailures,
+      'The failure of the hook should be counted');
+  finally
+    TSlimFixture.OnUnexpectedException := nil;
+  end;
+end;
+
 procedure TestSlimExecutor.SutOnLibInstance;
 begin
   Assert.AreEqual(1, Integer(FContext.LibInstances.Count));
@@ -1260,6 +1440,11 @@ begin
   IgnoreAllTests;
 end;
 
+procedure TMySutFixture.RaiseUnexpected;
+begin
+  raise EUnexpectedCrash.Create('Raised by the fixture');
+end;
+
 function TMySutFixture.SystemUnderTest: TObject;
 begin
   if not Assigned(FMySut) then
@@ -1291,6 +1476,13 @@ end;
 function TSlimReflectObjectFixture.SystemUnderTest: TObject;
 begin
   Result := FTarget;
+end;
+
+{ TSlimBrokenConstructorFixture }
+
+constructor TSlimBrokenConstructorFixture.Create;
+begin
+  raise EUnexpectedCrash.Create('The constructor failed');
 end;
 
 { TSlimDelayedFixture }
@@ -1356,6 +1548,22 @@ end;
 procedure TSlimDelayedFixture.ThrowDelayed;
 begin
   raise Exception.Create('This is a delayed crash!');
+end;
+
+procedure TSlimDelayedFixture.ThrowSynchronized;
+begin
+  raise EUnexpectedCrash.Create('Raised in the main thread');
+end;
+
+procedure TSlimDelayedFixture.ThrowUnsynchronized;
+begin
+  raise EUnexpectedCrash.Create('Raised in the executor thread');
+end;
+
+procedure TSlimDelayedFixture.FailDelayedWithoutRaise;
+begin
+  SetDelayedException(EUnexpectedCrash.Create('Set, but never raised'));
+  TriggerDelayedEvent;
 end;
 
 procedure TSlimDelayedFixture.RunDelayedManual;
@@ -1505,6 +1713,7 @@ RegisterSlimFixture(TMySutFixture);
 RegisterSlimFixture(TMyImportedFixture);
 RegisterSlimFixture(TSlimReflectObjectFixture);
 RegisterSlimFixture(TSlimDelayedFixture);
+RegisterSlimFixture(TSlimBrokenConstructorFixture);
 
 TDUnitX.RegisterTestFixture(TestContext);
 TDUnitX.RegisterTestFixture(TestSlimExecutor);

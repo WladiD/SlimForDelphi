@@ -84,6 +84,7 @@ type
   TSlimFixture = class
   private
     FDelayedCallsInFlight: Integer;
+    FDelayedExceptionReported: Boolean;
     FReleasedByOwner: Boolean;
     procedure FreeByOwner;
     procedure ReleaseByOwner;
@@ -95,8 +96,24 @@ type
     procedure IgnoreScriptTest(const AMessage: String = '');
     procedure StopSuite(const AMessage: String = '');
     procedure StopTest(const AMessage: String = '');
+    /// <summary>
+    ///   Keeps an exception of a delayed call for the executor thread, which raises it again once
+    ///   the delayed event fired. Called inside an exception handler, it hands the exception to
+    ///   OnUnexpectedException right away: that handler is the last place where the thread that
+    ///   raised the exception still knows where it came from.
+    /// </summary>
     procedure SetDelayedException(AException: Exception);
     procedure CheckAndRaiseDelayedException;
+    /// <summary>
+    ///   True, if the pending delayed exception was already handed to OnUnexpectedException. Whoever
+    ///   catches it after CheckAndRaiseDelayedException must not report it a second time.
+    /// </summary>
+    function DelayedExceptionReported: Boolean;
+    /// <summary>
+    ///   Hands AException to OnUnexpectedException, unless it is one of the standard exceptions of
+    ///   Slim. Returns True, if the hook was called. To be called inside the exception handler.
+    /// </summary>
+    class function ReportUnexpectedException(AException: Exception): Boolean; static;
     /// <summary>
     ///   Marks the begin of a delayed member call on this instance. While a delayed call is in
     ///   flight, the owning TSlimFixtureDictionary does not free the instance but leaves that to
@@ -116,6 +133,22 @@ type
     ///   alive; the second argument is the number of calls in flight.
     /// </summary>
     class var OnReleasedWhileDelayedCallInFlight: TProc<TSlimFixture, Integer>;
+    /// <summary>
+    ///   Diagnostic hook: called for every exception that Slim reports with its class name
+    ///   ("__EXCEPTION__:EAccessViolation: ..."), i.e. for everything a fixture raises but the
+    ///   standard exceptions of Slim itself (ESlimStandardException: NO_CLASS, ABORT_SLIM_TEST, ...).
+    ///   The response to FitNesse carries class name and message only, so the hook is the place to
+    ///   record the call stack. It runs in the thread that caught the exception - the main thread
+    ///   for synchronized and delayed members, the executor thread otherwise - and inside the
+    ///   exception handler, where whatever keeps track of the exceptions of a thread still knows
+    ///   this one. Each exception is reported once. The hook only observes: an exception it raises
+    ///   itself is counted in OnUnexpectedExceptionFailures and dropped.
+    /// </summary>
+    class var OnUnexpectedException: TProc<Exception>;
+    /// <summary>
+    ///   Number of calls of OnUnexpectedException that ended with an exception of the hook itself.
+    /// </summary>
+    class var OnUnexpectedExceptionFailures: Integer;
     destructor Destroy; override;
     /// <summary>
     ///   Tells the owner of the instance where to destroy it. A fixture that owns objects of the
@@ -371,6 +404,7 @@ end;
 procedure TSlimFixture.InitDelayedEvent;
 begin
   FreeAndNil(FDelayedException);
+  FDelayedExceptionReported := False;
 
   if not Assigned(FDelayedEvent) then
     FDelayedEvent := TEvent.Create(nil, True, False, '')
@@ -422,6 +456,12 @@ procedure TSlimFixture.SetDelayedException(AException: Exception);
 begin
   FDelayedException.Free;
   FDelayedException := AException;
+  // ExceptAddr tells whether this thread is inside an exception handler. ExceptObject does not:
+  // an exception taken over with AcquireExceptionObject is no longer the current one. Outside of
+  // a handler nothing knows the origin of AException, so the executor thread reports it when it
+  // raises it.
+  FDelayedExceptionReported := Assigned(AException) and (ExceptAddr <> nil) and
+    ReportUnexpectedException(AException);
 end;
 
 procedure TSlimFixture.CheckAndRaiseDelayedException;
@@ -432,7 +472,26 @@ begin
   begin
     LDelayedException := FDelayedException;
     FDelayedException := nil;
+    FDelayedExceptionReported := False;
     raise LDelayedException;
+  end;
+end;
+
+function TSlimFixture.DelayedExceptionReported: Boolean;
+begin
+  Result := Assigned(FDelayedException) and FDelayedExceptionReported;
+end;
+
+class function TSlimFixture.ReportUnexpectedException(AException: Exception): Boolean;
+begin
+  Result := Assigned(OnUnexpectedException) and not (AException is ESlimStandardException);
+  if not Result then
+    Exit;
+  try
+    OnUnexpectedException(AException);
+  except
+    on Exception do
+      AtomicIncrement(OnUnexpectedExceptionFailures);
   end;
 end;
 
